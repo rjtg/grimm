@@ -578,3 +578,64 @@ fn in_flight_old_input_cannot_choose_after_timeout_and_new_timer_waits_for_ack()
     process.finish("Ending: Timely");
     assert!(!process.text.contains("Ending: Expired"));
 }
+
+#[test]
+fn chained_authored_timeouts_continue_when_stdin_is_exhausted() {
+    let temp = Temp::new();
+    let path = temp.file("eof-chain.yaml");
+    let mut story: Story = serde_yaml_ng::from_str(&short_story(150)).unwrap();
+    let mut second = story.nodes[0].clone();
+    second.id = "second".into();
+    second.content = story.nodes[2].content.clone();
+    story.nodes[0].decision.as_mut().unwrap().timeout.target = "second".into();
+    story.nodes.push(second);
+    fs::write(&path, serde_yaml_ng::to_string(&story).unwrap()).unwrap();
+    // EOF both before expiry and while an obsolete read blocks readiness.
+    for close_after_transition in [false, true] {
+        let mut process = Process::start(&["play", path.to_str().unwrap()]);
+        process.until("> ");
+        if close_after_transition {
+            process.until("Press Enter to acknowledge");
+        }
+        process.stdin.take();
+        process.finish("Ending: Expired");
+        assert!(process.text.contains("Authored timeout"));
+        assert!(!process.text.contains("Ending: Timely"));
+    }
+}
+
+#[test]
+fn stale_lifecycle_commands_only_acknowledge_the_successor() {
+    let temp = Temp::new();
+    let path = temp.file("stale-commands.yaml");
+    let save = temp.file("snapshot.json");
+    let mut story: Story = serde_yaml_ng::from_str(&short_story(150)).unwrap();
+    let mut second = story.nodes[0].clone();
+    second.id = "second".into();
+    second.decision.as_mut().unwrap().limit_ms = 150;
+    story.nodes[0].decision.as_mut().unwrap().timeout.target = "second".into();
+    story.nodes.push(second);
+    fs::write(&path, serde_yaml_ng::to_string(&story).unwrap()).unwrap();
+    let engine = Engine::new(story).unwrap();
+    write_save(&save, &engine).unwrap();
+    let before = fs::read(&save).unwrap();
+    for command in [
+        ":pause".to_string(),
+        ":resume".to_string(),
+        format!(":save {}", save.display()),
+        format!(":load {}", save.display()),
+        ":quit".to_string(),
+    ] {
+        let mut process = Process::start(&["play", path.to_str().unwrap()]);
+        process.until("Press Enter to acknowledge");
+        process.send(&command);
+        process.until("Input from the previous prompt was ignored");
+        process.stdin.take();
+        process.finish("Ending: Expired");
+        assert!(!process.text.contains("Paused. Use"));
+        assert!(!process.text.contains("Resuming after"));
+        assert!(!process.text.contains("Saved to"));
+        assert!(!process.text.contains("Loaded"));
+        assert_eq!(fs::read(&save).unwrap(), before);
+    }
+}

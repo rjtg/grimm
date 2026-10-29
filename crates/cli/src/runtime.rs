@@ -191,6 +191,17 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         let (revision, raw) = match message {
             Message::Eof => {
                 eof = true;
+                // EOF releases an obsolete read's acknowledgement barrier.
+                // Re-present and activate any successor deadline; EOF is not
+                // a player action and must not abandon authored timeouts.
+                if engine
+                    .output()
+                    .decision
+                    .as_ref()
+                    .is_some_and(|decision| decision.phase == DecisionPhase::AwaitingReady)
+                {
+                    rendered_revision = None;
+                }
                 continue;
             }
             Message::Error(error) => return Err(error.into()),
@@ -198,13 +209,19 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                 revision, input, ..
             } => (revision, input),
         };
+        if revision != engine.output().revision {
+            renderer.render(&[PresentationCommand::Text(
+                "Input from the previous prompt was ignored. Current scene acknowledged; choose after the new prompt.".into(),
+            )])?;
+            rendered_revision = None;
+            continue;
+        }
         let line = raw.line.trim();
         if line == ":quit" {
             return Ok(());
         }
-        // Lifecycle/file commands are global host controls. Only game choices
-        // are proposals tied to the prompt at submission; old queued choices
-        // cannot act on a newly timed-out or restored scene.
+        // Lifecycle/file commands, like choices, belong to the read's revision.
+        // A command queued for an expired prompt cannot control its successor.
         if line.starts_with(':') {
             let (command, path) = line
                 .split_once(char::is_whitespace)
@@ -246,13 +263,6 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
             {
                 rendered_revision = None;
             }
-            continue;
-        }
-        if revision != engine.output().revision {
-            renderer.render(&[PresentationCommand::Text(
-                "Input from the previous prompt was ignored. Current scene acknowledged; choose after the new prompt.".into(),
-            )])?;
-            rendered_revision = None;
             continue;
         }
         let Some(action) = adapter.resolve(&raw) else {

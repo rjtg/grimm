@@ -385,16 +385,21 @@ Temporal stories use a host-owned stdin reader thread and bounded channel, plus
 one `Instant` observation baseline per active segment. The host waits for input
 with a maximum 250ms timeout, submits elapsed observations during silence, and
 refreshes the visible indicator roughly once per second. EOF on an active
-decision still permits expiry; EOF on an untimed/paused prompt exits without a
-choice. Engine-selected consequences remain authored even with no input.
+decision still permits expiry, including successive timed scenes. EOF releases
+any obsolete-read acknowledgement barrier: the host presents and activates the
+successor prompt without requiring an impossible Enter. EOF on an untimed/paused
+prompt exits without a choice. Engine-selected consequences remain authored even
+with no input.
 Completed lines carry a timestamp from the same monotonic host clock; that
 observation is supplied before their game action, avoiding a needless penalty
 for a line already queued while the host handles output. A consequence already
 committed at that revision cannot be retroactively undone by a delayed message.
 
-`:pause`, `:resume`, `:save PATH`, `:load PATH`, and `:quit` are global host
-controls. Each outstanding read request owns a prompt revision. A line from that
-read cannot act on a later timeout/restored revision. After an asynchronous scene
+`:pause`, `:resume`, `:save PATH`, `:load PATH`, and `:quit` are host
+controls bound to the read's revision, just like choices. A stale command is
+discarded as acknowledgement only; it cannot pause, resume, save, load or quit a
+successor interaction. Each outstanding read request owns a prompt revision. A
+line from that read cannot act on a later timeout/restored revision. After an asynchronous scene
 change with an old read still pending, the CLI asks for Enter to acknowledge;
 that old line is discarded, then the new prompt is presented/activated. A new
 deadline is frozen while waiting for acknowledgement. Normal action/load
