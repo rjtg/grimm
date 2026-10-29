@@ -1,0 +1,11 @@
+[package]
+name = "grimm-cli-renderer"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+grimm-presentation.workspace = true
+
+[lints]
+workspace = true
