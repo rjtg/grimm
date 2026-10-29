@@ -2,6 +2,7 @@
 //! Adapters have protocol dependencies only, never access to the engine.
 
 use grimm_presentation::{PresentationCommand, RawInput};
+use grimm_semantic::time::DecisionPhase;
 use grimm_semantic::{GameAction, NarrativeContent, SemanticOutput};
 
 pub trait OutputAdapter {
@@ -16,6 +17,25 @@ pub trait InputAdapter {
 #[derive(Debug, Default)]
 pub struct TextAdapter {
     actions: Vec<GameAction>,
+}
+
+impl TextAdapter {
+    /// Refresh timing presentation without repeating prose or remapping actions.
+    pub fn present_deadline(&self, output: &SemanticOutput) -> Vec<PresentationCommand> {
+        output
+            .decision
+            .iter()
+            .map(|decision| PresentationCommand::Countdown {
+                remaining_ms: decision.remaining_ms,
+                label: match decision.phase {
+                    DecisionPhase::AwaitingReady => "Decision time (starts after prompt)",
+                    DecisionPhase::Active => "Time remaining",
+                    DecisionPhase::Paused => "Paused; time remaining",
+                }
+                .into(),
+            })
+            .collect()
+    }
 }
 
 impl OutputAdapter for TextAdapter {
@@ -44,6 +64,7 @@ impl OutputAdapter for TextAdapter {
                 ending.title
             )));
         }
+        commands.extend(self.present_deadline(output));
         if !output.offers.is_empty() {
             commands.push(PresentationCommand::Choices(
                 output
@@ -70,8 +91,50 @@ mod tests {
     use grimm_semantic::InteractionOffer;
 
     #[test]
+    fn deadline_updates_do_not_remap_or_invent_actions() {
+        let mut adapter = TextAdapter::default();
+        let mut output = SemanticOutput {
+            revision: 7,
+            content: vec![],
+            offers: vec![InteractionOffer {
+                id: "answer".into(),
+                label: "Answer".into(),
+            }],
+            ending: None,
+            decision: Some(grimm_semantic::time::DecisionView {
+                remaining_ms: 900,
+                phase: DecisionPhase::AwaitingReady,
+            }),
+        };
+        adapter.present(&output);
+        for phase in [
+            DecisionPhase::AwaitingReady,
+            DecisionPhase::Active,
+            DecisionPhase::Paused,
+        ] {
+            output.decision.as_mut().unwrap().phase = phase;
+            let command = adapter.present_deadline(&output);
+            assert!(matches!(
+                &command[..],
+                [PresentationCommand::Countdown {
+                    remaining_ms: 900,
+                    ..
+                }]
+            ));
+            assert_eq!(
+                adapter
+                    .resolve(&RawInput { line: "1".into() })
+                    .unwrap()
+                    .choice_id,
+                "answer"
+            );
+        }
+    }
+
+    #[test]
     fn preserves_authored_blocks_and_formats_dialogue_and_ending() {
         let output = SemanticOutput {
+            decision: None,
             revision: 3,
             content: vec![
                 NarrativeContent::Narration {
@@ -103,6 +166,7 @@ mod tests {
         let mut adapter = TextAdapter::default();
         assert_eq!(adapter.resolve(&RawInput { line: "1".into() }), None);
         let output = SemanticOutput {
+            decision: None,
             revision: 42,
             content: vec![NarrativeContent::Narration {
                 text: "Exact text.".into(),
@@ -140,6 +204,7 @@ mod tests {
             assert_eq!(adapter.resolve(&RawInput { line: line.into() }), None);
         }
         adapter.present(&SemanticOutput {
+            decision: None,
             offers: vec![],
             ..output
         });

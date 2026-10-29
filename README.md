@@ -14,9 +14,10 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 
 See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), and [M0 brief](docs/milestones/m0.md).
 
-Status: M0, M1 and M1.5 implemented: an authored CYOA engine with YAML stories, typed
+Status: M0 through M1.75 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
-Two reference mysteries exercise persistent story state and bounded playability checks.
+Three reference adventures exercise persistent state, bounded playability checks,
+and optional deterministic world time and real-time decisions.
 AI and graphical frontends remain future milestones.
 
 ## Build and run
@@ -110,6 +111,50 @@ story filename. This does not prove eventual completion or detect every possible
 liveness problem; executable cycles can continue indefinitely. See the precise
 [guarantees and limits](docs/story-format.md#bounded-authoring-check-m15).
 
+## The Last Train — temporal thriller
+
+```sh
+cargo run -p grimm-cli -- play stories/the-last-train.yaml
+```
+
+Investigate a sabotaged railway junction before the last train arrives. The
+14-node adventure has three endings, two visible decision countdowns (15 and
+20 real seconds), and untimed investigation choices with fictional minute costs.
+The opening lets you read the controls without a timer. A timely, prepared stop
+and a late evacuation have different consequences; hesitation has an authored
+outcome rather than an I/O error.
+
+During a live deadline, use `:pause`, then `:save /tmp/train.json`. `:resume`
+continues after displaying the prompt again. To load the checkpoint later:
+
+```sh
+cargo run -p grimm-cli -- play stories/the-last-train.yaml --load /tmp/train.json
+cargo run --offline --locked -p grimm-cli -- check stories/the-last-train.yaml
+```
+
+Closed games do not consume decision time. Saving alone does not pause a running
+session. The engine preserves remaining time; the host activates it only after
+flushing the prompt. At the exact deadline, timeout wins because the host sends
+its elapsed observation before a player action. No-input expiry works with an
+open stdin; real hesitation never automatically advances fictional minutes.
+
+For a replayable manual-clock demonstration of every ending and the temporal
+branches (no sleeping in the core tests):
+
+```sh
+cargo test -p grimm-cli --test train full_routes_cover_every_ending_and_both_fictional_time_windows -- --exact
+cargo test -p grimm-cli --test train unanswered_call_and_platform_have_authored_consequences_without_player_input -- --exact
+```
+
+The actual CLI is human playable with real deadlines; automated CLI tests use
+paced input and short real-host timeout fixtures. If timeout changes the scene
+while an old line is still pending, press Enter when asked to acknowledge the
+new prompt; the old line cannot choose there and its next timer stays frozen
+until acknowledgement. Pace scripted input by waiting for prompts.
+See the [temporal authoring/lifecycle guide](docs/story-format.md#temporal-stories-schema-2),
+[technical decisions](docs/milestones/m1.75-design.md), and
+[Train playtest report](docs/milestones/m1.75-playtest.md).
+
 ## M0 regression demo
 
 `cargo run --locked -p grimm-cli` without arguments still runs the original
@@ -145,7 +190,7 @@ cargo test --workspace --locked
 Tests include complete reference playthroughs, invalid YAML/graphs, conditions
 and atomic effects, save/load continuation, the actual CLI process, and all M0
 boundary/privacy regressions. CI runs these checks, bounded story checks, and
-offline demos of both mysteries. M1.5 tests add shared-location scenes, recurring
+offline demos of the reference stories and real-host temporal integration tests. M1.5 tests add shared-location scenes, recurring
 character/state continuity, four endings, multi-step deadlocks, cycles and
 inconclusive budgets. See the [M1.5 brief](docs/milestones/m1.5.md).
 See the [M1 acceptance plan and implementation report](docs/milestones/m1.md)

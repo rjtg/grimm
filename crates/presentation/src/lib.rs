@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum PresentationCommand {
     Text(String),
     Choices(Vec<String>),
+    Countdown { remaining_ms: u64, label: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,6 +23,10 @@ mod tests {
         for command in [
             PresentationCommand::Text("Hello\nworld".into()),
             PresentationCommand::Choices(vec!["Continue".into()]),
+            PresentationCommand::Countdown {
+                remaining_ms: 1234,
+                label: "Time remaining".into(),
+            },
         ] {
             assert_eq!(
                 command,

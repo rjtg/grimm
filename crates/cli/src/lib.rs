@@ -1,4 +1,5 @@
 //! Host-side codecs and filesystem access. The engine has no format/I/O dependency.
+pub mod runtime;
 use grimm_engine::Engine;
 use grimm_semantic::{save::SaveGame, story::Story};
 use std::{fmt, fs, path::Path};

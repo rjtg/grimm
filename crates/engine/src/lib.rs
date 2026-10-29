@@ -2,17 +2,21 @@
 mod demo;
 mod expressions;
 mod playability;
+mod temporal;
 mod validation;
 
 pub use playability::{Deadlock, PlayabilityLimits, PlayabilityReport, PlayabilityStep};
+pub use temporal::TimeError;
 
 use expressions::{apply_effects, evaluate, same_type};
 use grimm_semantic::{
     GameAction, InteractionOffer, SemanticOutput,
-    save::{SAVE_SCHEMA_VERSION, SaveGame},
+    save::{SAVE_SCHEMA_VERSION, SaveGame, TEMPORAL_SAVE_SCHEMA_VERSION},
     story::{Choice, Story, Variables},
+    time::{DecisionPhase, TemporalSave},
 };
 use std::fmt;
+use temporal::ActiveDecision;
 
 /// Canonical state is private; projections and checkpoints are owned copies.
 ///
@@ -26,6 +30,8 @@ pub struct Engine {
     node: usize,
     variables: Variables,
     revision: u64,
+    world_minutes: Option<u64>,
+    decision: Option<ActiveDecision>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +50,8 @@ pub enum ActionError {
     EffectOverflow { variable: String },
     NoOffers { node: String },
     RevisionOverflow,
+    WorldTimeOverflow,
+    DecisionNotActive,
 }
 impl fmt::Display for ActionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,6 +66,10 @@ impl fmt::Display for ActionError {
                 "transition would leave node '{node}' without an eligible choice"
             ),
             Self::RevisionOverflow => f.write_str("session revision overflow"),
+            Self::WorldTimeOverflow => f.write_str("fictional world-time cost overflows"),
+            Self::DecisionNotActive => {
+                f.write_str("decision requires presentation readiness and must not be paused")
+            }
         }
     }
 }
@@ -69,11 +81,11 @@ impl Default for Engine {
     }
 }
 
-fn eligible(choice: &Choice, variables: &Variables) -> bool {
+fn eligible(choice: &Choice, variables: &Variables, world_minutes: Option<u64>) -> bool {
     choice
         .condition
         .as_ref()
-        .is_none_or(|condition| evaluate(condition, variables))
+        .is_none_or(|condition| evaluate(condition, variables, world_minutes.unwrap_or(0)))
 }
 
 impl Engine {
@@ -85,28 +97,39 @@ impl Engine {
             .position(|node| node.id == story.start)
             .expect("validated start");
         let variables = story.variables.clone();
+        let world_minutes = story.time.as_ref().map(|time| time.start_minutes);
+        let decision = ActiveDecision::for_node(&story.nodes[node]);
         let engine = Self {
             story,
             node,
             variables,
             revision: 0,
+            world_minutes,
+            decision,
         };
-        engine.ensure_playable(engine.node, &engine.variables)?;
+        engine.ensure_playable(engine.node, &engine.variables, world_minutes)?;
         Ok(engine)
     }
 
-    fn ensure_playable(&self, node: usize, variables: &Variables) -> Result<(), ValidationError> {
+    fn ensure_playable(
+        &self,
+        node: usize,
+        variables: &Variables,
+        world: Option<u64>,
+    ) -> Result<(), ValidationError> {
         let node = &self.story.nodes[node];
-        if node.ending.is_some() {
+        // Validated timeouts provide an executable fallback, even if all ordinary
+        // choices are unavailable. Readiness is a lifecycle input, not a deadlock.
+        if node.ending.is_some() || node.decision.is_some() {
             return Ok(());
         }
         let mut failures = Vec::new();
         for choice in node
             .choices
             .iter()
-            .filter(|choice| eligible(choice, variables))
+            .filter(|choice| eligible(choice, variables, world))
         {
-            match self.preview(choice, variables) {
+            match self.preview(choice, variables, world) {
                 Ok(_) => return Ok(()),
                 Err(error) => failures.push(format!("choice '{}': {error}", choice.id)),
             }
@@ -119,16 +142,25 @@ impl Engine {
         Err(ValidationError(format!("node '{}': {reason}", node.id)))
     }
 
-    /// Preview exactly one transition without committing. Destination conditions
-    /// are checked after effects; this is not a search for a winning playthrough.
+    /// Pure one-transition preview shared by offers, actions and authoring checks.
     fn preview(
         &self,
         choice: &Choice,
         variables: &Variables,
-    ) -> Result<(usize, Variables), ActionError> {
-        if !eligible(choice, variables) {
+        world: Option<u64>,
+    ) -> Result<(usize, Variables, Option<u64>), ActionError> {
+        if !eligible(choice, variables, world) {
             return Err(ActionError::InvalidChoice);
         }
+        let world = match world {
+            Some(current) => Some(
+                current
+                    .checked_add(choice.advance_minutes)
+                    .ok_or(ActionError::WorldTimeOverflow)?,
+            ),
+            None if choice.advance_minutes == 0 => None,
+            None => return Err(ActionError::WorldTimeOverflow), // prevented by validation
+        };
         let mut variables = variables.clone();
         apply_effects(&choice.effects, &mut variables)?;
         let target = self
@@ -139,21 +171,20 @@ impl Engine {
             .expect("validated target");
         let node = &self.story.nodes[target];
         if node.ending.is_none()
+            && node.decision.is_none()
             && !node
                 .choices
                 .iter()
-                .any(|choice| eligible(choice, &variables))
+                .any(|choice| eligible(choice, &variables, world))
         {
             return Err(ActionError::NoOffers {
                 node: node.id.clone(),
             });
         }
-        Ok((target, variables))
+        Ok((target, variables, world))
     }
 
-    /// Returns visible authored content and executable offers, never private state.
-    /// Each offer passes the same one-transition preview as `apply`; without a
-    /// state/revision change it cannot fail on effects or destination conditions.
+    /// Visible authored content and deadline only; private chronology stays inside.
     pub fn output(&self) -> SemanticOutput {
         let node = &self.story.nodes[self.node];
         SemanticOutput {
@@ -163,7 +194,17 @@ impl Engine {
                 .choices
                 .iter()
                 .filter(|choice| {
-                    self.revision < u64::MAX && self.preview(choice, &self.variables).is_ok()
+                    self.revision < u64::MAX
+                        && self
+                            .decision
+                            .as_ref()
+                            .is_none_or(|decision| decision.view.phase != DecisionPhase::Paused)
+                        && self
+                            .preview(choice, &self.variables, self.world_minutes)
+                            .is_ok_and(|(target, _, _)| {
+                                self.revision != u64::MAX - 1
+                                    || self.story.nodes[target].decision.is_none()
+                            })
                 })
                 .map(|choice| InteractionOffer {
                     id: choice.id.clone(),
@@ -171,6 +212,7 @@ impl Engine {
                 })
                 .collect(),
             ending: node.ending.clone(),
+            decision: self.decision.as_ref().map(|decision| decision.view.clone()),
         }
     }
 
@@ -178,39 +220,71 @@ impl Engine {
         if action.revision != self.revision {
             return Err(ActionError::StaleRevision);
         }
+        if self
+            .decision
+            .as_ref()
+            .is_some_and(|decision| decision.view.phase != DecisionPhase::Active)
+        {
+            return Err(ActionError::DecisionNotActive);
+        }
         let choice = self.story.nodes[self.node]
             .choices
             .iter()
             .find(|choice| choice.id == action.choice_id)
             .ok_or(ActionError::InvalidChoice)?;
-        let (target, variables) = self.preview(choice, &self.variables)?;
+        let (target, variables, world) =
+            self.preview(choice, &self.variables, self.world_minutes)?;
+        self.commit(target, variables, world)
+    }
+
+    fn commit(
+        &mut self,
+        target: usize,
+        variables: Variables,
+        world: Option<u64>,
+    ) -> Result<SemanticOutput, ActionError> {
         let revision = self
             .revision
             .checked_add(1)
             .ok_or(ActionError::RevisionOverflow)?;
+        if revision == u64::MAX && self.story.nodes[target].decision.is_some() {
+            return Err(ActionError::RevisionOverflow);
+        }
         self.variables = variables;
         self.node = target;
+        self.world_minutes = world;
         self.revision = revision;
+        self.decision = ActiveDecision::for_node(&self.story.nodes[target]);
         Ok(self.output())
     }
 
     /// Host-only checkpoint. Adapters/renderers never receive this private DTO.
     pub fn save(&self) -> SaveGame {
         SaveGame {
-            schema_version: SAVE_SCHEMA_VERSION,
+            schema_version: if self.world_minutes.is_some() {
+                TEMPORAL_SAVE_SCHEMA_VERSION
+            } else {
+                SAVE_SCHEMA_VERSION
+            },
             story_id: self.story.id.clone(),
             story_version: self.story.version,
             node_id: self.story.nodes[self.node].id.clone(),
             variables: self.variables.clone(),
             revision: self.revision,
+            temporal: self.world_minutes.map(|world_minutes| TemporalSave {
+                world_minutes,
+                decision: self.decision.as_ref().map(|decision| decision.view.clone()),
+            }),
         }
     }
 
-    /// Validate before replacement so failures preserve the active session.
+    /// Validate before replacement. Offline time is frozen; old inputs stay stale.
     pub fn restore(&mut self, save: SaveGame) -> Result<SemanticOutput, ValidationError> {
-        if save.schema_version != SAVE_SCHEMA_VERSION {
+        if save.schema_version != SAVE_SCHEMA_VERSION
+            && save.schema_version != TEMPORAL_SAVE_SCHEMA_VERSION
+        {
             return Err(ValidationError(format!(
-                "unsupported save schema version {}; expected {SAVE_SCHEMA_VERSION}",
+                "unsupported save schema version {}; expected 1 or 2",
                 save.schema_version
             )));
         }
@@ -244,19 +318,30 @@ impl Engine {
                 )));
             }
         }
-        self.ensure_playable(node, &save.variables)
+        let (world, decision) = self.restore_temporal(&save, node)?;
+        self.ensure_playable(node, &save.variables, world)
             .map_err(|error| ValidationError(format!("save {error}")))?;
-        // Loading an older checkpoint must not reactivate an already issued
-        // action. Preserve saved revisions when possible, but never reuse one
-        // within this engine instance.
-        let revision = self
-            .revision
-            .checked_add(1)
-            .ok_or_else(|| ValidationError("cannot restore: session revision exhausted".into()))?
-            .max(save.revision);
+        let revision = if world.is_some() {
+            // A fresh process must not reactivate a checkpoint's pending action
+            // or cumulative clock observations when it acknowledges readiness.
+            self.revision.max(save.revision).checked_add(1)
+        } else {
+            // Preserve the existing untimed v1 restoration behavior.
+            self.revision
+                .checked_add(1)
+                .map(|revision| revision.max(save.revision))
+        }
+        .ok_or_else(|| ValidationError("cannot restore: session revision exhausted".into()))?;
+        if revision == u64::MAX && decision.is_some() {
+            return Err(ValidationError(
+                "cannot restore an exhausted timed interaction revision".into(),
+            ));
+        }
         self.node = node;
         self.variables = save.variables;
         self.revision = revision;
+        self.world_minutes = world;
+        self.decision = decision;
         Ok(self.output())
     }
 }

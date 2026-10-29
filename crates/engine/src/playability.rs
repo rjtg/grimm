@@ -48,6 +48,7 @@ pub struct PlayabilityReport {
 struct State {
     node: usize,
     variables: Variables,
+    world_minutes: Option<u64>,
     path: Vec<PlayabilityStep>,
 }
 
@@ -60,7 +61,7 @@ impl Engine {
                 self.story.nodes[self.node].id
             )));
         }
-        self.ensure_playable(self.node, &self.variables)
+        self.ensure_playable(self.node, &self.variables, self.world_minutes)
     }
 
     /// Breadth-first exploration using the runtime's exact single-step preview.
@@ -76,6 +77,7 @@ impl Engine {
         let mut states = vec![State {
             node: self.node,
             variables: self.variables.clone(),
+            world_minutes: self.world_minutes,
             path: vec![],
         }];
         let mut cursor = 0;
@@ -98,24 +100,26 @@ impl Engine {
             }
             let mut executable = false;
             let mut failures = Vec::new();
-            for choice in &node.choices {
+            let timeout = crate::temporal::timeout_choice(node);
+            for choice in node.choices.iter().chain(timeout.iter()) {
                 if report.transitions_checked == limits.max_transitions {
                     report.truncated = true;
                     // A partially inspected node must not be called a deadlock.
                     return report;
                 }
                 report.transitions_checked += 1;
-                if !eligible(choice, &state.variables) {
+                if !eligible(choice, &state.variables, state.world_minutes) {
                     continue;
                 }
-                match self.preview(choice, &state.variables) {
+                match self.preview(choice, &state.variables, state.world_minutes) {
                     Err(error) => failures.push(format!("choice '{}': {error}", choice.id)),
-                    Ok((next, variables)) => {
+                    Ok((next, variables, world_minutes)) => {
                         executable = true;
-                        if states
-                            .iter()
-                            .any(|known| known.node == next && known.variables == variables)
-                        {
+                        if states.iter().any(|known| {
+                            known.node == next
+                                && known.variables == variables
+                                && known.world_minutes == world_minutes
+                        }) {
                             continue;
                         }
                         if states.len() == limits.max_states {
@@ -130,6 +134,7 @@ impl Engine {
                         states.push(State {
                             node: next,
                             variables,
+                            world_minutes,
                             path,
                         });
                     }

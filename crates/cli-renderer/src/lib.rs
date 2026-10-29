@@ -17,6 +17,17 @@ impl<R: BufRead, W: Write> CliRenderer<R, W> {
         for command in commands {
             match command {
                 PresentationCommand::Text(text) => writeln!(self.output, "{text}")?,
+                PresentationCommand::Countdown {
+                    remaining_ms,
+                    label,
+                } => {
+                    writeln!(
+                        self.output,
+                        "{label}: {}.{}s",
+                        remaining_ms / 1000,
+                        (remaining_ms % 1000) / 100
+                    )?;
+                }
                 PresentationCommand::Choices(labels) => {
                     for (index, label) in labels.iter().enumerate() {
                         writeln!(self.output, "{}. {label}", index + 1)?;
@@ -41,6 +52,21 @@ impl<R: BufRead, W: Write> CliRenderer<R, W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn countdown_is_only_formatted_presentation_data() {
+        let mut bytes = Vec::new();
+        CliRenderer::new(&b""[..], &mut bytes)
+            .render(&[PresentationCommand::Countdown {
+                remaining_ms: 1234,
+                label: "Paused; time remaining".into(),
+            }])
+            .unwrap();
+        assert_eq!(
+            String::from_utf8(bytes).unwrap(),
+            "Paused; time remaining: 1.2s\n"
+        );
+    }
 
     #[test]
     fn renders_commands_and_preserves_raw_input() {

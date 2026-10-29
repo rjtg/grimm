@@ -65,6 +65,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => return Err("Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]".into()),
     };
+    if engine.save().temporal.is_some() {
+        return grimm_cli::runtime::play(title.as_deref().unwrap_or("GRIMM"), engine);
+    }
     let mut adapter = TextAdapter::default();
     let mut renderer = CliRenderer::new(io::stdin().lock(), io::stdout().lock());
     if let Some(title) = title {

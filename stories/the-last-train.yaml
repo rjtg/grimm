@@ -1,0 +1,211 @@
+schema_version: 2
+id: the-last-train
+version: 1
+title: The Last Train
+time: { start_minutes: 0 }
+start: arrival
+variables:
+  evidence: false
+  prepared: false
+  rowan_trust: false
+nodes:
+  - id: arrival
+    content:
+      - kind: narration
+        text: "23:40, Blackwater Station. The last passenger train is approaching a junction that should have been closed for repairs. You are the investigator sent to inspect the signals. A phone rings behind the shutter of the empty ticket desk. Outside, every signal shows green."
+      - kind: narration
+        text: "Take as long as you need here. Later, the phone call and platform decision have visible real-time countdowns. Type :pause to freeze an active decision, :save PATH to keep your place, and :resume to continue. Fictional minutes pass only when a choice says they do."
+    choices:
+      - id: answer-phone
+        label: Lift the receiver and listen to the emergency call.
+        target: emergency_call
+
+  - id: emergency_call
+    content:
+      - kind: dialogue
+        speaker: Rowan Bell
+        text: "Investigator? I'm in dispatch. Someone bridged the signal relay. The train thinks the junction is clear. Tell me you're listening before this line dies!"
+      - kind: narration
+        text: "You have 15 seconds to answer. If the connection is lost, Rowan cannot help you verify the dispatch records. You can pause this countdown before saving."
+    decision:
+      limit_ms: 15000
+      timeout:
+        target: call_lost
+        effects: [{ op: set, variable: rowan_trust, value: false }]
+    choices:
+      - id: reassure-rowan
+        label: Identify yourself and ask Rowan to keep the dispatch records ready.
+        target: briefing
+        effects: [{ op: set, variable: rowan_trust, value: true }]
+      - id: doubt-call
+        label: Refuse to trust an unidentified caller and put down the phone.
+        target: call_lost
+
+  - id: call_lost
+    content:
+      - kind: narration
+        text: "The line clicks dead. A voice on the station loudspeaker announces a train no one has cleared to enter. You have lost dispatch's help, not the chance to act. You can still investigate independently or clear the station now."
+    choices:
+      - id: evacuate-without-proof
+        label: Clear the station immediately, accepting that the train may be lost.
+        target: evacuation
+      - id: investigate-alone
+        label: Work without dispatch and examine the junction yourself.
+        target: briefing
+
+  - id: briefing
+    content:
+      - kind: narration
+        text: "A timetable is pinned to the concourse wall. You estimate that a clean stop remains possible during the next 18 fictional minutes. The signal tower holds the relay diagrams; a service tunnel carries the emergency brake circuit. A freight siding offers another route to the equipment. Deliberation here is untimed."
+    choices:
+      - id: search-tower
+        label: Search the signal tower for sabotage (15 fictional minutes).
+        target: signal_tower
+        advance_minutes: 15
+        effects: [{ op: set, variable: evidence, value: true }]
+      - id: take-tunnel
+        label: Reach the emergency circuit through the service tunnel (4 minutes).
+        target: service_tunnel
+        advance_minutes: 4
+      - id: inspect-siding
+        label: Inspect the parked maintenance carriage in the freight siding (2 minutes).
+        target: siding
+        advance_minutes: 2
+      - id: run-to-platform
+        label: Go straight to the platform with no investigation (2 minutes).
+        target: platform
+        advance_minutes: 2
+
+  - id: signal_tower
+    content:
+      - kind: narration
+        text: "Fifteen minutes of climbing and testing reveal a copper bridge across the red relay. It is deliberate sabotage. A pencilled diagram marks the emergency fuse box in the switchyard. A quick move could still leave time for a controlled stop; reconstructing every wire will cost precious minutes."
+    choices:
+      - id: hurry-to-fuse
+        label: Take the diagram straight to the switchyard (1 minute).
+        target: switchyard
+        advance_minutes: 1
+      - id: document-every-wire
+        label: Document the full sabotage pattern before going to the fuse box (5 minutes).
+        target: switchyard
+        advance_minutes: 5
+
+  - id: switchyard
+    content:
+      - kind: narration
+        text: "Rain hisses against the switchyard cabinet. The diagram identifies a spare fuse that can restore the emergency brake line. The dark platform is a short run away."
+    choices:
+      - id: fit-fuse
+        label: Fit the spare fuse and reach the platform (1 minute).
+        target: platform
+        advance_minutes: 1
+        effects: [{ op: set, variable: prepared, value: true }]
+      - id: abandon-fuse
+        label: Leave the cabinet and run to the platform (1 minute).
+        target: platform
+        advance_minutes: 1
+
+  - id: service_tunnel
+    content:
+      - kind: narration
+        text: "The service tunnel is ankle-deep in black water. An intact portable jumper hangs beside the brake cable. You can restore the emergency circuit from here, but you still need evidence of a false signal before risking a hard stop."
+    choices:
+      - id: restore-circuit
+        label: Fit the jumper and reach the dispatch phone (3 minutes).
+        target: dispatch
+        advance_minutes: 3
+        effects: [{ op: set, variable: prepared, value: true }]
+      - id: leave-tunnel
+        label: Leave the circuit alone and continue to dispatch (1 minute).
+        target: dispatch
+        advance_minutes: 1
+
+  - id: dispatch
+    content:
+      - kind: narration
+        text: "A lamp flickers over the dispatch phone. The repair log is behind a locked grille; only the person on the other end can read it out. If Rowan knows who you are, there may be time to confirm the sabotage. Otherwise, the platform is your remaining option."
+    choices:
+      - id: verify-log
+        label: Ask Rowan to verify the bridged relay in the repair log (2 minutes).
+        target: platform
+        advance_minutes: 2
+        condition: { op: equals, variable: rowan_trust, value: true }
+        effects: [{ op: set, variable: evidence, value: true }]
+      - id: proceed-without-log
+        label: Head to the platform without confirmation (1 minute).
+        target: platform
+        advance_minutes: 1
+
+  - id: siding
+    content:
+      - kind: narration
+        text: "The maintenance carriage stands on the freight siding with its door open. Fresh boots have tracked red insulation onto the steps. Inside, something is still drawing current from the station relay."
+    choices:
+      - id: follow-wire
+        label: Follow the new wire into the maintenance carriage (3 minutes).
+        target: railcar
+        advance_minutes: 3
+      - id: abandon-siding
+        label: Leave the carriage and go to the platform (1 minute).
+        target: platform
+        advance_minutes: 1
+
+  - id: railcar
+    content:
+      - kind: narration
+        text: "Under a seat lies a battery transmitter, forcing the junction signal green. Its serial plate and a fresh relay diagram establish what happened. Disconnecting it and routing its spare lead into the brake circuit will give you both evidence and a working emergency line."
+    choices:
+      - id: isolate-transmitter
+        label: Isolate the transmitter, prepare the brake line and reach the platform (4 minutes).
+        target: platform
+        advance_minutes: 4
+        effects:
+          - { op: set, variable: evidence, value: true }
+          - { op: set, variable: prepared, value: true }
+      - id: preserve-device
+        label: Photograph the transmitter but leave its wiring untouched (1 minute).
+        target: platform
+        advance_minutes: 1
+        effects: [{ op: set, variable: evidence, value: true }]
+
+  - id: platform
+    content:
+      - kind: narration
+        text: "The last train rounds the cutting, its windows bright against the trees. You have 20 real seconds to act. A controlled stop requires confirmed sabotage, a restored brake circuit, and arrival within the 18-minute fictional window. Clearing the station is always possible, but it will leave the train exposed at the junction. If you do nothing, the train enters an occupied platform."
+    decision:
+      limit_ms: 20000
+      timeout: { target: disaster }
+    choices:
+      - id: controlled-stop
+        label: Use the verified emergency circuit to stop the train before the junction.
+        target: stopped
+        condition:
+          op: all
+          conditions:
+            - { op: world_at_most, minutes: 18 }
+            - { op: equals, variable: evidence, value: true }
+            - { op: equals, variable: prepared, value: true }
+      - id: clear-platform
+        label: Sound the evacuation bell and clear everyone from the station.
+        target: evacuation
+      - id: trust-green
+        label: Trust the green signals and allow the train to enter.
+        target: disaster
+
+  - id: stopped
+    content:
+      - kind: narration
+        text: "You close the emergency circuit. Brakes scream beyond the cutting, then the train settles short of the junction. Passengers press their hands against the windows as you raise a lamp. By dawn, the damaged relay is evidence instead of an explanation offered too late. The last train will leave Blackwater again, under a signal someone has finally checked."
+    ending: { id: stopped, title: A Red Light in Time }
+
+  - id: evacuation
+    content:
+      - kind: narration
+        text: "The evacuation bell empties the platform before the train reaches the broken junction. The derailment tears up the siding; passengers are injured, and rescue crews work through the night. The people who waited on the platform survive because you chose to warn them. You record the cost without calling it a clean victory."
+    ending: { id: evacuation, title: The Price of Warning }
+
+  - id: disaster
+    content:
+      - kind: narration
+        text: "Green light washes across the rails. The driver cannot see the damaged switch until the first carriage strikes it. The occupied platform vanishes in sparks and broken glass. Later, the inquiry asks what the investigator knew, and when. The station clock has stopped, but the unanswered question has not."
+    ending: { id: disaster, title: The Last Green Signal }
