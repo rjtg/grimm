@@ -415,3 +415,79 @@ nodes:
     assert!(!screen.contains("Blocked"));
     assert!(!screen.contains("Ending:"));
 }
+
+#[test]
+fn authoring_check_reports_multi_step_route_and_runtime_context() {
+    let temp = Temp::new();
+    let path = temp.path("multi-step.yaml");
+    fs::write(&path, include_str!("fixtures/multi-step-deadlock.yaml")).unwrap();
+    let output = run(&["check", path.to_str().unwrap()], "");
+    assert!(!output.status.success());
+    let diagnostic = String::from_utf8(output.stdout).unwrap();
+    for context in [
+        "deadlock at node 'c'",
+        "node 'a' -> choice 'next'",
+        "node 'b' -> choice 'next'",
+        "node 'd'",
+    ] {
+        assert!(diagnostic.contains(context), "{diagnostic}");
+    }
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("playability check found")
+    );
+    let played = run(&["play", path.to_str().unwrap()], "1\n1\n");
+    assert!(!played.status.success());
+    let error = String::from_utf8(played.stderr).unwrap();
+    for context in [
+        "Story blocked",
+        "node 'c'",
+        "node 'd'",
+        "not an authored ending",
+    ] {
+        assert!(error.contains(context), "{error}");
+    }
+    assert!(
+        !String::from_utf8(played.stdout)
+            .unwrap()
+            .contains("Ending:")
+    );
+}
+
+#[test]
+fn authoring_check_cutoffs_are_nonzero_and_explicitly_inconclusive() {
+    assert!(play(&["check", STORY], "").contains("No nonterminal deadlocks found"));
+    for args in [
+        vec!["check", STORY, "--max-states", "1"],
+        vec!["check", STORY, "--max-transitions", "1"],
+        vec![
+            "check",
+            STORY,
+            "--max-states",
+            "0",
+            "--max-transitions",
+            "0",
+        ],
+    ] {
+        let result = run(&args, "");
+        assert!(!result.status.success());
+        assert!(
+            String::from_utf8(result.stderr)
+                .unwrap()
+                .contains("inconclusive")
+        );
+        assert!(
+            !String::from_utf8(result.stdout)
+                .unwrap()
+                .contains("No nonterminal deadlocks found")
+        );
+    }
+    for args in [
+        vec!["check", STORY, "--max-states"],
+        vec!["check", STORY, "--unknown", "1"],
+        vec!["check", STORY, "--max-states", "bad"],
+    ] {
+        assert!(!run(&args, "").status.success());
+    }
+}

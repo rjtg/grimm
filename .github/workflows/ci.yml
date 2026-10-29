@@ -33,3 +33,18 @@ jobs:
           grep -Fx 'Ending: Truth Across the Water' exile.txt
           printf '2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-witness.yaml > silence.txt
           grep -Fx 'Ending: The Price of Silence' silence.txt
+      - name: Check both reference mysteries for nonterminal deadlocks
+        run: |
+          cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-witness.yaml
+          cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-lighthouse.yaml
+      - name: Play The Last Lighthouse offline through every ending
+        shell: bash
+        run: |
+          printf '1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml > lighthouse-rescue.txt
+          grep -Fx 'Ending: Witnesses on the Shore' lighthouse-rescue.txt
+          printf '1\n1\n1\n1\n3\n1\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml > lighthouse-release.txt
+          grep -Fx 'Ending: The Watch Is Over' lighthouse-release.txt
+          printf '2\n2\n3\n2\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml > lighthouse-silence.txt
+          grep -Fx 'Ending: An Unanswered Bell' lighthouse-silence.txt
+          printf '2\n2\n3\n1\n2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml > lighthouse-taken.txt
+          grep -Fx 'Ending: One More Voice' lighthouse-taken.txt
