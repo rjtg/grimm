@@ -1,0 +1,26 @@
+name: Rust
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  m0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - name: Reproduce the offline demo
+        shell: bash
+        run: |
+          printf '1\n' | cargo run --offline --locked --quiet -p grimm-cli > demo.txt
+          cat demo.txt
+          grep -Fx '> The engine accepted your choice. Demo complete.' demo.txt

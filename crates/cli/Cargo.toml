@@ -1,0 +1,18 @@
+[package]
+name = "grimm-cli"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+grimm-engine.workspace = true
+grimm-adapters.workspace = true
+grimm-cli-renderer.workspace = true
+grimm-presentation.workspace = true
+
+[dev-dependencies]
+grimm-semantic.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
