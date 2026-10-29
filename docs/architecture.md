@@ -40,6 +40,15 @@ A composition root wires concrete components. Engine modules must never import a
 - **Input adapter:** converts raw UI input or text into proposed semantic actions; engine validates proposals.
 - **Composition root:** chooses engine capabilities, adapters, renderers and transports.
 
+## World entities, narrative scenes and progress
+World entities are persistent identities in the game world: characters, locations and eventually objects or other meaningful things. Specialized entity kinds share identity and state-ownership principles but do **not** require one generic entity type, inheritance hierarchy, entity-component system, or mandatory central entity store.
+
+Narrative scenes are authored or generated situations describing what happens, what may be shown and which actions are offered. A scene may reference zero, one or multiple entities; an entity may participate in many scenes. The current M1 story node is a narrative unit and must **not** be treated as synonymous with a physical location. A warehouse visited during daylight investigation, night surveillance and a return visit can be three separate scenes that share one location identity.
+
+Story progress is likewise separate from a scene or location. The engine may express progress through state variables and committed effects, and later optional narrative milestones; a second parallel progress graph is not mandated. The engine remains authoritative for entity state and transitions. Presentation adapters receive only deliberately revealed context, not private entity state.
+
+Implementation staging: M1.5 first tests these distinctions by writing a second game using existing primitives, then makes minimal format/API additions if evidence requires them. Persistent entity-state mechanisms may arrive in M4; optional NPC agency in M5 and narrative direction in M6. See [ADR-0005](adr/0005-world-entities-scenes-and-progress.md).
+
 ## Event and presentation semantics
 Committed game events describe what actually happened, including offscreen events. They are not automatically visible to players. Narrative content describes what may be communicated; interaction offers describe currently valid inputs. A filtered projection exposes only player-visible information. A renderer must not receive hidden world state by default.
 
