@@ -4,6 +4,7 @@
 
 pub mod save;
 pub mod story;
+pub mod time;
 
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +46,8 @@ pub struct SemanticOutput {
     pub content: Vec<NarrativeContent>,
     pub offers: Vec<InteractionOffer>,
     pub ending: Option<Ending>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision: Option<time::DecisionView>,
 }
 
 #[cfg(test)]
@@ -58,6 +61,7 @@ mod tests {
             choice_id: "continue".into(),
         };
         let output = SemanticOutput {
+            decision: None,
             revision: 7,
             content: vec![
                 NarrativeContent::Narration {

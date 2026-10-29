@@ -6,6 +6,7 @@ use grimm_semantic::{
 
 pub(crate) fn story() -> Story {
     Story {
+        time: None,
         schema_version: STORY_SCHEMA_VERSION,
         id: "m0-demo".into(),
         version: 1,
@@ -14,11 +15,13 @@ pub(crate) fn story() -> Story {
         variables: Default::default(),
         nodes: vec![
             Node {
+                decision: None,
                 id: "start".into(),
                 content: vec![NarrativeContent::Narration {
                     text: "Welcome to GRIMM's architecture demo.".into(),
                 }],
                 choices: vec![Choice {
+                    advance_minutes: 0,
                     id: "continue".into(),
                     label: "Continue".into(),
                     target: "end".into(),
@@ -28,6 +31,7 @@ pub(crate) fn story() -> Story {
                 ending: None,
             },
             Node {
+                decision: None,
                 id: "end".into(),
                 content: vec![NarrativeContent::Narration {
                     text: "The engine accepted your choice. Demo complete.".into(),

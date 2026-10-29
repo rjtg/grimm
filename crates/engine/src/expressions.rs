@@ -15,6 +15,7 @@ pub(crate) fn validate_condition(
     condition: &Condition,
     variables: &Variables,
     depth: usize,
+    temporal: bool,
 ) -> Result<(), ValidationError> {
     if depth > 64 {
         return Err(ValidationError(
@@ -22,6 +23,13 @@ pub(crate) fn validate_condition(
         ));
     }
     match condition {
+        Condition::WorldAtLeast { .. } | Condition::WorldAtMost { .. } => {
+            if !temporal {
+                return Err(ValidationError(
+                    "world-time predicates require schema 2 and time configuration".into(),
+                ));
+            }
+        }
         Condition::Equals {
             variable: name,
             value,
@@ -41,10 +49,12 @@ pub(crate) fn validate_condition(
         }
         Condition::All { conditions } | Condition::Any { conditions } => {
             for child in conditions {
-                validate_condition(child, variables, depth + 1)?;
+                validate_condition(child, variables, depth + 1, temporal)?;
             }
         }
-        Condition::Not { condition } => validate_condition(condition, variables, depth + 1)?,
+        Condition::Not { condition } => {
+            validate_condition(condition, variables, depth + 1, temporal)?
+        }
     }
     Ok(())
 }
@@ -65,8 +75,10 @@ pub(crate) fn validate_effect(
     Ok(())
 }
 
-pub(crate) fn evaluate(condition: &Condition, variables: &Variables) -> bool {
+pub(crate) fn evaluate(condition: &Condition, variables: &Variables, world_minutes: u64) -> bool {
     match condition {
+        Condition::WorldAtLeast { minutes } => world_minutes >= *minutes,
+        Condition::WorldAtMost { minutes } => world_minutes <= *minutes,
         Condition::Equals { variable, value } => variables.get(variable) == Some(value),
         Condition::AtLeast { variable, value } => {
             matches!(variables.get(variable), Some(Value::Int(current)) if current >= value)
@@ -74,9 +86,13 @@ pub(crate) fn evaluate(condition: &Condition, variables: &Variables) -> bool {
         Condition::AtMost { variable, value } => {
             matches!(variables.get(variable), Some(Value::Int(current)) if current <= value)
         }
-        Condition::All { conditions } => conditions.iter().all(|child| evaluate(child, variables)),
-        Condition::Any { conditions } => conditions.iter().any(|child| evaluate(child, variables)),
-        Condition::Not { condition } => !evaluate(condition, variables),
+        Condition::All { conditions } => conditions
+            .iter()
+            .all(|child| evaluate(child, variables, world_minutes)),
+        Condition::Any { conditions } => conditions
+            .iter()
+            .any(|child| evaluate(child, variables, world_minutes)),
+        Condition::Not { condition } => !evaluate(condition, variables, world_minutes),
     }
 }
 

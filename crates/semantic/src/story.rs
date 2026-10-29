@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 pub const STORY_SCHEMA_VERSION: u32 = 1;
+pub const TEMPORAL_STORY_SCHEMA_VERSION: u32 = 2;
 pub type Variables = BTreeMap<String, Value>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,6 +31,30 @@ pub struct Story {
     #[serde(default, deserialize_with = "unique_variables")]
     pub variables: Variables,
     pub nodes: Vec<Node>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time: Option<WorldTime>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorldTime {
+    #[serde(default)]
+    pub start_minutes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Decision {
+    pub limit_ms: u64,
+    pub timeout: Timeout,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Timeout {
+    pub target: String,
+    #[serde(default)]
+    pub effects: Vec<Effect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,6 +66,8 @@ pub struct Node {
     pub choices: Vec<Choice>,
     #[serde(default)]
     pub ending: Option<Ending>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision: Option<Decision>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,11 +80,19 @@ pub struct Choice {
     pub condition: Option<Condition>,
     #[serde(default)]
     pub effects: Vec<Effect>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub advance_minutes: u64,
+}
+
+fn is_zero(value: &u64) -> bool {
+    *value == 0
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Condition {
+    WorldAtLeast { minutes: u64 },
+    WorldAtMost { minutes: u64 },
     Equals { variable: String, value: Value },
     AtLeast { variable: String, value: i64 },
     AtMost { variable: String, value: i64 },

@@ -10,6 +10,7 @@ fn narration(text: &str) -> Vec<NarrativeContent> {
 
 fn story() -> Story {
     Story {
+        time: None,
         schema_version: 1,
         id: "fixture".into(),
         version: 1,
@@ -23,11 +24,13 @@ fn story() -> Story {
         .into(),
         nodes: vec![
             Node {
+                decision: None,
                 id: "start".into(),
                 content: narration("Start"),
                 ending: None,
                 choices: vec![
                     Choice {
+                        advance_minutes: 0,
                         id: "step".into(),
                         label: "Step".into(),
                         target: "gate".into(),
@@ -48,6 +51,7 @@ fn story() -> Story {
                         ],
                     },
                     Choice {
+                        advance_minutes: 0,
                         id: "direct".into(),
                         label: "Direct".into(),
                         target: "end".into(),
@@ -60,10 +64,12 @@ fn story() -> Story {
                 ],
             },
             Node {
+                decision: None,
                 id: "gate".into(),
                 content: narration("Gate"),
                 ending: None,
                 choices: vec![Choice {
+                    advance_minutes: 0,
                     id: "finish".into(),
                     label: "Finish".into(),
                     target: "end".into(),
@@ -87,6 +93,7 @@ fn story() -> Story {
                 }],
             },
             Node {
+                decision: None,
                 id: "end".into(),
                 content: narration("End"),
                 ending: Some(Ending {
@@ -487,7 +494,7 @@ fn rejects_invalid_graphs_and_typed_expressions_with_context() {
         (
             {
                 let mut s = story();
-                s.schema_version = 2;
+                s.schema_version = 99;
                 s
             },
             "schema version",

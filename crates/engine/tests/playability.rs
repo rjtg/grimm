@@ -6,9 +6,11 @@ use grimm_semantic::{
 
 fn node(id: &str, target: &str) -> Node {
     Node {
+        decision: None,
         id: id.into(),
         content: vec![NarrativeContent::Narration { text: id.into() }],
         choices: vec![Choice {
+            advance_minutes: 0,
             id: "next".into(),
             label: "Next".into(),
             target: target.into(),
@@ -26,6 +28,7 @@ fn story() -> Story {
         title: "Finished".into(),
     });
     let mut definition = Story {
+        time: None,
         schema_version: 1,
         id: "playability".into(),
         version: 1,
