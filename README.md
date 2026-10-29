@@ -14,10 +14,10 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 
 See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), and [M0 brief](docs/milestones/m0.md).
 
-Status: M0 through M1.75 implemented: an authored CYOA engine with YAML stories, typed
+Status: M0 through M1.8 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
-Three reference adventures exercise persistent state, bounded playability checks,
-and optional deterministic world time and real-time decisions.
+Four reference adventures exercise persistent state, bounded playability checks,
+optional deterministic time, narrative-only continuation and presentation-gated decisions.
 AI and graphical frontends remain future milestones.
 
 ## Build and run
@@ -29,6 +29,45 @@ From the repository root:
 cargo build --workspace --locked
 cargo run --locked -p grimm-cli -- play stories/the-last-witness.yaml
 ```
+
+Play **The Silent Signal**, M1.8's atmospheric research-station mystery:
+
+```sh
+cargo run -p grimm-cli -- play stories/the-silent-signal.yaml
+```
+
+It has 13 nodes and three endings. Two opening narrative-only segments ask for
+Enter without inventing a gameplay choice. Read the emergency freely, then press
+Enter to display choices and start its 12-second deadline. The investigation and
+final gated choice are untimed. Evidence, trust and reserve power change rescue
+options; silence after activation has an authored consequence.
+
+During required reading, only blank Enter completes presentation; numbers do not
+acknowledge or choose. `:save /tmp/silent-signal.json` preserves unfinished reading.
+Resume using:
+
+```sh
+cargo run -p grimm-cli -- play stories/the-silent-signal.yaml --load /tmp/silent-signal.json
+```
+
+Unfinished presentation replays; offline time stays frozen. `:pause`/`:resume`
+preserve the reading phase and remaining deadline. EOF exits without completing
+required storytelling. On an active countdown it still permits authored expiry,
+but cannot skip a successor's required reading. Stale lines and lifecycle commands
+cannot acknowledge or alter a later interaction. Old games keep their usual prompts.
+
+Reproduce the renderer-neutral lifecycle and all new game endings:
+
+```sh
+cargo test --locked -p grimm-cli --test flow
+cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_routes_reach_all_three_endings
+cargo test --locked -p grimm-cli --test train actual_gated_cli_reading_can_outlast_deadline_then_choice_or_timeout_resolves
+cargo run --locked -p grimm-cli -- check stories/the-silent-signal.yaml
+```
+
+See [flow design](docs/milestones/m1.8-design.md),
+[schema/lifecycle reference](docs/story-format.md#story-schema-3-narrative-flow-and-presentation-gating-m18),
+and [authoring/playtest findings](docs/milestones/m1.8-playtest.md).
 
 Choose displayed numbers to play **The Last Witness**. Investigate a mill fire,
 find evidence, and decide whether to earn the witness's trust. Three endings
