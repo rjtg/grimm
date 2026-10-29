@@ -1,0 +1,195 @@
+schema_version: 3
+id: the-silent-signal
+version: 1
+title: The Silent Signal
+time: {}
+start: storm
+variables:
+  trust: false
+  decoded: false
+  prepared: false
+nodes:
+  - id: storm
+    content:
+      - kind: narration
+        text: >-
+          Midnight at Pelagic Station. You are the communications officer on a
+          concrete island surrounded by black water. Storm spray climbs three
+          floors to the radio windows. Somewhere beyond the reef, the research
+          vessel Orison is due to call in. It is seventeen minutes late.
+      - kind: narration
+        text: >-
+          Read at your own pace. Enter acknowledges storytelling; numbered choices
+          make decisions. A countdown appears only after a decision is available.
+          You can :pause, :save PATH, :load PATH, :resume or :quit.
+    continue_to: carrier
+  - id: carrier
+    content:
+      - kind: narration
+        text: >-
+          A carrier tone rises through the static. Your own station identifier
+          repeats beneath it, followed by a voice that sounds almost like yours.
+          You disconnect the microphone. The voice keeps speaking.
+      - kind: dialogue
+        speaker: Engineer Imani Vale
+        text: "The Orison's emergency beacon is inside that signal. Someone is using it as a mask."
+    continue_to: emergency
+  - id: emergency
+    presentation_required: true
+    content:
+      - kind: narration
+        text: >-
+          The storm knocks out the outer aerials. One receiver survives, connected
+          to the same circuit as the harbor guidance lights. Through its speaker
+          you hear the Orison's captain trying to describe a shape under the hull.
+          Behind him, another voice calmly recites the station's door codes.
+      - kind: dialogue
+        speaker: Imani Vale
+        text: "When we open this channel, we get twelve seconds before the relay resets. Shall I trust the captain, or isolate the circuit?"
+      - kind: narration
+        text: >-
+          Nothing is counting down yet. Read, then press Enter to open the decision.
+          Answering earns Imani's trust; isolation preserves a reserve circuit.
+          Silence after activation loses the captain's reply, but the investigation continues.
+    decision:
+      limit_ms: 12000
+      timeout:
+        target: lost
+        effects: [{op: set, variable: trust, value: false}]
+    choices:
+      - id: answer
+        label: "Answer the captain; ask Imani to hold the relay."
+        target: investigation
+        effects: [{op: set, variable: trust, value: true}]
+      - id: isolate
+        label: "Isolate the circuit and keep reserve power."
+        target: investigation
+        effects: [{op: set, variable: prepared, value: true}]
+  - id: lost
+    content:
+      - kind: narration
+        text: >-
+          The relay clicks shut. The last word from the captain was a name;
+          neither of you will ever know whose. Imani removes her headset and
+          plugs the receiver into a recorder. She will help you investigate,
+          but she will not reopen the live channel on faith.
+    choices:
+      - {id: investigate, label: "Investigate the recording without the live channel.", target: investigation}
+      - {id: evacuate, label: "Sever the link and abandon the station.", target: quarantine}
+  - id: investigation
+    content:
+      - kind: narration
+        text: >-
+          The recorder loops three seconds of ocean noise. Between waves, a
+          second rhythm counts backward. There is time for one careful lead
+          before the receiver's battery fails. This investigation is untimed.
+    choices:
+      - {id: spectrum, label: "Compare the signal with archived research telemetry.", target: archive}
+      - {id: imani, label: "Ask Imani to reconstruct the captain's interrupted message.", target: engineer}
+      - {id: power, label: "Secure an independent power supply.", target: battery}
+  - id: archive
+    content:
+      - kind: narration
+        text: >-
+          The strange rhythm matches a pressure sensor from the trench. It is
+          not counting seconds. It is reporting depth. The Orison is being
+          dragged toward a submerged intake; the voice is baiting you into
+          turning on its guidance beam. You mark a safe bearing around the reef.
+    choices:
+      - id: mark
+        label: "Keep the decoded safe bearing."
+        target: briefing
+        effects: [{op: set, variable: decoded, value: true}]
+  - id: engineer
+    content:
+      - kind: dialogue
+        speaker: Imani Vale
+        text: "If we held the live channel, I can reconstruct his coordinates. Otherwise all I can give you is a clean transmitter circuit."
+    choices:
+      - id: reconstruct
+        label: "Reconstruct the coordinates together."
+        condition: {op: equals, variable: trust, value: true}
+        target: briefing
+        effects: [{op: set, variable: decoded, value: true}]
+      - id: circuit
+        label: "Prepare a clean circuit instead."
+        target: briefing
+        effects: [{op: set, variable: prepared, value: true}]
+  - id: battery
+    content:
+      - kind: narration
+        text: >-
+          You drag the emergency pack from the evacuation locker. It can power
+          one independent transmission, beyond the reach of the station relay.
+          Imani tapes over its speaker. Neither of you wants to hear that voice again.
+    choices:
+      - id: connect
+        label: "Connect the isolated transmitter."
+        target: briefing
+        effects: [{op: set, variable: prepared, value: true}]
+  - id: briefing
+    content:
+      - kind: narration
+        text: >-
+          Dawn lifts a gray edge over the water. On the harbor camera, the
+          Orison's navigation light appears, then a second light directly below
+          it. The lower light is rising. Imani lays the transmitter key beside
+          your hand. What you learned will determine which rescue is possible.
+    continue_to: final_gate
+  - id: final_gate
+    presentation_required: true
+    content:
+      - kind: dialogue
+        speaker: Imani Vale
+        text: "A rescue needs a safe bearing, and either our live channel or independent power. We can always sever the link. We cannot undo opening the guidance beam."
+      - kind: narration
+        text: >-
+          Behind the glass, the storm has stopped. The receiver whispers your
+          name once. Consider the consequences before acknowledging this final,
+          untimed decision. Saving now preserves this unfinished presentation.
+    choices:
+      - id: guide
+        label: "Send the decoded safe bearing over the trusted live channel."
+        condition:
+          op: all
+          conditions:
+            - {op: equals, variable: decoded, value: true}
+            - {op: equals, variable: trust, value: true}
+        target: rescue
+      - id: independent
+        label: "Send the decoded safe bearing using isolated power."
+        condition:
+          op: all
+          conditions:
+            - {op: equals, variable: decoded, value: true}
+            - {op: equals, variable: prepared, value: true}
+        target: rescue
+      - {id: sever, label: "Cut the receiver cable and evacuate.", target: quarantine}
+      - {id: beam, label: "Believe the voice; activate the guidance beam.", target: trap}
+  - id: rescue
+    content:
+      - kind: narration
+        text: >-
+          Your bearing reaches the Orison. Its light swings away from the intake;
+          the rising light follows, then sinks. The captain answers in a voice
+          that shakes and belongs only to him. Imani opens the station door to
+          the salt air. For the first time all night, silence means safety.
+    ending: {id: rescue, title: A Voice That Answers}
+  - id: quarantine
+    content:
+      - kind: narration
+        text: >-
+          You cut the cable and take the station crew into the evacuation launch.
+          The Orison's light disappears behind the reef. You carry the sealed
+          recording ashore, refusing every request to play it. The coast is safe,
+          but on quiet mornings you still listen for a captain who never came home.
+    ending: {id: quarantine, title: The Cost of Silence}
+  - id: trap
+    content:
+      - kind: narration
+        text: >-
+          The guidance beam draws a straight road across the sea. Something
+          follows it faster than a ship can move. Every door in the station
+          unlocks at once. On the receiver, your own voice welcomes the rescue
+          team that will arrive tomorrow. Imani reaches for the cable too late.
+    ending: {id: trap, title: An Open Door}

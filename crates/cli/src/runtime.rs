@@ -1,9 +1,10 @@
 //! Real-time composition root. The sole clock lives here, never in the engine.
 use crate::{read_save, write_save};
-use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter};
+use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter, lifecycle_input};
 use grimm_cli_renderer::CliRenderer;
 use grimm_engine::Engine;
 use grimm_presentation::{PresentationCommand, RawInput};
+use grimm_semantic::flow::FlowPhase;
 use grimm_semantic::time::{DecisionPhase, TimeEvent, TimeInput};
 use std::{
     io,
@@ -92,7 +93,7 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
     let mut pending_read = None;
     let mut renderer = CliRenderer::new(io::empty(), io::stdout().lock());
     let mut adapter = TextAdapter::default();
-    renderer.render(&[PresentationCommand::Text(title.into()), PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Countdown starts after each timed prompt is displayed.".into())])?;
+    renderer.render(&[PresentationCommand::Text(title.into()), PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Required reading waits for Enter; countdown starts when the decision choices are available.".into())])?;
     let mut rendered_revision = None;
     let mut clock: Option<Observation> = None;
     let mut shown_seconds = None;
@@ -109,10 +110,25 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                 .decision
                 .as_ref()
                 .map(|decision| decision.remaining_ms.div_ceil(1000));
-            if output
-                .decision
-                .as_ref()
-                .is_some_and(|decision| decision.phase == DecisionPhase::AwaitingReady)
+            if !needs_ack
+                && output.flow.as_ref().is_some_and(|flow| {
+                    !flow.paused && flow.phase == FlowPhase::AwaitingInteraction
+                })
+            {
+                let feedback = renderer
+                    .interaction_ready()
+                    .expect("adapter requested interaction availability");
+                let origin = Instant::now();
+                engine.flow_input(&lifecycle_input(feedback))?;
+                clock = output.decision.as_ref().map(|_| Observation {
+                    origin,
+                    last_total_ms: 0,
+                });
+            } else if output.flow.is_none()
+                && output
+                    .decision
+                    .as_ref()
+                    .is_some_and(|decision| decision.phase == DecisionPhase::AwaitingReady)
                 && !needs_ack
             {
                 // Full prompt flush above is the readiness acknowledgement.
@@ -211,7 +227,7 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         };
         if revision != engine.output().revision {
             renderer.render(&[PresentationCommand::Text(
-                "Input from the previous prompt was ignored. Current scene acknowledged; choose after the new prompt.".into(),
+                "Input from the previous prompt was ignored. Old read cleared; follow the current prompt.".into(),
             )])?;
             rendered_revision = None;
             continue;
@@ -262,6 +278,21 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                 .is_some_and(|decision| decision.phase == DecisionPhase::AwaitingReady)
             {
                 rendered_revision = None;
+            }
+            continue;
+        }
+        if engine
+            .output()
+            .flow
+            .as_ref()
+            .is_some_and(|flow| flow.phase == FlowPhase::Presenting && !flow.paused)
+        {
+            if let Some(feedback) = renderer.acknowledge(&raw) {
+                engine.flow_input(&lifecycle_input(feedback))?;
+            } else {
+                renderer.render(&[PresentationCommand::Text(
+                    "Press Enter after reading, or use a session command.".into(),
+                )])?;
             }
             continue;
         }

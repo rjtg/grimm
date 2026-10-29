@@ -639,3 +639,168 @@ fn stale_lifecycle_commands_only_acknowledge_the_successor() {
         assert_eq!(fs::read(&save).unwrap(), before);
     }
 }
+
+fn gated_short_story(ms: u64) -> String {
+    short_story(ms)
+        .replace("schema_version: 2", "schema_version: 3")
+        .replace(
+            "  - id: prompt\n",
+            "  - id: prompt\n    presentation_required: true\n",
+        )
+}
+
+/// EOF must finish without hanging or inventing an ending/acknowledgement.
+fn close_without_ending(process: &mut Process) {
+    process.stdin.take();
+    loop {
+        match process.stdout.recv_timeout(Duration::from_secs(5)) {
+            Ok(bytes) => process.text.push_str(&String::from_utf8_lossy(&bytes)),
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            Err(error) => panic!("CLI hung at required presentation EOF: {error}"),
+        }
+    }
+    assert!(process.child.wait().unwrap().success());
+    assert!(!process.text.contains("Ending:"));
+}
+
+#[test]
+fn silent_signal_actual_cli_routes_reach_all_three_endings() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../stories/the-silent-signal.yaml"
+    );
+    for (choice, ending) in [
+        ("1", "A Voice That Answers"),
+        ("2", "The Cost of Silence"),
+        ("3", "An Open Door"),
+    ] {
+        let mut process = Process::start(&["play", path]);
+        for _ in 0..3 {
+            // two narrative-only scenes, then required emergency prose
+            process.until("Press Enter when finished reading...");
+            process.send("");
+        }
+        for _ in 0..3 {
+            // answer, investigate archive, keep bearing
+            process.until("> ");
+            process.send("1");
+        }
+        for _ in 0..2 {
+            // narrative briefing and gated final decision
+            process.until("Press Enter when finished reading...");
+            process.send("");
+        }
+        process.until("> ");
+        process.send(choice);
+        process.finish(&format!("Ending: {ending}"));
+        assert!(!process.text.contains("variables"));
+        assert!(!process.text.contains("world_minutes"));
+    }
+}
+
+#[test]
+fn actual_gated_cli_reading_can_outlast_deadline_then_choice_or_timeout_resolves() {
+    let temp = Temp::new();
+    let path = temp.file("gated.yaml");
+    fs::write(&path, gated_short_story(250)).unwrap();
+    for choose_in_time in [true, false] {
+        let mut process = Process::start(&["play", path.to_str().unwrap()]);
+        process.until("Press Enter when finished reading...");
+        process.send("1"); // acknowledgement is not a numbered gameplay choice
+        process.until("Press Enter after reading");
+        thread::sleep(Duration::from_millis(400));
+        assert!(!process.text.contains("1. Choose in time."));
+        assert!(!process.text.contains("Time remaining"));
+        assert!(!process.text.contains("Decision time"));
+        process.send("");
+        process.until("> ");
+        assert!(process.text.contains("0.2s"));
+        if choose_in_time {
+            process.send("1");
+        }
+        process.finish(if choose_in_time {
+            "Ending: Timely"
+        } else {
+            "Ending: Expired"
+        });
+    }
+}
+
+#[test]
+fn actual_cli_restores_pending_reading_without_assuming_completion() {
+    let temp = Temp::new();
+    let path = temp.file("gated-save.yaml");
+    let checkpoint = temp.file("reading.json");
+    fs::write(&path, gated_short_story(250)).unwrap();
+    let mut process = Process::start(&["play", path.to_str().unwrap()]);
+    process.until("Press Enter when finished reading...");
+    process.send(":pause");
+    process.until("Paused. Use");
+    process.send(":resume");
+    process.until("Press Enter when finished reading...");
+    process.send(&format!(":save {}", checkpoint.display()));
+    process.until("Saved to");
+    let save = read_save(&checkpoint).unwrap();
+    assert_eq!(
+        save.flow.unwrap().phase,
+        grimm_semantic::flow::FlowPhase::Presenting
+    );
+    assert_eq!(save.temporal.unwrap().decision.unwrap().remaining_ms, 250);
+    close_without_ending(&mut process);
+    thread::sleep(Duration::from_millis(400));
+    let mut restored = Process::start(&[
+        "play",
+        path.to_str().unwrap(),
+        "--load",
+        checkpoint.to_str().unwrap(),
+    ]);
+    restored.until("Press Enter when finished reading...");
+    assert!(!restored.text.contains("1. Choose in time."));
+    restored.send("");
+    restored.until("> ");
+    restored.send("1");
+    restored.finish("Ending: Timely");
+}
+
+#[test]
+fn eof_and_stale_lines_cannot_complete_a_successor_required_presentation() {
+    let temp = Temp::new();
+    let path = temp.file("gated-successor.yaml");
+    let mut story: Story = serde_yaml_ng::from_str(&short_story(150)).unwrap();
+    story.schema_version = 3;
+    let mut second = story.nodes[0].clone();
+    second.id = "second".into();
+    second.presentation_required = true;
+    story.nodes[0].decision.as_mut().unwrap().timeout.target = "second".into();
+    story.nodes.push(second);
+    fs::write(&path, serde_yaml_ng::to_string(&story).unwrap()).unwrap();
+    for stale_line in [None, Some(""), Some(":pause"), Some(":quit")] {
+        let mut process = Process::start(&["play", path.to_str().unwrap()]);
+        process.until("Press Enter to acknowledge");
+        if let Some(line) = stale_line {
+            process.send(line);
+            process.until("Input from the previous prompt was ignored");
+            process.until("Press Enter when finished reading...");
+        }
+        close_without_ending(&mut process);
+        assert!(!process.text.contains("Paused. Use"));
+    }
+    // Required initial narrative is likewise not skipped when stdin is closed.
+    let signal = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../stories/the-silent-signal.yaml"
+    );
+    for partial in ["", " \t", "1"] {
+        let mut process = Process::start(&["play", signal]);
+        process.until("Press Enter when finished reading...");
+        process
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(partial.as_bytes())
+            .unwrap();
+        process.stdin.as_mut().unwrap().flush().unwrap();
+        close_without_ending(&mut process);
+        assert!(!process.text.contains("A carrier tone rises"));
+    }
+}
