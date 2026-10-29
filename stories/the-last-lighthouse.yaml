@@ -1,0 +1,230 @@
+# M1.5 Phase A: authored entirely against the unchanged M1 schema.
+# World identities (authoring convention, not graph nodes):
+#   north-spit-radio-room: radio_day, radio_night, radio_return, final_watch
+#   lena-voss: lena_day, radio_night, night_confession, radio_return, final_watch
+schema_version: 1
+id: the-last-lighthouse
+version: 1
+title: The Last Lighthouse
+start: radio_day
+variables:
+  lena_trust: 0
+  knows_callsign: false
+  has_ground_wire: false
+  signal_recorded: false
+  reply_sent: false
+nodes:
+  - id: radio_day
+    content:
+      - kind: narration
+        text: "Daylight in the North Spit radio room. Salt has clouded the windows; beneath them, a dead receiver whispers your name. Last night's recording ends with a ship's bell and a woman's voice: 'This is the Orison. We can see your light.' The Orison vanished forty-three winters ago."
+      - kind: dialogue
+        speaker: Lena Voss
+        text: "I'm the keeper here. My mother heard that bell the night the ship disappeared. Please find out who is using her voice."
+    choices:
+      - id: listen-to-lena
+        label: Ask Lena what her mother heard, and promise to share what you find.
+        target: lena_day
+        effects:
+          - { op: add, variable: lena_trust, amount: 1 }
+      - id: suspect-lena
+        label: Suspect a staged transmission; investigate the landing pier alone.
+        target: pier
+
+  - id: lena_day
+    content:
+      - kind: dialogue
+        speaker: Lena Voss
+        text: "Mother was on the Orison. I was six. The inquiry said the ship followed a false light onto the outer reef, but no wreck was found. Her callsign will be in the logbook. And the receiver's earth wire is missing; don't transmit without one."
+      - kind: narration
+        text: "Lena places the archive key in your palm. She stays to prepare the lighthouse for the night watch."
+    choices:
+      - id: read-log
+        label: Search the archive for the Orison's callsign and the inquiry record.
+        target: archive
+      - id: inspect-pier
+        label: Look for a replacement earth wire at the landing pier first.
+        target: pier
+
+  - id: archive
+    content:
+      - kind: narration
+        text: "The archive smells of damp wool. A logbook names the Orison's operator: Ada Voss, callsign O-17. In her final entry she warned that something beyond the reef was copying the lighthouse signal. A pencilled instruction reads: 'Name the living shore. Do not invite them in.' You copy both details."
+    choices:
+      - id: prepare-wire
+        label: Take your notes to the landing pier and find an earth wire.
+        target: pier
+        effects:
+          - { op: set, variable: knows_callsign, value: true }
+      - id: wait-for-night
+        label: Return directly to the radio room for the night watch.
+        target: radio_night
+        effects:
+          - { op: set, variable: knows_callsign, value: true }
+
+  - id: pier
+    content:
+      - kind: narration
+        text: "At the landing pier, a stripped navigation beacon lies in the shingle. Its copper earth lead is intact. Offshore, three lights burn in a line where the Orison should have been. The tide brings in no sound of engines."
+    choices:
+      - id: take-wire
+        label: Salvage the copper lead, then join the night watch.
+        target: radio_night
+        effects:
+          - { op: set, variable: has_ground_wire, value: true }
+      - id: leave-wire
+        label: Leave the wet equipment and return to the radio room.
+        target: radio_night
+
+  - id: radio_night
+    content:
+      - kind: narration
+        text: "Night watch in the North Spit radio room. The same cracked receiver now glows without power. Lena Voss stands at the window as three lights appear beyond the reef. The bell on the recording rings again, this time from inside the wall."
+      - kind: dialogue
+        speaker: Lena Voss
+        text: "It starts at the same minute every night. We can record it before we decide whether to answer. The spare recorder runs on batteries."
+    choices:
+      - id: record-signal
+        label: Record the whole transmission without answering.
+        target: intercept
+        effects:
+          - { op: set, variable: signal_recorded, value: true }
+      - id: talk-to-lena
+        label: Ask Lena why she has kept the receiver here all these years.
+        target: night_confession
+      - id: approach-receiver
+        label: Approach the microphone and decide whether to reply now.
+        target: signal_decision
+
+  - id: intercept
+    content:
+      - kind: narration
+        text: "On tape, a woman's voice says, 'O-17. There are still people aboard.' Beneath it, a second voice repeats Lena's name a breath too late. Then the first voice adds: 'Keep your light on your shore. Don't follow ours.' You label the tape before the receiver falls silent."
+    choices:
+      - id: share-tape
+        label: Let Lena hear the warning before you decide what to do.
+        target: night_confession
+        effects:
+          - { op: add, variable: lena_trust, amount: 1 }
+      - id: keep-tape
+        label: Keep the tape for evidence and return to the microphone.
+        target: signal_decision
+
+  - id: night_confession
+    content:
+      - kind: dialogue
+        speaker: Lena Voss
+        text: "I've listened every winter. I wanted to hear my mother, so I pretended not to notice the other voice. I won't let you mistake wanting something for proof."
+    choices:
+      - id: ask-for-partner
+        label: Ask Lena to stand beside you as a partner, not a suspect.
+        target: signal_decision
+        condition: { op: at_least, variable: lena_trust, value: 1 }
+        effects:
+          - { op: add, variable: lena_trust, amount: 1 }
+      - id: decide-alone
+        label: Thank her for the warning and make your own decision.
+        target: signal_decision
+
+  - id: signal_decision
+    content:
+      - kind: narration
+        text: "The microphone is warm. One voice asks for a course to the harbor; the other asks you to come outside and show the way. The earth terminal is exposed beneath the receiver. You can still leave both voices unanswered until dawn."
+    choices:
+      - id: answer-safely
+        label: Fit the copper earth lead and answer O-17 by its proper callsign.
+        target: radio_return
+        condition:
+          op: all
+          conditions:
+            - { op: equals, variable: has_ground_wire, value: true }
+            - { op: equals, variable: knows_callsign, value: true }
+        effects:
+          - { op: set, variable: reply_sent, value: true }
+      - id: follow-lights
+        label: Leave the radio and follow the offshore lights down to the shore.
+        target: shore_echo
+      - id: wait-for-dawn
+        label: Leave the microphone alone and return at dawn with Lena.
+        target: radio_return
+
+  - id: shore_echo
+    content:
+      - kind: narration
+        text: "Below the lighthouse, the fog parts around a gangway laid across empty water. Someone wearing your coat waits at its far end. Behind you, Lena calls from solid ground: 'That isn't a ship. Please come back.'"
+    choices:
+      - id: trust-shore
+        label: Trust Lena's voice and return to the radio room at dawn.
+        target: radio_return
+        effects:
+          - { op: add, variable: lena_trust, amount: 1 }
+      - id: board-orison
+        label: Step onto the gangway and ask the figure what happened to the Orison.
+        target: taken
+
+  - id: radio_return
+    content:
+      - kind: narration
+        text: "Dawn return to the North Spit radio room. Daylight shows the same salt-clouded windows and the same receiver, now cold. Nothing you learned overnight has disappeared with the dark. Lena Voss sets two cups on the desk and waits for your account."
+    choices:
+      - id: review-together
+        label: Review the recording with Lena and plan a public investigation.
+        target: final_watch
+        condition:
+          op: all
+          conditions:
+            - { op: equals, variable: signal_recorded, value: true }
+            - { op: at_least, variable: lena_trust, value: 2 }
+      - id: report-safe-reply
+        label: Tell Lena how you sent the grounded transmission to O-17.
+        target: final_watch
+        condition: { op: equals, variable: reply_sent, value: true }
+      - id: keep-distance
+        label: Explain your doubts and decide how to close the watch.
+        target: final_watch
+
+  - id: final_watch
+    content:
+      - kind: dialogue
+        speaker: Lena Voss
+        text: "Whatever is out there, my mother told us to keep our feet on this shore. We can protect the harbor without feeding it another disappearance. What do we leave for the next watch?"
+    choices:
+      - id: bring-investigators
+        label: Publish the tape with Lena and bring an investigation to the living shore.
+        target: rescue
+        condition:
+          op: all
+          conditions:
+            - { op: equals, variable: signal_recorded, value: true }
+            - { op: at_least, variable: lena_trust, value: 2 }
+      - id: release-watch
+        label: Ask O-17 to end the false watch; keep the lighthouse pointing toward land.
+        target: release
+        condition: { op: equals, variable: reply_sent, value: true }
+      - id: close-station
+        label: Disconnect the receiver and record an honest account of the unanswered signal.
+        target: silence
+
+  - id: rescue
+    content:
+      - kind: narration
+        text: "Lena Voss signs the transcript beside you. By the next night, three harbor crews watch from shore while a survey boat locates the Orison's hull beneath the reef. No one boards the lights. The missing receive names and a place in the record; the living have each other. When the bell rings again, the harbor is listening together."
+    ending: { id: rescue, title: Witnesses on the Shore }
+
+  - id: release
+    content:
+      - kind: narration
+        text: "You name O-17 and the living shore. Ada Voss answers once: 'Received. Keep your light.' Lena holds the earth lead steady as the three offshore lights go out. No ship comes home, but no one else is called away. At sunrise she opens the shutters, and for the first time the room contains only the sea."
+    ending: { id: release, title: The Watch Is Over }
+
+  - id: silence
+    content:
+      - kind: narration
+        text: "You disconnect the receiver and leave your account in the log. Lena locks the North Spit radio room. The harbor remains safe, and the Orison remains missing. Some winter nights a bell still sounds beyond the reef, but this time there is a warning on the door."
+    ending: { id: silence, title: An Unanswered Bell }
+
+  - id: taken
+    content:
+      - kind: narration
+        text: "The gangway does not move beneath your feet. The shore does. By morning, Lena finds your coat beside the receiver, dry as paper. Forty-three years of missing names make room for one more. That night, the Orison's transmission begins with your voice."
+    ending: { id: taken, title: One More Voice }
