@@ -9,10 +9,9 @@ grimm-engine.workspace = true
 grimm-adapters.workspace = true
 grimm-cli-renderer.workspace = true
 grimm-presentation.workspace = true
-
-[dev-dependencies]
 grimm-semantic.workspace = true
 serde_json.workspace = true
+serde_yaml_ng.workspace = true
 
 [lints]
 workspace = true

@@ -28,7 +28,7 @@ fn demo(input: &str) -> String {
 fn executable_round_trip() {
     assert_eq!(
         demo("1\n"),
-        "Welcome to GRIMM's architecture demo.\n1. Continue\n> The engine accepted your choice. Demo complete.\n"
+        "Welcome to GRIMM's architecture demo.\n1. Continue\n> The engine accepted your choice. Demo complete.\nEnding: Demo complete\n"
     );
 }
 
@@ -53,7 +53,9 @@ fn presentation_changes_and_forged_offers_cannot_commit_game_state() {
     let initial = engine.output();
     let mut screen = initial.clone();
     let mut adapter = TextAdapter::default();
-    screen.text = "Untrusted presentation text".into();
+    screen.content = vec![grimm_semantic::NarrativeContent::Narration {
+        text: "Untrusted presentation text".into(),
+    }];
     screen.offers[0].id = "invented".into();
     adapter.present(&screen);
     assert_eq!(engine.output(), initial);

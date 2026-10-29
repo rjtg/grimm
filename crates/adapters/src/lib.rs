@@ -1,8 +1,8 @@
-//! Adapter contracts and the M0 authored-text implementation.
+//! Adapter contracts and authored-text presentation.
 //! Adapters have protocol dependencies only, never access to the engine.
 
 use grimm_presentation::{PresentationCommand, RawInput};
-use grimm_semantic::{GameAction, SemanticOutput};
+use grimm_semantic::{GameAction, NarrativeContent, SemanticOutput};
 
 pub trait OutputAdapter {
     fn present(&mut self, output: &SemanticOutput) -> Vec<PresentationCommand>;
@@ -28,7 +28,22 @@ impl OutputAdapter for TextAdapter {
                 choice_id: offer.id.clone(),
             })
             .collect();
-        let mut commands = vec![PresentationCommand::Text(output.text.clone())];
+        let mut commands: Vec<_> = output
+            .content
+            .iter()
+            .map(|content| {
+                PresentationCommand::Text(match content {
+                    NarrativeContent::Narration { text } => text.clone(),
+                    NarrativeContent::Dialogue { speaker, text } => format!("{speaker}: {text}"),
+                })
+            })
+            .collect();
+        if let Some(ending) = &output.ending {
+            commands.push(PresentationCommand::Text(format!(
+                "Ending: {}",
+                ending.title
+            )));
+        }
         if !output.offers.is_empty() {
             commands.push(PresentationCommand::Choices(
                 output
@@ -55,12 +70,44 @@ mod tests {
     use grimm_semantic::InteractionOffer;
 
     #[test]
+    fn preserves_authored_blocks_and_formats_dialogue_and_ending() {
+        let output = SemanticOutput {
+            revision: 3,
+            content: vec![
+                NarrativeContent::Narration {
+                    text: "Exact text.\n  Indentation stays.".into(),
+                },
+                NarrativeContent::Dialogue {
+                    speaker: "Mara".into(),
+                    text: "I saw it.\nEvery word.".into(),
+                },
+            ],
+            offers: vec![],
+            ending: Some(grimm_semantic::Ending {
+                id: "truth".into(),
+                title: "The Truth".into(),
+            }),
+        };
+        assert_eq!(
+            TextAdapter::default().present(&output),
+            vec![
+                PresentationCommand::Text("Exact text.\n  Indentation stays.".into()),
+                PresentationCommand::Text("Mara: I saw it.\nEvery word.".into()),
+                PresentationCommand::Text("Ending: The Truth".into()),
+            ]
+        );
+    }
+
+    #[test]
     fn maps_screen_numbers_to_semantic_ids_and_replaces_old_offers() {
         let mut adapter = TextAdapter::default();
         assert_eq!(adapter.resolve(&RawInput { line: "1".into() }), None);
         let output = SemanticOutput {
             revision: 42,
-            text: "Exact text.".into(),
+            content: vec![NarrativeContent::Narration {
+                text: "Exact text.".into(),
+            }],
+            ending: None,
             offers: vec![InteractionOffer {
                 id: "semantic-id".into(),
                 label: "Visible label".into(),

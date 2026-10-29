@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  m0:
+  classic-cyoa:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,3 +24,12 @@ jobs:
           printf '1\n' | cargo run --offline --locked --quiet -p grimm-cli > demo.txt
           cat demo.txt
           grep -Fx '> The engine accepted your choice. Demo complete.' demo.txt
+      - name: Play The Last Witness offline through every ending
+        shell: bash
+        run: |
+          printf '1\n1\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-witness.yaml > justice.txt
+          grep -Fx 'Ending: A Voice in the Light' justice.txt
+          printf '1\n1\n2\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-witness.yaml > exile.txt
+          grep -Fx 'Ending: Truth Across the Water' exile.txt
+          printf '2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-witness.yaml > silence.txt
+          grep -Fx 'Ending: The Price of Silence' silence.txt

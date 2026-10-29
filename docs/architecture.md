@@ -2,6 +2,11 @@
 
 This document fixes **dependency boundaries**, not all future APIs. Public types will evolve through milestones.
 
+The implemented M1 crate map, authoring/checkpoint DTOs and provisional protocol
+migration are described in [the M1 brief](milestones/m1.md) and
+[story/save format](story-format.md). Engine dependencies remain semantic-only;
+YAML/JSON file handling belongs to the CLI composition root.
+
 ## Flow
 
 ```text

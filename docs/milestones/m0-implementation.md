@@ -1,5 +1,9 @@
 # M0 implementation notes
 
+Historical M0 baseline. M1 replaces the stub with a reusable runtime, retains the
+two-node demo, and migrates `SemanticOutput.text` to structured content. See
+[M1](m1.md) for the current types, save format, and compatibility implications.
+
 ## Crates and dependency contract
 
 | Crate | Responsibility | Normal dependencies |

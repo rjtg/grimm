@@ -24,9 +24,14 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
         ("grimm-cli-renderer", "normal") => dependency == "grimm-presentation",
         ("grimm-cli", "normal") => matches!(
             dependency,
-            "grimm-engine" | "grimm-adapters" | "grimm-cli-renderer" | "grimm-presentation"
+            "grimm-engine"
+                | "grimm-adapters"
+                | "grimm-cli-renderer"
+                | "grimm-presentation"
+                | "grimm-semantic"
+                | "serde_json"
+                | "serde_yaml_ng"
         ),
-        ("grimm-cli", "dev") => matches!(dependency, "grimm-semantic" | "serde_json"),
         _ => false,
     }
 }
@@ -100,6 +105,8 @@ fn policy_rejects_reverse_edges_and_external_engine_dependencies() {
             "grimm-cli-renderer",
             "bevy",
             "reqwest",
+            "serde_json",
+            "serde_yaml_ng",
         ] {
             assert!(!allowed("grimm-engine", dependency, kind));
         }
