@@ -30,6 +30,9 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **CYOA-07** Save/load with schema version.
 - **CYOA-08** Multiple endings and regression demo.
 
+## M1.5 — Dogfooding and authoring quality
+- **CYOA-09** Narrative deadlock handling and story playability: distinguish intentional endings from unintended multi-step, state-dependent nonterminal deadlocks; provide actionable authoring diagnostics and explicit runtime behavior. Preserve the guarantee that offered choices are immediately executable. Full global solvability analysis is **not** required. Track implementation and acceptance tests in [issue #4](https://github.com/rjtg/grimm/issues/4).
+
 ## M2
 - **GEN-01** Optional generative text adapter behind same boundary.
 - **GEN-02** Safe player-visible context projection.
