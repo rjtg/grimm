@@ -3,7 +3,12 @@ use grimm_cli::{load_story, read_save, write_save};
 use grimm_cli_renderer::CliRenderer;
 use grimm_engine::{Engine, PlayabilityLimits};
 use grimm_presentation::PresentationCommand;
-use std::{env, io, path::Path, process::ExitCode};
+use std::{
+    env,
+    io::{self, IsTerminal},
+    path::Path,
+    process::ExitCode,
+};
 
 fn main() -> ExitCode {
     match run() {
@@ -65,7 +70,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => return Err("Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]".into()),
     };
-    if engine.save().temporal.is_some() || engine.save().schema_version == 3 {
+    if engine.save().temporal.is_some()
+        || engine.save().schema_version == 3
+        || (io::stdin().is_terminal() && io::stdout().is_terminal())
+    {
         return grimm_cli::runtime::play(title.as_deref().unwrap_or("GRIMM"), engine);
     }
     let mut adapter = TextAdapter::default();

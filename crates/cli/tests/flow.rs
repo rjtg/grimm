@@ -12,8 +12,20 @@ use grimm_semantic::{
 
 const SIGNAL: &str = include_str!("../../../stories/the-silent-signal.yaml");
 
+// Keep a gated timed fixture to test the reusable lifecycle independently of
+// the playtest-driven narrative-only buildup + immediate decision in the game.
+fn gated_story() -> Story {
+    let mut story: Story = serde_yaml_ng::from_str(SIGNAL).unwrap();
+    let relay = story.nodes.remove(3);
+    let emergency = &mut story.nodes[2];
+    emergency.continue_to = None;
+    emergency.presentation_required = true;
+    emergency.choices = relay.choices;
+    emergency.decision = relay.decision;
+    story
+}
 fn engine() -> Engine {
-    parse_story("signal", SIGNAL).unwrap().1
+    Engine::new(gated_story()).unwrap()
 }
 fn flow(engine: &mut Engine, event: FlowEvent) {
     engine
@@ -441,7 +453,7 @@ fn authored_routes_cover_all_endings_and_state_dependent_offers() {
             .iter()
             .filter(|node| node.presentation_required)
             .count()
-            >= 2
+            >= 1
     );
     for (answer, lead, end, expected) in [
         ("answer", "spectrum", "guide", "rescue"),
@@ -450,9 +462,14 @@ fn authored_routes_cover_all_endings_and_state_dependent_offers() {
         ("isolate", "power", "sever", "quarantine"),
         ("answer", "power", "beam", "trap"),
     ] {
-        let mut engine = emergency();
-        flow(&mut engine, FlowEvent::PresentationComplete);
-        flow(&mut engine, FlowEvent::InteractionReady);
+        let mut engine = parse_story("signal", SIGNAL).unwrap().1;
+        for _ in 0..3 {
+            flow(&mut engine, FlowEvent::PresentationComplete);
+        }
+        assert_eq!(engine.save().node_id, "relay");
+        assert!(engine.output().flow.is_none());
+        assert!(engine.output().content.len() == 1);
+        time(&mut engine, TimeEvent::Ready);
         choose(&mut engine, answer);
         choose(&mut engine, lead);
         let action = match lead {
@@ -487,7 +504,7 @@ fn authored_routes_cover_all_endings_and_state_dependent_offers() {
         choose(&mut engine, end);
         assert_eq!(engine.output().ending.unwrap().id, expected);
     }
-    let engine = engine();
+    let engine = parse_story("signal", SIGNAL).unwrap().1;
     let report = engine.check_playability(PlayabilityLimits::default());
     assert!(!report.truncated);
     assert!(report.deadlocks.is_empty(), "{report:?}");
@@ -576,7 +593,7 @@ fn deterministic_lifecycle_replay_has_identical_checkpoints() {
 
 #[test]
 fn rejects_invalid_configurations_and_continuation_cycles() {
-    let story: Story = serde_yaml_ng::from_str(SIGNAL).unwrap();
+    let story = gated_story();
     let mut bad = vec![];
     let mut s = story.clone();
     s.nodes[0].continue_to = Some("missing".into());
@@ -620,7 +637,7 @@ fn rejects_invalid_configurations_and_continuation_cycles() {
 
 #[test]
 fn untimed_flow_is_optional_and_overflow_and_bad_destinations_do_not_commit() {
-    let mut story: Story = serde_yaml_ng::from_str(SIGNAL).unwrap();
+    let mut story = gated_story();
     story.time = None;
     story.nodes[2].decision = None;
     // lost was reachable only by timeout; keep it reachable via a choice.

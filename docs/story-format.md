@@ -427,6 +427,13 @@ graphics, multiplayer arbitration or general async framework is implemented.
 
 ## Story schema 3: narrative flow and presentation gating (M1.8)
 
+Authoring recommendation after playtesting: put longer buildup in narrative-only
+segments, then enter a short ungated timed node whose text is comparable in length
+to its choices. That node displays choices and starts counting down immediately;
+the player does not choose a separate "start timer" action. The Silent Signal
+version 2 uses this arrangement. Gating remains available where a scene genuinely
+needs required presentation (including future non-text renderers).
+
 Play the full reference adventure:
 
 ```sh
@@ -540,6 +547,26 @@ EOF on an active decision permits authored timeout; if its successor requires
 reading, the chain stops there without a fabricated acknowledgement. EOF on an
 ungated timed successor retains M1.75's automatic host readiness/expiry behavior.
 There is no input spin and no arbitrary reading delay.
+
+For actual terminals (stdin and stdout both terminal devices), the CLI host uses
+`crossterm` raw key events: keys 1–9 immediately submit a displayed choice. Lists
+larger than nine keep a numeric editor with Enter. Required narrative-only/gated
+reading still uses Enter. A colon starts command editing with Enter to submit,
+Backspace to edit and Esc to cancel. Deadlines continue while editing; the whole
+command is bound to the revision where editing began. If it expires, the stale
+command cannot affect the successor. No pending blocking read is needed for this
+transport, so ordinary timed successor scenes activate without an extra Enter
+barrier. Queued old keys are discarded before new prompts; key repeat events
+are ignored where the terminal reports them. Terminal modes restore on ordinary
+return/error, Ctrl-C/Ctrl-D host exit and panic unwinding.
+
+Pipes/files retain the revision-bound line reader and its existing EOF/stale-read
+policy. The engine, semantic/presentation protocols, adapters and renderer gain
+no terminal dependency. The CLI composition root alone uses crossterm (events and
+Windows support; no async framework). Unix regression tests drive a real PTY
+through Python's standard library; Windows builds use crossterm but are not
+PTY-tested here. Host observation/OS buffering still has no hardware timestamp
+or hard realtime fairness guarantee.
 
 ### Continuation validation and bounded analysis
 

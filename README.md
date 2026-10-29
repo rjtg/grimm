@@ -36,11 +36,14 @@ Play **The Silent Signal**, M1.8's atmospheric research-station mystery:
 cargo run -p grimm-cli -- play stories/the-silent-signal.yaml
 ```
 
-It has 13 nodes and three endings. Two opening narrative-only segments ask for
-Enter without inventing a gameplay choice. Read the emergency freely, then press
-Enter to display choices and start its 12-second deadline. The investigation and
+It has 14 nodes and three endings. Narrative-only segments carry the longer
+storm and emergency buildup. The relay decision itself is brief: entering it
+immediately displays the choices and starts its 12-second deadline. The investigation and
 final gated choice are untimed. Evidence, trust and reserve power change rescue
-options; silence after activation has an authored consequence.
+options; silence after activation has an authored consequence. In a terminal,
+press a choice's number key to act immediately, without Enter. Type `:` to edit
+a session command, then Enter to submit; Esc cancels editing. More than nine
+choices use number + Enter. Redirected input keeps the original line-based format.
 
 During required reading, only blank Enter completes presentation; numbers do not
 acknowledge or choose. `:save /tmp/silent-signal.json` preserves unfinished reading.
@@ -50,7 +53,9 @@ Resume using:
 cargo run -p grimm-cli -- play stories/the-silent-signal.yaml --load /tmp/silent-signal.json
 ```
 
-Unfinished presentation replays; offline time stays frozen. `:pause`/`:resume`
+The adventure is now story version 2; saves from its initial playtest version 1
+are rejected rather than mapped onto the revised scenes. Unfinished presentation
+replays; offline time stays frozen. `:pause`/`:resume`
 preserve the reading phase and remaining deadline. EOF exits without completing
 required storytelling. On an active countdown it still permits authored expiry,
 but cannot skip a successor's required reading. Stale lines and lifecycle commands
@@ -219,6 +224,9 @@ and the demo work with `--offline`. Running the built `target/debug/grimm-cli`
 requires no network, browser, graphics, model, or other service.
 
 ## Verification
+
+Unix terminal regression tests also require Python 3 (standard library only)
+to drive a real pseudo-terminal and verify immediate keys and terminal restoration.
 
 ```sh
 cargo fmt --check

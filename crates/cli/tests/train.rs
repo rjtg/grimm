@@ -676,7 +676,7 @@ fn silent_signal_actual_cli_routes_reach_all_three_endings() {
     ] {
         let mut process = Process::start(&["play", path]);
         for _ in 0..3 {
-            // two narrative-only scenes, then required emergency prose
+            // Three narrative-only scenes, then an immediately active decision.
             process.until("Press Enter when finished reading...");
             process.send("");
         }

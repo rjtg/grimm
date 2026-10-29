@@ -1,4 +1,5 @@
 //! Real-time composition root. The sole clock lives here, never in the engine.
+mod terminal;
 use crate::{read_save, write_save};
 use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter, lifecycle_input};
 use grimm_cli_renderer::CliRenderer;
@@ -7,7 +8,7 @@ use grimm_presentation::{PresentationCommand, RawInput};
 use grimm_semantic::flow::FlowPhase;
 use grimm_semantic::time::{DecisionPhase, TimeEvent, TimeInput};
 use std::{
-    io,
+    io::{self, IsTerminal, Write},
     path::Path,
     sync::mpsc::{self, Receiver, RecvTimeoutError, Sender},
     thread,
@@ -89,11 +90,23 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         input(&mut engine, TimeEvent::Pause)?;
         input(&mut engine, TimeEvent::Resume)?;
     }
-    let (request, receiver) = reader();
+    let mut terminal = if io::stdin().is_terminal() && io::stdout().is_terminal() {
+        Some(terminal::Terminal::enter()?)
+    } else {
+        None
+    };
+    let lines = terminal.is_none().then(reader);
     let mut pending_read = None;
-    let mut renderer = CliRenderer::new(io::empty(), io::stdout().lock());
+    let mut output = terminal::Output {
+        inner: io::stdout().lock(),
+        raw: terminal.is_some(),
+    };
+    let mut renderer = CliRenderer::new(io::empty(), &mut output);
     let mut adapter = TextAdapter::default();
     renderer.render(&[PresentationCommand::Text(title.into()), PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Required reading waits for Enter; countdown starts when the decision choices are available.".into())])?;
+    if terminal.is_some() {
+        renderer.render(&[PresentationCommand::Text("Press a number key to choose immediately. Type : to enter a command, then Enter; Esc cancels it. Lists with more than nine choices use number + Enter.".into())])?;
+    }
     let mut rendered_revision = None;
     let mut clock: Option<Observation> = None;
     let mut shown_seconds = None;
@@ -101,6 +114,9 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
     loop {
         let output = engine.output();
         if rendered_revision != Some(output.revision) {
+            if let Some(terminal) = &mut terminal {
+                terminal.begin_prompt()?;
+            }
             let needs_ack = pending_read.is_some_and(|revision| revision != output.revision);
             renderer.render(&adapter.present(&output))?;
             if needs_ack && output.ending.is_none() {
@@ -138,7 +154,11 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                     origin,
                     last_total_ms: 0,
                 });
-            } else {
+            } else if output
+                .decision
+                .as_ref()
+                .is_none_or(|decision| decision.phase != DecisionPhase::Active)
+            {
                 clock = None;
             }
             rendered_revision = Some(output.revision);
@@ -150,7 +170,10 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         if output.decision.is_none() && output.offers.is_empty() {
             engine.validate_current_state()?;
         }
-        if !eof && pending_read.is_none() {
+        if let Some((request, _)) = &lines
+            && !eof
+            && pending_read.is_none()
+        {
             request.send(output.revision)?;
             pending_read = Some(output.revision);
         }
@@ -159,20 +182,46 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
             .as_ref()
             .filter(|decision| decision.phase == DecisionPhase::Active);
         let wait = active.map(|decision| Duration::from_millis(decision.remaining_ms.min(250)));
-        let message = if eof {
+        let message = if let Some(terminal) = &mut terminal {
+            // Only the host polls the terminal. Every event is stamped before
+            // elapsed observation, so a key at expiry cannot choose its successor.
+            let mut echo = terminal::Output {
+                inner: io::stdout(),
+                raw: true,
+            };
+            let event = terminal.poll(
+                output.revision,
+                wait.unwrap_or(Duration::from_millis(250)),
+                output.offers.len() <= 9,
+                &mut echo,
+            )?;
+            echo.flush()?;
+            event.map(|(revision, input)| Message::Line {
+                revision,
+                submitted_at: Instant::now(),
+                input,
+            })
+        } else if eof {
             let Some(wait) = wait else {
                 return Ok(());
             };
             thread::sleep(wait); // host only; EOF still permits authored timeout
             None
         } else if let Some(wait) = wait {
-            match receiver.recv_timeout(wait) {
+            match lines.as_ref().expect("line transport").1.recv_timeout(wait) {
                 Ok(message) => Some(message),
                 Err(RecvTimeoutError::Timeout) => None,
                 Err(RecvTimeoutError::Disconnected) => Some(Message::Eof),
             }
         } else {
-            Some(receiver.recv().unwrap_or(Message::Eof))
+            Some(
+                lines
+                    .as_ref()
+                    .expect("line transport")
+                    .1
+                    .recv()
+                    .unwrap_or(Message::Eof),
+            )
         };
         // Elapsed time is observed before any action/command at this instant.
         if active.is_some() {

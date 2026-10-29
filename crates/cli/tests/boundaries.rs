@@ -31,6 +31,7 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
                 | "grimm-semantic"
                 | "serde_json"
                 | "serde_yaml_ng"
+                | "crossterm"
         ),
         _ => false,
     }
@@ -107,6 +108,7 @@ fn policy_rejects_reverse_edges_and_external_engine_dependencies() {
             "reqwest",
             "serde_json",
             "serde_yaml_ng",
+            "crossterm",
         ] {
             assert!(!allowed("grimm-engine", dependency, kind));
         }

@@ -1,6 +1,6 @@
 schema_version: 3
 id: the-silent-signal
-version: 1
+version: 2
 title: The Silent Signal
 time: {}
 start: storm
@@ -35,7 +35,6 @@ nodes:
         text: "The Orison's emergency beacon is inside that signal. Someone is using it as a mask."
     continue_to: emergency
   - id: emergency
-    presentation_required: true
     content:
       - kind: narration
         text: >-
@@ -45,12 +44,16 @@ nodes:
           Behind him, another voice calmly recites the station's door codes.
       - kind: dialogue
         speaker: Imani Vale
-        text: "When we open this channel, we get twelve seconds before the relay resets. Shall I trust the captain, or isolate the circuit?"
+        text: "The relay is coming back. When it opens, we have twelve seconds to answer or isolate the circuit."
       - kind: narration
         text: >-
-          Nothing is counting down yet. Read, then press Enter to open the decision.
           Answering earns Imani's trust; isolation preserves a reserve circuit.
-          Silence after activation loses the captain's reply, but the investigation continues.
+          If the relay resets unanswered, the captain's reply is lost.
+    continue_to: relay
+  - id: relay
+    content:
+      - kind: narration
+        text: "The relay snaps open. The captain is on the line. Twelve seconds until reset."
     decision:
       limit_ms: 12000
       timeout:
