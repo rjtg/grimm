@@ -171,6 +171,15 @@ fn overflow_and_deadlock_leave_the_whole_state_unchanged() {
     let mut engine = Engine::new(definition).unwrap();
     let before = engine.save();
     assert_eq!(
+        engine
+            .output()
+            .offers
+            .iter()
+            .map(|offer| offer.id.as_str())
+            .collect::<Vec<_>>(),
+        ["direct"]
+    );
+    assert_eq!(
         choose(&mut engine, "step"),
         Err(ActionError::EffectOverflow {
             variable: "count".into()
@@ -182,12 +191,93 @@ fn overflow_and_deadlock_leave_the_whole_state_unchanged() {
     let mut engine = Engine::new(definition).unwrap();
     let before = engine.save();
     assert_eq!(
+        engine
+            .output()
+            .offers
+            .iter()
+            .map(|offer| offer.id.as_str())
+            .collect::<Vec<_>>(),
+        ["direct"]
+    );
+    assert_eq!(
         choose(&mut engine, "step"),
         Err(ActionError::NoOffers {
             node: "gate".into()
         })
     );
     assert_eq!(engine.save(), before);
+}
+
+#[test]
+fn every_offer_can_be_applied_in_its_unchanged_state() {
+    let mut deadlock = story();
+    // Ordered effects close the destination's gate after initially opening it.
+    deadlock.nodes[0].choices[0].effects.push(Effect::Set {
+        variable: "flag".into(),
+        value: Value::Bool(false),
+    });
+    let mut overflow = story();
+    overflow.nodes[0].choices[0].effects.push(Effect::Add {
+        variable: "count".into(),
+        amount: i64::MAX,
+    });
+    for definition in [story(), deadlock, overflow] {
+        let engine = Engine::new(definition.clone()).unwrap();
+        let before = engine.save();
+        let output = engine.output();
+        assert!(!output.offers.is_empty());
+        assert_eq!(engine.output(), output);
+        assert_eq!(engine.save(), before, "previews must not apply effects");
+        for offer in output.offers {
+            let mut candidate = Engine::new(definition.clone()).unwrap();
+            let result = candidate.apply(&GameAction {
+                revision: output.revision,
+                choice_id: offer.id,
+            });
+            assert!(result.is_ok(), "offered transition rejected: {result:?}");
+        }
+    }
+}
+
+#[test]
+fn initialization_and_restore_reject_states_with_only_unexecutable_choices() {
+    for overflow in [false, true] {
+        let mut definition = story();
+        if overflow {
+            definition.nodes[0].choices[0].effects.push(Effect::Add {
+                variable: "count".into(),
+                amount: i64::MAX,
+            });
+        } else {
+            definition.nodes[0].choices[0].effects.clear();
+        }
+        let mut engine = Engine::new(definition.clone()).unwrap();
+        let before = engine.save();
+        let mut save = before.clone();
+        save.variables.insert("count".into(), Value::Int(1));
+        let error = engine.restore(save).unwrap_err().to_string();
+        assert!(
+            error.contains("node 'start': no executable choices"),
+            "{error}"
+        );
+        assert!(error.contains("choice 'step'"), "{error}");
+        assert!(
+            error.contains(if overflow {
+                "overflows variable 'count'"
+            } else {
+                "node 'gate'"
+            }),
+            "{error}"
+        );
+        assert_eq!(engine.save(), before);
+        definition.variables.insert("count".into(), Value::Int(1));
+        assert!(
+            Engine::new(definition)
+                .unwrap_err()
+                .to_string()
+                .contains("no executable choices")
+        );
+    }
 }
 
 #[test]
@@ -353,6 +443,7 @@ fn revision_overflow_does_not_commit_effects() {
     let mut save = engine.save();
     save.revision = u64::MAX;
     engine.restore(save.clone()).unwrap();
+    assert!(engine.output().offers.is_empty());
     assert_eq!(
         choose(&mut engine, "step"),
         Err(ActionError::RevisionOverflow)

@@ -99,11 +99,29 @@ on a candidate copy of the state. Integer overflow rejects the entire action.
 Conditions are evaluated before applying that choice's effects; the destination's
 offers are evaluated afterward. Content reads and rendering never apply effects.
 
-The engine accepts only a currently eligible choice ID at the current revision.
-It commits the new node, variables and incremented revision together. No other
-component can commit game state. State-dependent deadlocks are not fully solved
-statically: initialization and restore reject a non-ending without eligible
-choices, and a transition into such a state is rejected without committing.
+The engine advertises only executable choices: their conditions must hold,
+ordered effects must succeed without overflow, and their destination must be an
+ending or have a condition-eligible choice after those effects. `output()` and
+`apply()` share the same pure, single-transition preview. Displaying offers never
+commits effects. Every advertised choice can be applied successfully while its
+state/revision is unchanged. No choices are advertised at revision exhaustion.
+Direct proposals for excluded choices still return contextual errors, including
+`EffectOverflow` and `NoOffers`, without changing the engine.
+
+The engine commits the new node, variables and incremented revision together.
+Initialization and restore reject non-endings with no executable choices and
+report the offending choices and preview failures. Existing saves with only
+overflowing/deadlocking choices may therefore now be rejected; the format is
+unchanged. No other component can commit game state.
+
+Preview is deliberately one transition, not recursive proof that a route will
+eventually finish. A destination can have condition-eligible choices whose own
+transitions are excluded when that destination is projected. Longer-range
+deadlocks and state-changing cycles are not solved globally. If later play
+reaches a non-ending with no executable choices, the CLI reports a story error
+and exits rather than silently displaying a choice that would fail or treating
+the state as an ending. A revision-exhausted checkpoint also has no executable
+offers and is handled this way; direct proposals still return `RevisionOverflow`.
 
 ## Player-visible protocol migration
 

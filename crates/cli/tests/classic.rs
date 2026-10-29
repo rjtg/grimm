@@ -371,3 +371,47 @@ fn structured_authored_content_is_preserved_without_interpolation() {
         }]
     );
 }
+
+#[test]
+fn cli_reports_later_blocked_states_instead_of_prompting_without_offers() {
+    // One-transition previews do not promise that the whole route is solvable.
+    let yaml = r#"
+schema_version: 1
+id: later-deadlock
+version: 1
+title: Later deadlock
+start: start
+variables: { ready: false }
+nodes:
+  - id: start
+    content: [{ kind: narration, text: Start }]
+    choices: [{ id: step, label: Step, target: middle }]
+  - id: middle
+    content: [{ kind: narration, text: Middle }]
+    choices: [{ id: blocked, label: Blocked, target: locked }]
+  - id: locked
+    content: [{ kind: narration, text: Locked }]
+    choices:
+      - id: finish
+        label: Finish
+        target: end
+        condition: { op: equals, variable: ready, value: true }
+  - id: end
+    content: [{ kind: narration, text: End }]
+    ending: { id: end, title: End }
+"#;
+    let temp = Temp::new();
+    let path = temp.path("later-deadlock.yaml");
+    fs::write(&path, yaml).unwrap();
+    let output = run(&["play", path.to_str().unwrap()], "1\n");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("no executable choices")
+    );
+    let screen = String::from_utf8(output.stdout).unwrap();
+    assert!(screen.contains("Middle"));
+    assert!(!screen.contains("Blocked"));
+    assert!(!screen.contains("Ending:"));
+}

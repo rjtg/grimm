@@ -54,6 +54,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         if output.ending.is_some() {
             return Ok(());
         }
+        if output.offers.is_empty() {
+            return Err("Story has no executable choices in the current state.".into());
+        }
         let Some(input) = renderer.read_input()? else {
             return Ok(());
         };

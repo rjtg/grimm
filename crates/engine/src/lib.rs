@@ -88,55 +88,45 @@ impl Engine {
             variables,
             revision: 0,
         };
-        engine.ensure_playable()?;
+        engine.ensure_playable(engine.node, &engine.variables)?;
         Ok(engine)
     }
 
-    fn ensure_playable(&self) -> Result<(), ValidationError> {
-        let node = &self.story.nodes[self.node];
-        if node.ending.is_none()
-            && !node
-                .choices
-                .iter()
-                .any(|choice| eligible(choice, &self.variables))
-        {
-            return Err(ValidationError(format!(
-                "node '{}': no eligible choices in this state",
-                node.id
-            )));
+    fn ensure_playable(&self, node: usize, variables: &Variables) -> Result<(), ValidationError> {
+        let node = &self.story.nodes[node];
+        if node.ending.is_some() {
+            return Ok(());
         }
-        Ok(())
-    }
-
-    /// Returns visible authored content and offers, never variables or story data.
-    pub fn output(&self) -> SemanticOutput {
-        let node = &self.story.nodes[self.node];
-        SemanticOutput {
-            revision: self.revision,
-            content: node.content.clone(),
-            offers: node
-                .choices
-                .iter()
-                .filter(|choice| eligible(choice, &self.variables))
-                .map(|choice| InteractionOffer {
-                    id: choice.id.clone(),
-                    label: choice.label.clone(),
-                })
-                .collect(),
-            ending: node.ending.clone(),
-        }
-    }
-
-    pub fn apply(&mut self, action: &GameAction) -> Result<SemanticOutput, ActionError> {
-        if action.revision != self.revision {
-            return Err(ActionError::StaleRevision);
-        }
-        let choice = self.story.nodes[self.node]
+        let mut failures = Vec::new();
+        for choice in node
             .choices
             .iter()
-            .find(|choice| choice.id == action.choice_id && eligible(choice, &self.variables))
-            .ok_or(ActionError::InvalidChoice)?;
-        let mut variables = self.variables.clone();
+            .filter(|choice| eligible(choice, variables))
+        {
+            match self.preview(choice, variables) {
+                Ok(_) => return Ok(()),
+                Err(error) => failures.push(format!("choice '{}': {error}", choice.id)),
+            }
+        }
+        let reason = if failures.is_empty() {
+            "no eligible choices in this state".into()
+        } else {
+            format!("no executable choices ({})", failures.join("; "))
+        };
+        Err(ValidationError(format!("node '{}': {reason}", node.id)))
+    }
+
+    /// Preview exactly one transition without committing. Destination conditions
+    /// are checked after effects; this is not a search for a winning playthrough.
+    fn preview(
+        &self,
+        choice: &Choice,
+        variables: &Variables,
+    ) -> Result<(usize, Variables), ActionError> {
+        if !eligible(choice, variables) {
+            return Err(ActionError::InvalidChoice);
+        }
+        let mut variables = variables.clone();
         apply_effects(&choice.effects, &mut variables)?;
         let target = self
             .story
@@ -155,6 +145,42 @@ impl Engine {
                 node: node.id.clone(),
             });
         }
+        Ok((target, variables))
+    }
+
+    /// Returns visible authored content and executable offers, never private state.
+    /// Each offer passes the same one-transition preview as `apply`; without a
+    /// state/revision change it cannot fail on effects or destination conditions.
+    pub fn output(&self) -> SemanticOutput {
+        let node = &self.story.nodes[self.node];
+        SemanticOutput {
+            revision: self.revision,
+            content: node.content.clone(),
+            offers: node
+                .choices
+                .iter()
+                .filter(|choice| {
+                    self.revision < u64::MAX && self.preview(choice, &self.variables).is_ok()
+                })
+                .map(|choice| InteractionOffer {
+                    id: choice.id.clone(),
+                    label: choice.label.clone(),
+                })
+                .collect(),
+            ending: node.ending.clone(),
+        }
+    }
+
+    pub fn apply(&mut self, action: &GameAction) -> Result<SemanticOutput, ActionError> {
+        if action.revision != self.revision {
+            return Err(ActionError::StaleRevision);
+        }
+        let choice = self.story.nodes[self.node]
+            .choices
+            .iter()
+            .find(|choice| choice.id == action.choice_id)
+            .ok_or(ActionError::InvalidChoice)?;
+        let (target, variables) = self.preview(choice, &self.variables)?;
         let revision = self
             .revision
             .checked_add(1)
@@ -215,18 +241,8 @@ impl Engine {
                 )));
             }
         }
-        let target = &self.story.nodes[node];
-        if target.ending.is_none()
-            && !target
-                .choices
-                .iter()
-                .any(|choice| eligible(choice, &save.variables))
-        {
-            return Err(ValidationError(format!(
-                "save node '{}': no eligible choices",
-                save.node_id
-            )));
-        }
+        self.ensure_playable(node, &save.variables)
+            .map_err(|error| ValidationError(format!("save {error}")))?;
         // Loading an older checkpoint must not reactivate an already issued
         // action. Preserve saved revisions when possible, but never reuse one
         // within this engine instance.
