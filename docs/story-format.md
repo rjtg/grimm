@@ -1,4 +1,4 @@
-# Authored stories and saves (M1)
+# Authored stories and saves
 
 Play from the repository root:
 
@@ -140,7 +140,7 @@ offers, their offending choices/targets, shortest discovered node/choice routes,
 and the IDs of explicit endings actually observed. Bad authored endings remain
 valid terminal outcomes, even when their state reflects a player's mistake.
 
-Default budgets are 1,024 discovered `(node, variables)` states and 8,192 inspected
+Default budgets are 1,024 discovered `(node, variables, world time)` states and 8,192 inspected
 choices. All choice inspections, including condition-ineligible ones, consume
 the choice budget. Exact state equality handles unchanged-state cycles without
 letting a hash collision hide a state; variable-changing cycles consume the
@@ -174,14 +174,22 @@ in the composition root. The Last Lighthouse uses stable character/location
 names and persistent variables as authoring conventions (see its YAML identity
 comment and the authoring report), not a newly invented entity registry.
 
+M1.75 extends this checker with fictional time in state identity and an authored
+`<timeout>` edge for each timed node. It explores timely choices and expiry, not
+each millisecond or presentation phase. Pause/readiness do not create narrative
+deadlocks. The notation is diagnostic, never an offered player action. As before,
+bounded results are not exhaustive temporal model checking; host-only arbitrary
+world advances and future revision-counter exhaustion are not enumerated.
+
 ## Player-visible protocol migration
 
 M0's provisional `SemanticOutput.text: String` is removed. Construct
 `content: Vec<NarrativeContent>` instead, with `Narration { text }` or
 `Dialogue { speaker, text }`. `SemanticOutput` also has `ending: Option<Ending>`;
 consumers detect completion explicitly rather than treating empty offers as an
-ending. `GameAction`, `InteractionOffer`, presentation commands and raw input keep
-their M0 shapes. The adapter emits the text unchanged, prefixes dialogue with
+ending. `GameAction`, `InteractionOffer` and raw input keep their M0 shapes.
+M1.75 adds an optional semantic decision view and a presentation `Countdown`
+command. The adapter emits the text unchanged, prefixes dialogue with
 `SPEAKER: `, and appends `Ending: TITLE` on completion.
 
 The protocol is still provisional, with no stable transport negotiation. Existing
@@ -233,3 +241,181 @@ edits. Identity/version matching is not a content hash: same-version edits are
 the author's responsibility. Saves are local editable state, not authenticated
 history or proof of reachability. No event journal or replay framework is added.
 Unsupported schema versions are rejected rather than guessed or auto-migrated.
+
+## Temporal stories (schema 2)
+
+Timing is opt-in; existing schema-1 files are unchanged. Use `schema_version: 2`
+and `time: {}` (origin zero), or `time: { start_minutes: 10 }`. All time values are
+unsigned integers: world chronology in fictional **minutes**, decision budgets in
+**milliseconds**. Negative values fail decoding; zero decision limits fail
+validation. Ordinary choices default to zero cost and nodes to no deadline.
+
+A complete small example:
+
+```yaml
+schema_version: 2
+id: temporal-example
+version: 1
+title: A Signal in Time
+time: {}
+start: station
+nodes:
+  - id: station
+    content: [{kind: narration, text: "Investigate now; this prompt is untimed."}]
+    choices:
+      - {id: tower, label: "Search the tower (15 minutes).", target: platform, advance_minutes: 15}
+      - {id: run, label: "Run to the platform (2 minutes).", target: platform, advance_minutes: 2}
+  - id: platform
+    content: [{kind: narration, text: "Act within five seconds or the train passes."}]
+    decision:
+      limit_ms: 5000
+      timeout: {target: missed}
+    choices:
+      - id: stop
+        label: Stop the train while the fictional window remains open.
+        target: stopped
+        condition: {op: world_at_most, minutes: 10}
+      - {id: withdraw, label: Leave the platform., target: missed}
+  - id: stopped
+    content: [{kind: narration, text: "The train stops safely."}]
+    ending: {id: stopped, title: In Time}
+  - id: missed
+    content: [{kind: narration, text: "The train passes. This is an authored outcome."}]
+    ending: {id: missed, title: Too Late}
+```
+
+### World time and conditions
+
+`advance_minutes` is an optional choice cost. The engine checks the choice's
+condition before applying its cost/effects, and destination conditions after
+them. `world_at_least` and `world_at_most` use inclusive comparisons and can be
+nested in the existing `all`, `any`, and `not` conditions. World costs, variable
+effects, target and revision commit atomically. Overflow or failed transition
+validation changes none of them; such predictably failing choices are excluded.
+World chronology never advances just because a person or renderer takes time.
+
+Hosts can explicitly submit revision-scoped `AdvanceWorld { minutes }` at an
+untimed, nonterminal node. The duration must be positive and the resulting
+offers valid. This is separate from decision elapsed observations, not a general
+scheduled-event system. The normal game author uses choice costs instead.
+
+### Authored deadlines and guaranteed consequences
+
+`decision.limit_ms` must be positive. A `timeout` target is required and must
+exist. Its optional `effects` use the existing typed `set` operation; arithmetic
+and world costs are deliberately not supported for timeouts, so expiry cannot
+be prevented by overflowing an accumulator. Use ordinary choices for those costs.
+
+A timeout target must be an explicit ending or a scene with at least one
+unconditional, effect-free, zero-cost choice to an ending. This scene may also
+have richer choices or its own validated deadline. The rule ensures a usable
+fallback without claiming to solve every possible ordinary story route. Endings
+cannot have deadlines. Timeout edges count for graph reachability and ending
+paths. Timed wait-only nodes may have no ordinary choices: their authored timeout
+is still an intentional interaction outcome, not a nonterminal no-offer defect.
+
+### Host protocol, readiness and exact boundary
+
+The engine's `time_input(&TimeInput { revision, event })` accepts explicit events:
+
+| Event | Canonical behavior |
+|---|---|
+| `Ready` | AwaitingReady → Active, only after the prompt is actually available |
+| `Elapsed { total_ms }` | Strictly increasing cumulative active milliseconds since the latest Ready; updates remaining time or commits authored expiry |
+| `Pause` | Freezes remaining duration; advances revision and invalidates old inputs |
+| `Resume` | Paused → AwaitingReady; advances revision, preserving remaining duration |
+| `AdvanceWorld { minutes }` | Explicit checked fictional advance at an untimed node |
+
+Entering a timed node creates AwaitingReady at the full authored duration. The
+host must render/flush, then acknowledge Ready, then start its observation
+baseline. Renderable offers in this phase require Ready before execution.
+`apply()` rejects choices while unready/paused. Paused output has no executable
+choices. Ready cannot restart an active countdown. Resume requires another
+presentation/Ready and a fresh cumulative baseline at the preserved remainder.
+
+Elapsed is cumulative, **not** a delta: 100 then 200 consumes 200 milliseconds,
+not 300. Equal/backward observations fail without mutation. Elapsed inputs while
+unready/paused are rejected. The host observes elapsed **before** processing a
+player action. At `delta >= remaining_ms`, timeout wins and commits one revision;
+the competing old action is stale. A timely action commits first only when the
+preceding observation is below the boundary. Repeated expiry or queued old ticks
+cannot commit the interaction twice. Overrun never carries into an unseen next
+deadline. The core makes no wall-clock guess when only a `GameAction` is supplied:
+observation ordering is a required host responsibility, demonstrated by the CLI.
+
+Only the semantic `decision: { remaining_ms, phase }` view reaches adapters.
+World minutes, last observation bookkeeping and timeout policies are not in
+`SemanticOutput`. `Countdown { remaining_ms, label }` is presentation data with
+no authority to expire anything. A host can use a manually recorded sequence for
+deterministic replay; no system clock, sleeping, or worker thread enters the core.
+
+### Saving, loading and offline policy
+
+Temporal sessions write save schema **2**, adding:
+
+```json
+"temporal": {
+  "world_minutes": 17,
+  "decision": { "remaining_ms": 12000, "phase": "paused" }
+}
+```
+
+This is a field of the ordinary checkpoint, alongside story identity/version,
+node, variables and revision. It is private host checkpoint data, not a player
+projection. Untimed nodes/endings in a temporal story use `decision: null`.
+
+**Closed games consume no time.** A restored Active decision becomes
+AwaitingReady with its exact remainder; saved Paused remains Paused. World time
+is preserved. Remaining durations must be in `1..=limit_ms`, deadline presence
+must match the node, and world time cannot precede the authored origin. All
+checks finish before replacement. A temporal restore reserves a revision strictly
+above both the current and saved revisions, even in a fresh process, and resets
+the observation baseline. Pre-save actions, ticks and lifecycle events are stale
+after readiness too. Untimed v1 sessions keep their existing revision policy.
+
+Saving is a pure snapshot, not an implicit Pause. The CLI first observes active
+time; if the user continues playing, save I/O and later wall time count normally.
+Use `:pause` before `:save PATH` to freeze the decision. Offline time is never
+inferred from timestamps, and loading never silently triggers an arbitrary late
+timeout. Invalid loads leave the current timer and game state intact.
+
+### Real-time CLI and compatibility
+
+Temporal stories use a host-owned stdin reader thread and bounded channel, plus
+one `Instant` observation baseline per active segment. The host waits for input
+with a maximum 250ms timeout, submits elapsed observations during silence, and
+refreshes the visible indicator roughly once per second. EOF on an active
+decision still permits expiry; EOF on an untimed/paused prompt exits without a
+choice. Engine-selected consequences remain authored even with no input.
+Completed lines carry a timestamp from the same monotonic host clock; that
+observation is supplied before their game action, avoiding a needless penalty
+for a line already queued while the host handles output. A consequence already
+committed at that revision cannot be retroactively undone by a delayed message.
+
+`:pause`, `:resume`, `:save PATH`, `:load PATH`, and `:quit` are global host
+controls. Each outstanding read request owns a prompt revision. A line from that
+read cannot act on a later timeout/restored revision. After an asynchronous scene
+change with an old read still pending, the CLI asks for Enter to acknowledge;
+that old line is discarded, then the new prompt is presented/activated. A new
+deadline is frozen while waiting for acknowledgement. Normal action/load
+transitions finish their read before requesting the next one. Pace scripted input
+by waiting for prompts. Input scheduling and canonical terminal buffering are not
+hard realtime fairness guarantees; a completed line carries the timestamp at
+which the host observed its submission, not a hardware keystroke timestamp.
+Ordinary untimed stories retain their existing blocking renderer/input loop.
+
+Existing schema-1 stories, v1 saves and untimed serialized output retain their
+behavior and shapes. A temporal story requires schema 2 and a v2 checkpoint;
+missing temporal state in a v1 save is rejected rather than fabricated. Rust
+consumers of provisional DTOs add `Story.time: None`, `Node.decision: None`,
+`Choice.advance_minutes: 0`, `SemanticOutput.decision: None`, and
+`SaveGame.temporal: None` to legacy struct literals. `GameAction` and offer shapes
+are unchanged; new enum variants require matching the documented temporal
+conditions/countdown. Absent optional fields and zero choice costs are omitted
+when serializing legacy content. No automatic format migration is introduced.
+
+Limits remain intentionally small: fictional minutes are discrete, timeout
+arithmetic is unsupported, active-deadline world advances must be authored action
+costs, and analysis is bounded. Counter exhaustion fails transactionally rather
+than wrapping. No offline catch-up, event scheduler, NPC simulation, provider,
+graphics, multiplayer arbitration or general async framework is implemented.

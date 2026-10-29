@@ -33,10 +33,11 @@ jobs:
           grep -Fx 'Ending: Truth Across the Water' exile.txt
           printf '2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-witness.yaml > silence.txt
           grep -Fx 'Ending: The Price of Silence' silence.txt
-      - name: Check both reference mysteries for nonterminal deadlocks
+      - name: Check reference stories including temporal branches
         run: |
           cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-witness.yaml
           cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-lighthouse.yaml
+          cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-train.yaml
       - name: Play The Last Lighthouse offline through every ending
         shell: bash
         run: |
