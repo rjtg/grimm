@@ -11,6 +11,8 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **ARCH-006** Static graph and dynamic features share engine action/event/state primitives.
 - **ARCH-007** Player-visible projections exclude hidden information.
 - **ARCH-008** Deterministic core transitions and testable replay with recorded external results.
+- **ARCH-009** World entities (for example characters, locations and objects) have stable identities and potentially persistent state independent of narrative scenes.
+- **ARCH-010** Narrative scenes and world entities are distinct: scenes may reference multiple entities, and entities may appear in multiple scenes; neither location nor scene identity defines story progress. These are conceptual boundaries, not a requirement for inheritance, an ECS or a universal entity store.
 
 ## M0
 - **FND-01** Rust workspace and project conventions.
@@ -30,8 +32,10 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **CYOA-07** Save/load with schema version.
 - **CYOA-08** Multiple endings and regression demo.
 
-## M1.5 — Dogfooding and authoring quality
+## M1.5 — World modeling and dogfooding
 - **CYOA-09** Narrative deadlock handling and story playability: distinguish intentional endings from unintended multi-step, state-dependent nonterminal deadlocks; provide actionable authoring diagnostics and explicit runtime behavior. Preserve the guarantee that offered choices are immediately executable. Full global solvability analysis is **not** required. Track implementation and acceptance tests in [issue #4](https://github.com/rjtg/grimm/issues/4).
+- **WORLD-01** Explore stable world-entity identities across scenes, including at least one character and one location, without implementing a generic entity framework by default.
+- **WORLD-02** Demonstrate three distinct authored narrative scenes associated with the same physical/logical location; scene content and choices may differ with the narrative situation and game state. Revisiting the *same graph node* is not required.
 
 ## M2
 - **GEN-01** Optional generative text adapter behind same boundary.
@@ -46,6 +50,7 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **ACT-03** Validated proposed actions, ambiguity and failure responses.
 
 ## M4
+- **WORLD-03** When persistent world-entity state becomes necessary, support validated state changes shared across scenes (and persistence); defer general-purpose components and simulation unless required by an accepted milestone.
 - **DYN-01** Validated runtime event and node proposals.
 - **DYN-02** Runtime graph overlay with persistence.
 - **DYN-03** Reproducible state transitions and event history.
@@ -59,6 +64,7 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **NAR-01** Declarative milestones and conditions.
 - **NAR-02** Optional director and hard/soft constraints.
 - **NAR-03** Alternate-path milestone tests.
+- **NAR-04** Narrative progress can be represented independently of location and current scene/graph position; use world state and optional explicit milestones without requiring a second parallel progress graph.
 
 ## M7
 - **VIS-01** Visual adapter/renderer implementation.
