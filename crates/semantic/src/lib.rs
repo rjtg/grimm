@@ -1,28 +1,50 @@
 //! Renderer-independent proposals and player-visible engine output.
 //!
-//! These M0 types are provisional; they are not a stable persistence format.
+//! Authoring definitions and checkpoints are host/engine DTOs, not projections.
+
+pub mod save;
+pub mod story;
 
 use serde::{Deserialize, Serialize};
 
 /// A proposal referring to an offer from a particular engine revision.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GameAction {
     pub revision: u64,
     pub choice_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct InteractionOffer {
     pub id: String,
     pub label: String,
 }
 
+/// Authored meaning and exact prose. Formatting belongs to output adapters.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum NarrativeContent {
+    Narration { text: String },
+    Dialogue { speaker: String, text: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ending {
+    pub id: String,
+    pub title: String,
+}
+
 /// A player-visible projection, never an unfiltered event stream or world state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SemanticOutput {
     pub revision: u64,
-    pub text: String,
+    pub content: Vec<NarrativeContent>,
     pub offers: Vec<InteractionOffer>,
+    pub ending: Option<Ending>,
 }
 
 #[cfg(test)]
@@ -37,11 +59,20 @@ mod tests {
         };
         let output = SemanticOutput {
             revision: 7,
-            text: "Exact authored text.\nSecond line.".into(),
+            content: vec![
+                NarrativeContent::Narration {
+                    text: "Exact authored text.\nSecond line.".into(),
+                },
+                NarrativeContent::Dialogue {
+                    speaker: "Witness".into(),
+                    text: "I saw it.".into(),
+                },
+            ],
             offers: vec![InteractionOffer {
                 id: "continue".into(),
                 label: "Continue".into(),
             }],
+            ending: None,
         };
         assert_eq!(
             action,

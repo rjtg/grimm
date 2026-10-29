@@ -1,0 +1,136 @@
+schema_version: 1
+id: the-last-witness
+version: 1
+title: The Last Witness
+start: quay
+variables:
+  evidence: false
+  trust: 0
+  promise: unmade
+nodes:
+  - id: quay
+    content:
+      - kind: narration
+        text: "At dawn, the last ferry leaves Greyhaven. Mara, the only witness to the mill fire, is aboard. You have one hour to learn why the watch wants her silent."
+    choices:
+      - id: investigate
+        label: Search the abandoned mill office before meeting Mara.
+        target: archive
+      - id: leave
+        label: Leave Greyhaven without getting involved.
+        target: silence
+
+  - id: archive
+    content:
+      - kind: narration
+        text: "Behind a scorched desk lies a payroll ledger. The watch captain's signature sits beside a payment made on the night of the fire. Outside, the ferry bell rings."
+    choices:
+      - id: take-ledger
+        label: Take the ledger as evidence, then find Mara.
+        target: witness
+        effects:
+          - op: set
+            variable: evidence
+            value: true
+          - op: add
+            variable: trust
+            amount: 1
+      - id: hurry
+        label: Leave the ledger and hurry to the ferry.
+        target: witness
+
+  - id: witness
+    content:
+      - kind: narration
+        text: "Mara waits beneath the ferry's gangway, clutching a single suitcase."
+      - kind: dialogue
+        speaker: Mara
+        text: "I saw the captain bar the mill doors. If I speak, who will protect my brother?"
+    choices:
+      - id: reassure
+        label: Show the ledger and promise to protect her brother.
+        target: testimony
+        condition:
+          op: all
+          conditions:
+            - op: equals
+              variable: evidence
+              value: true
+            - op: at_least
+              variable: trust
+              value: 1
+        effects:
+          - op: set
+            variable: promise
+            value: kept
+          - op: add
+            variable: trust
+            amount: 1
+      - id: press
+        label: Ask her to testify without making a promise.
+        target: testimony
+      - id: walk-away
+        label: Let her board the ferry and walk away.
+        target: silence
+
+  - id: testimony
+    content:
+      - kind: narration
+        text: "The courthouse opens as the ferry casts off its first rope. You must decide what to do with what you have learned."
+    choices:
+      - id: testify
+        label: Stand beside Mara and present the ledger in court.
+        target: justice
+        condition:
+          op: all
+          conditions:
+            - op: equals
+              variable: evidence
+              value: true
+            - op: at_least
+              variable: trust
+              value: 2
+            - op: equals
+              variable: promise
+              value: kept
+      - id: publish
+        label: Give the ledger to the newspaper and help Mara escape.
+        target: exile
+        condition:
+          op: all
+          conditions:
+            - op: equals
+              variable: evidence
+              value: true
+            - op: not
+              condition:
+                op: at_least
+                variable: trust
+                value: 2
+      - id: withdraw
+        label: Keep silent and let the ferry leave.
+        target: silence
+
+  - id: justice
+    content:
+      - kind: narration
+        text: "Mara speaks. The ledger confirms every word. By evening the captain is in custody, and you escort her brother safely home. For the first time since the fire, Greyhaven's bells mark something other than loss."
+    ending:
+      id: justice
+      title: A Voice in the Light
+
+  - id: exile
+    content:
+      - kind: narration
+        text: "The newspaper prints the ledger before the watch can stop it. Mara and her brother sail under borrowed names. The captain's power begins to crumble, but the last witness will never see Greyhaven again."
+    ending:
+      id: exile
+      title: Truth Across the Water
+
+  - id: silence
+    content:
+      - kind: narration
+        text: "The ferry disappears into the mist. The watch closes its investigation. In Greyhaven, the mill fire becomes another story people know better than to tell."
+    ending:
+      id: silence
+      title: The Price of Silence
