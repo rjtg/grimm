@@ -1,0 +1,30 @@
+schema_version: 1
+id: multi-step-deadlock
+version: 1
+title: Multi-step deadlock regression
+start: a
+variables: { ready: true }
+nodes:
+  - id: a
+    content: [{ kind: narration, text: First watch }]
+    choices: [{ id: next, label: Continue, target: b }]
+  - id: b
+    content: [{ kind: narration, text: The switch changes state }]
+    choices:
+      - id: next
+        label: Disconnect the switch.
+        target: c
+        effects: [{ op: set, variable: ready, value: false }]
+  - id: c
+    content: [{ kind: narration, text: Nonterminal blocked scene }]
+    choices: [{ id: next, label: Approach the gate., target: d }]
+  - id: d
+    content: [{ kind: narration, text: The gate }]
+    choices:
+      - id: finish
+        label: Finish
+        target: end
+        condition: { op: equals, variable: ready, value: true }
+  - id: end
+    content: [{ kind: narration, text: Intentional ending }]
+    ending: { id: finished, title: Finished }

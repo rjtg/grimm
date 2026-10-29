@@ -1,7 +1,7 @@
 use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter};
 use grimm_cli::{load_story, read_save, write_save};
 use grimm_cli_renderer::CliRenderer;
-use grimm_engine::Engine;
+use grimm_engine::{Engine, PlayabilityLimits};
 use grimm_presentation::PresentationCommand;
 use std::{env, io, path::Path, process::ExitCode};
 
@@ -17,11 +17,36 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).collect();
+    if let [command, story, rest @ ..] = args.as_slice()
+        && command == "check"
+    {
+        let mut limits = PlayabilityLimits::default();
+        let (options, remainder) = rest.as_chunks::<2>();
+        for pair in options {
+            let value = pair[1]
+                .to_str()
+                .and_then(|value| value.parse::<usize>().ok())
+                .ok_or("Check budgets must be nonnegative integers")?;
+            if pair[0] == "--max-states" {
+                limits.max_states = value;
+            } else if pair[0] == "--max-transitions" {
+                limits.max_transitions = value;
+            } else {
+                return Err(
+                    "Unknown check option; use --max-states N or --max-transitions N".into(),
+                );
+            }
+        }
+        if !remainder.is_empty() {
+            return Err("Missing check budget value".into());
+        }
+        return check_story(Path::new(story), limits);
+    }
     let (title, mut engine) = match args.as_slice() {
         [] => (None, Engine::default()),
         [help] if help == "--help" || help == "-h" => {
             println!(
-                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\nSession commands: :save PATH, :load PATH, :quit"
+                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\nSession commands: :save PATH, :load PATH, :quit"
             );
             return Ok(());
         }
@@ -55,6 +80,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
         if output.offers.is_empty() {
+            engine.validate_current_state().map_err(|error| format!("Story blocked: {error}. Run 'grimm-cli check STORY.yaml' for authoring diagnostics; this is not an authored ending."))?;
             return Err("Story has no executable choices in the current state.".into());
         }
         let Some(input) = renderer.read_input()? else {
@@ -98,4 +124,46 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             ))])?;
         }
     }
+}
+
+fn check_story(path: &Path, limits: PlayabilityLimits) -> Result<(), Box<dyn std::error::Error>> {
+    let (title, engine) = load_story(path)?;
+    let report = engine.check_playability(limits);
+    println!(
+        "{title}: {} states checked, {} choices inspected.",
+        report.states_checked, report.transitions_checked
+    );
+    for deadlock in &report.deadlocks {
+        println!(
+            "Nonterminal deadlock at node '{}': {}",
+            deadlock.node_id, deadlock.reason
+        );
+        for step in &deadlock.path {
+            println!("  node '{}' -> choice '{}'", step.node_id, step.choice_id);
+        }
+    }
+    println!(
+        "Authored endings observed: {}",
+        report
+            .endings
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    if report.truncated {
+        return Err(format!("Playability check inconclusive: budget exhausted ({} states / {} choices). Increase --max-states or --max-transitions; absence of findings is not validation.", limits.max_states, limits.max_transitions).into());
+    }
+    if !report.deadlocks.is_empty() {
+        return Err(format!(
+            "{}: playability check found {} nonterminal deadlock(s)",
+            path.display(),
+            report.deadlocks.len()
+        )
+        .into());
+    }
+    println!(
+        "No nonterminal deadlocks found in this bounded check; this is not a proof of eventual completion."
+    );
+    Ok(())
 }

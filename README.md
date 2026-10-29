@@ -14,8 +14,9 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 
 See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), and [M0 brief](docs/milestones/m0.md).
 
-Status: M0 and M1 implemented: an authored CYOA engine with YAML stories, typed
+Status: M0, M1 and M1.5 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
+Two reference mysteries exercise persistent story state and bounded playability checks.
 AI and graphical frontends remain future milestones.
 
 ## Build and run
@@ -56,6 +57,59 @@ printf '2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories
 To write another adventure, see the [story and save format](docs/story-format.md).
 No story-specific code is required in the engine.
 
+## The Last Lighthouse
+
+Investigate a transmission from the **Orison**, a ship missing for forty-three
+winters. Revisit the North Spit radio room in daylight, on the night watch and
+at dawn; decide whether to trust keeper Lena Voss, answer the signal, or follow
+the offshore lights. This independent, 15-node mystery has four authored endings
+and uses the existing M1 story format.
+
+```sh
+cargo run --locked -p grimm-cli -- play stories/the-last-lighthouse.yaml
+```
+
+To save at the night watch, enter `1`, `1`, `1`, `1`, then
+`:save /tmp/lighthouse.json`. Resume with:
+
+```sh
+cargo run --offline --locked -p grimm-cli -- play stories/the-last-lighthouse.yaml --load /tmp/lighthouse.json
+```
+
+Reproduce each ending:
+
+```sh
+# Witnesses on the Shore: evidence and partnership
+printf '1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml
+# The Watch Is Over: callsign and grounded reply
+printf '1\n1\n1\n1\n3\n1\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml
+# An Unanswered Bell: caution without evidence
+printf '2\n2\n3\n2\n1\n1\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml
+# One More Voice: an intentional bad ending, not a deadlock
+printf '2\n2\n3\n1\n2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml
+```
+
+See the [authoring/playtest report](docs/milestones/m1.5-authoring-report.md) for
+the identity conventions, actual CLI playtest, friction points and follow-ups.
+
+## Check an authored story
+
+Run this before publishing a story, in addition to its regression playthroughs:
+
+```sh
+cargo run --offline --locked -p grimm-cli -- check stories/the-last-lighthouse.yaml
+cargo run --offline --locked -p grimm-cli -- check stories/the-last-witness.yaml
+```
+
+The check finds reachable nonterminal deadlocks using a deterministic bounded
+traversal (defaults: 1,024 distinct narrative states and 8,192 choice inspections).
+It reports node/choice routes and observed endings. A deadlock or budget cutoff
+returns a failure status; **inconclusive is not validation**. Larger finite
+stories can raise budgets with `--max-states N --max-transitions N` after the
+story filename. This does not prove eventual completion or detect every possible
+liveness problem; executable cycles can continue indefinitely. See the precise
+[guarantees and limits](docs/story-format.md#bounded-authoring-check-m15).
+
 ## M0 regression demo
 
 `cargo run --locked -p grimm-cli` without arguments still runs the original
@@ -90,7 +144,10 @@ cargo test --workspace --locked
 
 Tests include complete reference playthroughs, invalid YAML/graphs, conditions
 and atomic effects, save/load continuation, the actual CLI process, and all M0
-boundary/privacy regressions. CI runs these checks and offline M0/M1 demos.
+boundary/privacy regressions. CI runs these checks, bounded story checks, and
+offline demos of both mysteries. M1.5 tests add shared-location scenes, recurring
+character/state continuity, four endings, multi-step deadlocks, cycles and
+inconclusive budgets. See the [M1.5 brief](docs/milestones/m1.5.md).
 See the [M1 acceptance plan and implementation report](docs/milestones/m1.md)
 for coverage, compatibility notes and open questions, and the historical
 [M0 implementation notes](docs/milestones/m0-implementation.md) for the foundation.

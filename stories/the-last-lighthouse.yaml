@@ -99,7 +99,7 @@ nodes:
   - id: intercept
     content:
       - kind: narration
-        text: "On tape, a woman's voice says, 'O-17. There are still people aboard.' Beneath it, a second voice repeats Lena's name a breath too late. Then the first voice adds: 'Keep your light on your shore. Don't follow ours.' You label the tape before the receiver falls silent."
+        text: "On tape, a woman's voice says, 'There are still people aboard.' Beneath it, a second voice repeats Lena's name a breath too late. Then the first voice adds: 'Keep your light on your shore. Don't follow ours.' You label the tape before the receiver falls silent."
     choices:
       - id: share-tape
         label: Let Lena hear the warning before you decide what to do.

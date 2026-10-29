@@ -1,7 +1,10 @@
 //! Headless authored CYOA runtime. Only the engine commits canonical state.
 mod demo;
 mod expressions;
+mod playability;
 mod validation;
+
+pub use playability::{Deadlock, PlayabilityLimits, PlayabilityReport, PlayabilityStep};
 
 use expressions::{apply_effects, evaluate, same_type};
 use grimm_semantic::{

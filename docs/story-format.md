@@ -123,6 +123,57 @@ and exits rather than silently displaying a choice that would fail or treating
 the state as an ending. A revision-exhausted checkpoint also has no executable
 offers and is handled this way; direct proposals still return `RevisionOverflow`.
 
+## Bounded authoring check (M1.5)
+
+```sh
+cargo run --locked -p grimm-cli -- check stories/the-last-lighthouse.yaml
+# Optional limits after the filename:
+cargo run --locked -p grimm-cli -- check stories/the-last-lighthouse.yaml --max-states 2048 --max-transitions 16384
+```
+
+This opt-in authoring step addresses CYOA-09 without changing one-step offers or
+requiring a solver during gameplay. Structural validation runs first. The engine
+then explores reachable executable transitions breadth-first from the loaded
+story's initial state, applying the runtime's pure transition preview to candidate
+copies. An author-facing report lists nonterminal states with no executable
+offers, their offending choices/targets, shortest discovered node/choice routes,
+and the IDs of explicit endings actually observed. Bad authored endings remain
+valid terminal outcomes, even when their state reflects a player's mistake.
+
+Default budgets are 1,024 discovered `(node, variables)` states and 8,192 inspected
+choices. All choice inspections, including condition-ineligible ones, consume
+the choice budget. Exact state equality handles unchanged-state cycles without
+letting a hash collision hide a state; variable-changing cycles consume the
+state budget. A partially inspected node is not reported as a deadlock merely
+because a limit interrupted it. Already discovered findings are still reported.
+The CLI returns nonzero on either findings or **inconclusive budget exhaustion**;
+it never prints a clean-check result after a cutoff. A zero-state budget examines
+nothing and is inconclusive. Limits bound counts, not wall time or input size.
+
+There is no global solvability or termination guarantee. Cycles with executable
+moves are not nonterminal no-offer deadlocks, even if their conditionally guarded
+exit is never enabled; the report may show no observed endings. The checker
+does not synthesize repairs, force progress or silently turn failures into
+endings. Raising budgets is an explicit author choice, not an automatic attempt
+to enumerate unbounded changing-state loops. Run story-specific playthroughs too.
+
+`Engine::check_playability(PlayabilityLimits)` can also analyze a restored/current
+session. Its report is host/author data, never part of `SemanticOutput`. Analysis
+does not change canonical state, advance revisions or write saves. Revision is
+excluded from narrative-state deduplication; an already exhausted active session
+is diagnosed explicitly, but future counter exhaustion is not modeled along
+every hypothetical route. `validate_current_state()` supplies contextual runtime
+errors. If unchecked play reaches a blocked non-ending, the CLI reports the node,
+failed choices/targets and an authoring-check recommendation on stderr, with a
+failure exit status and no invented ending. It does not change committed history
+or pick a fallback on the author's behalf.
+
+No story/save schema or semantic projection changes are needed. The engine still
+depends only on semantic types. YAML, report formatting and terminal I/O remain
+in the composition root. The Last Lighthouse uses stable character/location
+names and persistent variables as authoring conventions (see its YAML identity
+comment and the authoring report), not a newly invented entity registry.
+
 ## Player-visible protocol migration
 
 M0's provisional `SemanticOutput.text: String` is removed. Construct
