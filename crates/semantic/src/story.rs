@@ -10,6 +10,7 @@ use std::fmt;
 
 pub const STORY_SCHEMA_VERSION: u32 = 1;
 pub const TEMPORAL_STORY_SCHEMA_VERSION: u32 = 2;
+pub const FLOW_STORY_SCHEMA_VERSION: u32 = 3;
 pub type Variables = BTreeMap<String, Value>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,6 +61,10 @@ pub struct Timeout {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub continue_to: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub presentation_required: bool,
     pub id: String,
     pub content: Vec<NarrativeContent>,
     #[serde(default)]

@@ -24,6 +24,8 @@ fn story() -> Story {
         .into(),
         nodes: vec![
             Node {
+                continue_to: None,
+                presentation_required: false,
                 decision: None,
                 id: "start".into(),
                 content: narration("Start"),
@@ -64,6 +66,8 @@ fn story() -> Story {
                 ],
             },
             Node {
+                continue_to: None,
+                presentation_required: false,
                 decision: None,
                 id: "gate".into(),
                 content: narration("Gate"),
@@ -93,6 +97,8 @@ fn story() -> Story {
                 }],
             },
             Node {
+                continue_to: None,
+                presentation_required: false,
                 decision: None,
                 id: "end".into(),
                 content: narration("End"),

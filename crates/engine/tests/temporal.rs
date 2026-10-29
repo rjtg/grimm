@@ -17,6 +17,8 @@ fn choice(id: &str, target: &str, cost: u64) -> Choice {
 }
 fn node(id: &str, choices: Vec<Choice>) -> Node {
     Node {
+        continue_to: None,
+        presentation_required: false,
         id: id.into(),
         content: vec![grimm_semantic::NarrativeContent::Narration { text: id.into() }],
         choices,

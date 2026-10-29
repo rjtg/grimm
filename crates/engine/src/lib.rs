@@ -1,18 +1,21 @@
 //! Headless authored CYOA runtime. Only the engine commits canonical state.
 mod demo;
 mod expressions;
+mod flow;
 mod playability;
 mod temporal;
 mod validation;
 
+pub use flow::FlowError;
 pub use playability::{Deadlock, PlayabilityLimits, PlayabilityReport, PlayabilityStep};
 pub use temporal::TimeError;
 
 use expressions::{apply_effects, evaluate, same_type};
 use grimm_semantic::{
     GameAction, InteractionOffer, SemanticOutput,
-    save::{SAVE_SCHEMA_VERSION, SaveGame, TEMPORAL_SAVE_SCHEMA_VERSION},
-    story::{Choice, Story, Variables},
+    flow::{FlowPhase, FlowView},
+    save::{FLOW_SAVE_SCHEMA_VERSION, SAVE_SCHEMA_VERSION, SaveGame, TEMPORAL_SAVE_SCHEMA_VERSION},
+    story::{Choice, FLOW_STORY_SCHEMA_VERSION, Story, Variables},
     time::{DecisionPhase, TemporalSave},
 };
 use std::fmt;
@@ -32,6 +35,7 @@ pub struct Engine {
     revision: u64,
     world_minutes: Option<u64>,
     decision: Option<ActiveDecision>,
+    flow: Option<FlowView>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +103,7 @@ impl Engine {
         let variables = story.variables.clone();
         let world_minutes = story.time.as_ref().map(|time| time.start_minutes);
         let decision = ActiveDecision::for_node(&story.nodes[node]);
+        let flow = flow::for_node(&story.nodes[node]);
         let engine = Self {
             story,
             node,
@@ -106,6 +111,7 @@ impl Engine {
             revision: 0,
             world_minutes,
             decision,
+            flow,
         };
         engine.ensure_playable(engine.node, &engine.variables, world_minutes)?;
         Ok(engine)
@@ -122,6 +128,14 @@ impl Engine {
         // choices are unavailable. Readiness is a lifecycle input, not a deadlock.
         if node.ending.is_some() || node.decision.is_some() {
             return Ok(());
+        }
+        if let Some(choice) = flow::continuation(node) {
+            return self
+                .preview(&choice, variables, world)
+                .map(|_| ())
+                .map_err(|error| {
+                    ValidationError(format!("node '{}' continuation: {error}", node.id))
+                });
         }
         let mut failures = Vec::new();
         for choice in node
@@ -172,6 +186,7 @@ impl Engine {
         let node = &self.story.nodes[target];
         if node.ending.is_none()
             && node.decision.is_none()
+            && node.continue_to.is_none()
             && !node
                 .choices
                 .iter()
@@ -188,6 +203,7 @@ impl Engine {
     pub fn output(&self) -> SemanticOutput {
         let node = &self.story.nodes[self.node];
         SemanticOutput {
+            flow: self.flow.clone(),
             revision: self.revision,
             content: node.content.clone(),
             offers: node
@@ -196,6 +212,10 @@ impl Engine {
                 .filter(|choice| {
                     self.revision < u64::MAX
                         && self
+                            .flow
+                            .as_ref()
+                            .is_none_or(|flow| !flow.paused && flow.phase != FlowPhase::Presenting)
+                        && self
                             .decision
                             .as_ref()
                             .is_none_or(|decision| decision.view.phase != DecisionPhase::Paused)
@@ -203,7 +223,8 @@ impl Engine {
                             .preview(choice, &self.variables, self.world_minutes)
                             .is_ok_and(|(target, _, _)| {
                                 self.revision != u64::MAX - 1
-                                    || self.story.nodes[target].decision.is_none()
+                                    || (self.story.nodes[target].decision.is_none()
+                                        && flow::for_node(&self.story.nodes[target]).is_none())
                             })
                 })
                 .map(|choice| InteractionOffer {
@@ -227,6 +248,13 @@ impl Engine {
         {
             return Err(ActionError::DecisionNotActive);
         }
+        if self
+            .flow
+            .as_ref()
+            .is_some_and(|flow| flow.paused || flow.phase != FlowPhase::Interactive)
+        {
+            return Err(ActionError::DecisionNotActive);
+        }
         let choice = self.story.nodes[self.node]
             .choices
             .iter()
@@ -247,7 +275,10 @@ impl Engine {
             .revision
             .checked_add(1)
             .ok_or(ActionError::RevisionOverflow)?;
-        if revision == u64::MAX && self.story.nodes[target].decision.is_some() {
+        if revision == u64::MAX
+            && (self.story.nodes[target].decision.is_some()
+                || flow::for_node(&self.story.nodes[target]).is_some())
+        {
             return Err(ActionError::RevisionOverflow);
         }
         self.variables = variables;
@@ -255,13 +286,17 @@ impl Engine {
         self.world_minutes = world;
         self.revision = revision;
         self.decision = ActiveDecision::for_node(&self.story.nodes[target]);
+        self.flow = flow::for_node(&self.story.nodes[target]);
         Ok(self.output())
     }
 
     /// Host-only checkpoint. Adapters/renderers never receive this private DTO.
     pub fn save(&self) -> SaveGame {
         SaveGame {
-            schema_version: if self.world_minutes.is_some() {
+            flow: self.flow.clone(),
+            schema_version: if self.story.schema_version == FLOW_STORY_SCHEMA_VERSION {
+                FLOW_SAVE_SCHEMA_VERSION
+            } else if self.world_minutes.is_some() {
                 TEMPORAL_SAVE_SCHEMA_VERSION
             } else {
                 SAVE_SCHEMA_VERSION
@@ -282,11 +317,19 @@ impl Engine {
     pub fn restore(&mut self, save: SaveGame) -> Result<SemanticOutput, ValidationError> {
         if save.schema_version != SAVE_SCHEMA_VERSION
             && save.schema_version != TEMPORAL_SAVE_SCHEMA_VERSION
+            && save.schema_version != FLOW_SAVE_SCHEMA_VERSION
         {
             return Err(ValidationError(format!(
-                "unsupported save schema version {}; expected 1 or 2",
+                "unsupported save schema version {}; expected 1, 2 or 3",
                 save.schema_version
             )));
+        }
+        if (self.story.schema_version == FLOW_STORY_SCHEMA_VERSION)
+            != (save.schema_version == FLOW_SAVE_SCHEMA_VERSION)
+        {
+            return Err(ValidationError(
+                "story schema 3 requires save schema 3; legacy stories require legacy saves".into(),
+            ));
         }
         if save.story_id != self.story.id || save.story_version != self.story.version {
             return Err(ValidationError(format!(
@@ -319,9 +362,11 @@ impl Engine {
             }
         }
         let (world, decision) = self.restore_temporal(&save, node)?;
+        let flow = self.restore_flow(&save, node)?;
         self.ensure_playable(node, &save.variables, world)
             .map_err(|error| ValidationError(format!("save {error}")))?;
-        let revision = if world.is_some() {
+        let revision = if world.is_some() || self.story.schema_version == FLOW_STORY_SCHEMA_VERSION
+        {
             // A fresh process must not reactivate a checkpoint's pending action
             // or cumulative clock observations when it acknowledges readiness.
             self.revision.max(save.revision).checked_add(1)
@@ -332,9 +377,9 @@ impl Engine {
                 .map(|revision| revision.max(save.revision))
         }
         .ok_or_else(|| ValidationError("cannot restore: session revision exhausted".into()))?;
-        if revision == u64::MAX && decision.is_some() {
+        if revision == u64::MAX && (decision.is_some() || flow.is_some()) {
             return Err(ValidationError(
-                "cannot restore an exhausted timed interaction revision".into(),
+                "cannot restore an exhausted interaction revision".into(),
             ));
         }
         self.node = node;
@@ -342,6 +387,7 @@ impl Engine {
         self.revision = revision;
         self.world_minutes = world;
         self.decision = decision;
+        self.flow = flow;
         Ok(self.output())
     }
 }

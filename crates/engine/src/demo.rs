@@ -15,6 +15,8 @@ pub(crate) fn story() -> Story {
         variables: Default::default(),
         nodes: vec![
             Node {
+                continue_to: None,
+                presentation_required: false,
                 decision: None,
                 id: "start".into(),
                 content: vec![NarrativeContent::Narration {
@@ -31,6 +33,8 @@ pub(crate) fn story() -> Story {
                 ending: None,
             },
             Node {
+                continue_to: None,
+                presentation_required: false,
                 decision: None,
                 id: "end".into(),
                 content: vec![NarrativeContent::Narration {

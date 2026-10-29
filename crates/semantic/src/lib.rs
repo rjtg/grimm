@@ -2,6 +2,7 @@
 //!
 //! Authoring definitions and checkpoints are host/engine DTOs, not projections.
 
+pub mod flow;
 pub mod save;
 pub mod story;
 pub mod time;
@@ -42,6 +43,8 @@ pub struct Ending {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SemanticOutput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow: Option<flow::FlowView>,
     pub revision: u64,
     pub content: Vec<NarrativeContent>,
     pub offers: Vec<InteractionOffer>,
@@ -61,6 +64,7 @@ mod tests {
             choice_id: "continue".into(),
         };
         let output = SemanticOutput {
+            flow: None,
             decision: None,
             revision: 7,
             content: vec![

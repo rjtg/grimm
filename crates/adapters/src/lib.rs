@@ -2,8 +2,21 @@
 //! Adapters have protocol dependencies only, never access to the engine.
 
 use grimm_presentation::{PresentationCommand, RawInput};
+use grimm_presentation::{PresentationEvent, PresentationFeedback};
+use grimm_semantic::flow::{FlowEvent, FlowInput, FlowPhase};
 use grimm_semantic::time::DecisionPhase;
 use grimm_semantic::{GameAction, NarrativeContent, SemanticOutput};
+
+/// Host-side translation, deliberately independent of any engine implementation.
+pub fn lifecycle_input(feedback: PresentationFeedback) -> FlowInput {
+    FlowInput {
+        revision: feedback.revision,
+        event: match feedback.event {
+            PresentationEvent::Complete => FlowEvent::PresentationComplete,
+            PresentationEvent::InteractionReady => FlowEvent::InteractionReady,
+        },
+    }
+}
 
 pub trait OutputAdapter {
     fn present(&mut self, output: &SemanticOutput) -> Vec<PresentationCommand>;
@@ -22,6 +35,13 @@ pub struct TextAdapter {
 impl TextAdapter {
     /// Refresh timing presentation without repeating prose or remapping actions.
     pub fn present_deadline(&self, output: &SemanticOutput) -> Vec<PresentationCommand> {
+        if output
+            .flow
+            .as_ref()
+            .is_some_and(|flow| flow.phase == FlowPhase::Presenting)
+        {
+            return vec![];
+        }
         output
             .decision
             .iter()
@@ -51,6 +71,12 @@ impl OutputAdapter for TextAdapter {
         let mut commands: Vec<_> = output
             .content
             .iter()
+            .filter(|_| {
+                output
+                    .flow
+                    .as_ref()
+                    .is_none_or(|flow| flow.phase == FlowPhase::Presenting)
+            })
             .map(|content| {
                 PresentationCommand::Text(match content {
                     NarrativeContent::Narration { text } => text.clone(),
@@ -64,6 +90,21 @@ impl OutputAdapter for TextAdapter {
                 ending.title
             )));
         }
+        if let Some(flow) = &output.flow {
+            if flow.paused {
+                commands.push(PresentationCommand::Text(
+                    "Paused. Use :resume or :save PATH.".into(),
+                ));
+                return commands;
+            }
+            if flow.phase == FlowPhase::Presenting {
+                commands.push(PresentationCommand::AwaitCompletion {
+                    revision: output.revision,
+                    prompt: "Press Enter when finished reading...".into(),
+                });
+                return commands;
+            }
+        }
         commands.extend(self.present_deadline(output));
         if !output.offers.is_empty() {
             commands.push(PresentationCommand::Choices(
@@ -73,6 +114,15 @@ impl OutputAdapter for TextAdapter {
                     .map(|offer| offer.label.clone())
                     .collect(),
             ));
+        }
+        if output
+            .flow
+            .as_ref()
+            .is_some_and(|flow| flow.phase == FlowPhase::AwaitingInteraction)
+        {
+            commands.push(PresentationCommand::InteractionAvailable {
+                revision: output.revision,
+            });
         }
         commands
     }
@@ -91,9 +141,74 @@ mod tests {
     use grimm_semantic::InteractionOffer;
 
     #[test]
+    fn required_reading_has_no_choices_or_countdown_and_feedback_is_typed() {
+        let mut output = SemanticOutput {
+            revision: 9,
+            content: vec![NarrativeContent::Narration {
+                text: "Required dialogue.".into(),
+            }],
+            offers: vec![],
+            ending: None,
+            decision: Some(grimm_semantic::time::DecisionView {
+                remaining_ms: 5000,
+                phase: DecisionPhase::AwaitingReady,
+            }),
+            flow: Some(grimm_semantic::flow::FlowView {
+                phase: FlowPhase::Presenting,
+                paused: false,
+            }),
+        };
+        let mut adapter = TextAdapter::default();
+        let commands = adapter.present(&output);
+        assert!(matches!(
+            &commands[..],
+            [
+                PresentationCommand::Text(_),
+                PresentationCommand::AwaitCompletion { revision: 9, .. }
+            ]
+        ));
+        assert!(adapter.resolve(&RawInput { line: "1".into() }).is_none());
+        let feedback = PresentationFeedback {
+            revision: 9,
+            event: PresentationEvent::Complete,
+        };
+        assert_eq!(
+            lifecycle_input(feedback),
+            FlowInput {
+                revision: 9,
+                event: FlowEvent::PresentationComplete
+            }
+        );
+        output.revision = 10;
+        output.flow.as_mut().unwrap().phase = FlowPhase::AwaitingInteraction;
+        output.offers.push(InteractionOffer {
+            id: "act".into(),
+            label: "Act".into(),
+        });
+        let commands = adapter.present(&output);
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, PresentationCommand::Text(_)))
+        );
+        assert!(matches!(
+            commands.last(),
+            Some(PresentationCommand::InteractionAvailable { revision: 10 })
+        ));
+        assert_eq!(
+            adapter
+                .resolve(&RawInput { line: "1".into() })
+                .unwrap()
+                .revision,
+            10
+        );
+    }
+
+    #[test]
     fn deadline_updates_do_not_remap_or_invent_actions() {
         let mut adapter = TextAdapter::default();
         let mut output = SemanticOutput {
+            flow: None,
             revision: 7,
             content: vec![],
             offers: vec![InteractionOffer {
@@ -134,6 +249,7 @@ mod tests {
     #[test]
     fn preserves_authored_blocks_and_formats_dialogue_and_ending() {
         let output = SemanticOutput {
+            flow: None,
             decision: None,
             revision: 3,
             content: vec![
@@ -166,6 +282,7 @@ mod tests {
         let mut adapter = TextAdapter::default();
         assert_eq!(adapter.resolve(&RawInput { line: "1".into() }), None);
         let output = SemanticOutput {
+            flow: None,
             decision: None,
             revision: 42,
             content: vec![NarrativeContent::Narration {
@@ -204,6 +321,7 @@ mod tests {
             assert_eq!(adapter.resolve(&RawInput { line: line.into() }), None);
         }
         adapter.present(&SemanticOutput {
+            flow: None,
             decision: None,
             offers: vec![],
             ..output
