@@ -14,7 +14,7 @@ nodes:
       - kind: narration
         text: "23:40, Blackwater Station. The last passenger train is approaching a junction that should have been closed for repairs. You are the investigator sent to inspect the signals. A phone rings behind the shutter of the empty ticket desk. Outside, every signal shows green."
       - kind: narration
-        text: "Take as long as you need here. Later, the phone call and platform decision have visible real-time countdowns. Type :pause to freeze an active decision, :save PATH to keep your place, and :resume to continue. Fictional minutes pass only when a choice says they do."
+        text: "Take as long as you need here. Later, the phone call and platform decision have visible real-time countdowns. In a terminal, Esc opens the paused session menu for saving, loading or continuing. Scripts can use :pause, :save PATH and :resume. Fictional minutes pass only when a choice says they do."
     choices:
       - id: answer-phone
         label: Lift the receiver and listen to the emergency call.

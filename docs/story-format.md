@@ -551,10 +551,24 @@ There is no input spin and no arbitrary reading delay.
 For actual terminals (stdin and stdout both terminal devices), the CLI host uses
 `crossterm` raw key events: keys 1–9 immediately submit a displayed choice. Lists
 larger than nine keep a numeric editor with Enter. Required narrative-only/gated
-reading still uses Enter. A colon starts command editing with Enter to submit,
-Backspace to edit and Esc to cancel. Deadlines continue while editing; the whole
-command is bound to the revision where editing began. If it expires, the stale
-command cannot affect the successor. No pending blocking read is needed for this
+reading still uses Enter. Esc is the only entry to the session menu. Its single-key
+actions are `1` Continue, `2` Save, `3` Load, `4` Quit; Esc returns to the game.
+The host observes elapsed time before opening the menu, then pauses via the existing
+engine lifecycle if applicable. Exact-boundary timeout still wins over an old Esc.
+Time spent in the menu does not consume remaining decision time. Closing it resumes
+through engine Resume/readiness; it does not complete required narration. A paused
+checkpoint loaded at startup opens in the menu, with Continue available.
+
+Save/Load use `.grimm-saves/story-<encoded-story-id>.json` under the working
+directory, shown in the menu. Save creates the directory on demand and replaces
+that story's single checkpoint. ID bytes except ASCII alphanumerics and `-`/`_`
+are percent-encoded, keeping distinct IDs distinct and preventing parent paths.
+Load stays in the menu;
+failed loads leave canonical state unchanged. Menu numbers/Enter cannot select
+gameplay choices or acknowledge prose. Terminal colon commands are removed;
+piped line commands retain custom paths and prior revision checks.
+
+No pending blocking read is needed for the terminal
 transport, so ordinary timed successor scenes activate without an extra Enter
 barrier. Queued old keys are discarded before new prompts; key repeat events
 are ignored where the terminal reports them. Terminal modes restore on ordinary

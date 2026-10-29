@@ -9,7 +9,7 @@ use grimm_semantic::flow::FlowPhase;
 use grimm_semantic::time::{DecisionPhase, TimeEvent, TimeInput};
 use std::{
     io::{self, IsTerminal, Write},
-    path::Path,
+    path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, RecvTimeoutError, Sender},
     thread,
     time::{Duration, Instant},
@@ -61,6 +61,42 @@ fn input(engine: &mut Engine, event: TimeEvent) -> HostResult<()> {
     Ok(())
 }
 
+fn is_paused(engine: &Engine) -> bool {
+    let output = engine.output();
+    output.flow.as_ref().is_some_and(|flow| flow.paused)
+        || output
+            .decision
+            .as_ref()
+            .is_some_and(|decision| decision.phase == DecisionPhase::Paused)
+}
+
+fn suspend(engine: &mut Engine) -> HostResult<()> {
+    let output = engine.output();
+    if !is_paused(engine) && (output.flow.is_some() || output.decision.is_some()) {
+        input(engine, TimeEvent::Pause)?;
+    }
+    Ok(())
+}
+
+fn checkpoint_path(engine: &Engine) -> PathBuf {
+    let mut id = String::new();
+    for byte in engine.save().story_id.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_') {
+            id.push(char::from(byte));
+        } else {
+            id.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    PathBuf::from(".grimm-saves").join(format!("story-{id}.json"))
+}
+
+fn menu_commands(engine: &Engine) -> Vec<PresentationCommand> {
+    vec![PresentationCommand::Text(format!(
+        "\nSession menu — game paused\n[1] Continue    [2] Save    [3] Load    [4] Quit\nEsc: return to game. Checkpoint: {}",
+        checkpoint_path(engine).display()
+    ))]
+}
+
 /// One baseline per explicitly activated/resumed interaction; no second clock.
 struct Observation {
     origin: Instant,
@@ -103,9 +139,16 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
     };
     let mut renderer = CliRenderer::new(io::empty(), &mut output);
     let mut adapter = TextAdapter::default();
-    renderer.render(&[PresentationCommand::Text(title.into()), PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Required reading waits for Enter; countdown starts when the decision choices are available.".into())])?;
+    renderer.render(&[PresentationCommand::Text(title.into())])?;
     if terminal.is_some() {
-        renderer.render(&[PresentationCommand::Text("Press a number key to choose immediately. Type : to enter a command, then Enter; Esc cancels it. Lists with more than nine choices use number + Enter.".into())])?;
+        renderer.render(&[PresentationCommand::Text("Press a number key to choose immediately. Esc opens the session menu. Required reading waits for Enter. Lists with more than nine choices use number + Enter.".into())])?;
+    } else {
+        renderer.render(&[PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Required reading waits for Enter; countdown starts when the decision choices are available.".into())])?;
+    }
+    let mut menu_open = terminal.is_some() && is_paused(&engine);
+    if menu_open {
+        terminal.as_mut().expect("terminal menu").set_menu(true)?;
+        renderer.render(&menu_commands(&engine))?;
     }
     let mut rendered_revision = None;
     let mut clock: Option<Observation> = None;
@@ -113,7 +156,7 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
     let mut eof = false;
     loop {
         let output = engine.output();
-        if rendered_revision != Some(output.revision) {
+        if !menu_open && rendered_revision != Some(output.revision) {
             if let Some(terminal) = &mut terminal {
                 terminal.begin_prompt()?;
             }
@@ -164,7 +207,7 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
             rendered_revision = Some(output.revision);
         }
         let output = engine.output();
-        if output.ending.is_some() {
+        if !menu_open && output.ending.is_some() {
             return Ok(());
         }
         if output.decision.is_none() && output.offers.is_empty() {
@@ -285,6 +328,50 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         if line == ":quit" {
             return Ok(());
         }
+        if let Some(terminal) = &mut terminal
+            && (line == ":menu" || (menu_open && line == ":menu-continue"))
+        {
+            if menu_open {
+                if is_paused(&engine) {
+                    input(&mut engine, TimeEvent::Resume)?;
+                }
+                menu_open = false;
+                terminal.set_menu(false)?;
+                rendered_revision = None;
+            } else {
+                suspend(&mut engine)?;
+                clock = None;
+                menu_open = true;
+                terminal.set_menu(true)?;
+                renderer.render(&menu_commands(&engine))?;
+            }
+            continue;
+        }
+        if menu_open {
+            let path = checkpoint_path(&engine);
+            let result: HostResult<String> = match line {
+                ":menu-save" => {
+                    std::fs::create_dir_all(path.parent().expect("checkpoint directory"))
+                        .map_err(Into::into)
+                        .and_then(|()| {
+                            write_save(&path, &engine)
+                                .map(|()| format!("Saved to {}.", path.display()))
+                                .map_err(Into::into)
+                        })
+                }
+                ":menu-load" => read_save(&path).map_err(Into::into).and_then(|save| {
+                    engine.restore(save)?;
+                    suspend(&mut engine)?;
+                    Ok(format!("Loaded {}.", path.display()))
+                }),
+                _ => continue,
+            };
+            renderer.render(&[PresentationCommand::Text(
+                result.unwrap_or_else(|error| error.to_string()),
+            )])?;
+            renderer.render(&menu_commands(&engine))?;
+            continue;
+        }
         // Lifecycle/file commands, like choices, belong to the read's revision.
         // A command queued for an expired prompt cannot control its successor.
         if line.starts_with(':') {
@@ -340,14 +427,24 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                 engine.flow_input(&lifecycle_input(feedback))?;
             } else {
                 renderer.render(&[PresentationCommand::Text(
-                    "Press Enter after reading, or use a session command.".into(),
+                    if terminal.is_some() {
+                        "Press Enter after reading, or Esc for the session menu."
+                    } else {
+                        "Press Enter after reading, or use a session command."
+                    }
+                    .into(),
                 )])?;
             }
             continue;
         }
         let Some(action) = adapter.resolve(&raw) else {
             renderer.render(&[PresentationCommand::Text(
-                "Enter a displayed choice number (or :resume when paused).".into(),
+                if terminal.is_some() {
+                    "Press a displayed number key, or Esc for the session menu."
+                } else {
+                    "Enter a displayed choice number (or :resume when paused)."
+                }
+                .into(),
             )])?;
             continue;
         };

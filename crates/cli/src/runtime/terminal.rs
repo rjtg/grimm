@@ -11,12 +11,22 @@ use std::{
 
 pub(super) struct Terminal {
     command: Option<(u64, String)>,
+    menu: bool,
 }
 
 impl Terminal {
     pub fn enter() -> io::Result<Self> {
         enable_raw_mode()?;
-        Ok(Self { command: None })
+        Ok(Self {
+            command: None,
+            menu: false,
+        })
+    }
+
+    pub fn set_menu(&mut self, open: bool) -> io::Result<()> {
+        self.command = None;
+        self.menu = open;
+        self.begin_prompt()
     }
 
     /// Drop queued keys from an old prompt before displaying its successor.
@@ -63,6 +73,25 @@ impl Terminal {
         {
             return Ok(None);
         }
+        if key.code == KeyCode::Esc {
+            self.command = None;
+            return Ok(Some((
+                revision,
+                RawInput {
+                    line: ":menu".into(),
+                },
+            )));
+        }
+        if self.menu {
+            let line = match key.code {
+                KeyCode::Char('1') => ":menu-continue",
+                KeyCode::Char('2') => ":menu-save",
+                KeyCode::Char('3') => ":menu-load",
+                KeyCode::Char('4') => ":quit",
+                _ => return Ok(None),
+            };
+            return Ok(Some((revision, RawInput { line: line.into() })));
+        }
         if let Some((original, buffer)) = &mut self.command {
             match key.code {
                 KeyCode::Enter => {
@@ -71,10 +100,6 @@ impl Terminal {
                     self.command = None;
                     writeln!(output)?;
                     return Ok(Some((original, RawInput { line })));
-                }
-                KeyCode::Esc => {
-                    self.command = None;
-                    writeln!(output)?;
                 }
                 KeyCode::Backspace => {
                     if buffer.pop().is_some() {
@@ -89,10 +114,6 @@ impl Terminal {
             }
         } else {
             match key.code {
-                KeyCode::Char(':') => {
-                    self.command = Some((revision, ":".into()));
-                    write!(output, ":")?;
-                }
                 KeyCode::Char(ch @ '1'..='9') if single_digit => {
                     writeln!(output, "{ch}")?;
                     return Ok(Some((

@@ -21,7 +21,7 @@ nodes:
         text: >-
           Read at your own pace. Enter acknowledges storytelling; numbered choices
           make decisions. A countdown appears only after a decision is available.
-          You can :pause, :save PATH, :load PATH, :resume or :quit.
+          Press Esc for the session menu to pause, save, load or quit.
     continue_to: carrier
   - id: carrier
     content:

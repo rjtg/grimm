@@ -11,11 +11,11 @@ from pathlib import Path
 
 
 class Terminal:
-    def __init__(self, *args):
+    def __init__(self, *args, cwd=None):
         self.master, self.slave = pty.openpty()
         self.before = termios.tcgetattr(self.slave)
         self.process = subprocess.Popen([sys.argv[1], *args], stdin=self.slave,
-                                        stdout=self.slave, stderr=self.slave)
+                                        stdout=self.slave, stderr=self.slave, cwd=cwd)
         self.text = b""
         self.cursor = 0
 
@@ -50,6 +50,9 @@ with tempfile.TemporaryDirectory(prefix="grimm-keys-") as folder:
     t = Terminal()
     try:
         t.until("1. Continue")
+        t.send(":quit\r")  # Colon commands are unavailable outside the Esc menu.
+        time.sleep(0.03)
+        assert t.process.poll() is None
         t.send("1")
         t.until("Ending: Demo complete")
         t.finish()
@@ -89,17 +92,65 @@ nodes:
     finally:
         t.close()
 
-    # No old blocking read/Enter barrier in terminal mode. A partially entered
-    # command remains bound to its original revision across asynchronous expiry.
-    t = Terminal("play", str(path))
+    # Esc pauses the deadline; Save/Load/Continue each use one key. Menu keys
+    # cannot become story choices and menu time cannot spend the decision budget.
+    t = Terminal("play", str(path), cwd=folder)
     try:
         t.until("1. First choice")
-        t.send(":pa")
+        t.send("\x1b")
+        t.until("Session menu")
+        t.send("2")
+        t.until("Saved to")
+        t.until("Session menu")
+        checkpoint = Path(folder) / ".grimm-saves/story-terminal-timer.json"
+        import json
+        save = json.loads(checkpoint.read_text())
+        assert save["node_id"] == "first"
+        assert save["temporal"]["decision"]["phase"] == "paused"
+        remaining = save["temporal"]["decision"]["remaining_ms"]
+        assert 0 < remaining <= 350
+        time.sleep(0.5)
+        t.send("3")
+        t.until("Loaded")
+        t.until("Session menu")
+        t.send("2")
+        t.until("Saved to")
+        t.until("Session menu")
+        restored = json.loads(checkpoint.read_text())
+        assert restored["temporal"]["decision"]["remaining_ms"] == remaining
+        assert restored["node_id"] == "first"
+        assert b"Second deadline" not in t.text
+        t.send("1")
+        t.until("1. First choice")
+        t.send("1")
+        t.until("Ending: Chosen")
+        t.finish()
+    finally:
+        t.close()
+
+    # Failure to load leaves the menu and pending interaction intact.
+    t = Terminal("play", str(path), cwd=folder)
+    try:
+        t.until("1. First choice")
+        t.send("\x1b")
+        t.until("Session menu")
+        checkpoint.write_text("invalid checkpoint")
+        t.send("3")
+        t.until("invalid JSON save")
+        t.until("Session menu")
+        t.send("\x1b")
+        t.until("1. First choice")
+        t.send("1")
+        t.until("Ending: Chosen")
+        t.finish()
+    finally:
+        t.close()
+
+    # With no blocking read, an unattended timer enters its successor directly.
+    t = Terminal("play", str(path))
+    try:
         t.until("1. Second choice")
-        t.send("use\r")
-        t.until("Input from the previous prompt was ignored")
-        t.until("1. Second choice")
-        assert b"Paused. Use" not in t.text
+        assert b"Press Enter to acknowledge" not in t.text
         t.send("1")
         t.until("Ending: Chosen")
         t.finish()
@@ -116,9 +167,9 @@ nodes:
         t.until("1. Answer the captain")
         assert b"12.0s" in t.text
         assert b"Press Enter" not in t.text[t.text.index(b"The relay snaps open"):]
-        t.send(":pause\r")
-        t.until("Paused. Use")
-        t.send(":resume\r")
+        t.send("\x1b")
+        t.until("Session menu")
+        t.send("1")
         t.until("1. Answer the captain")
         for expected in ["1. Compare the signal", "1. Keep the decoded"]:
             t.send("1")
@@ -134,9 +185,32 @@ nodes:
     finally:
         t.close()
 
-    # Ctrl-C is handled as host exit in raw mode, with restoration on return.
-    t = Terminal("play", sys.argv[2])
+    # Menus during unread narration do not acknowledge it, and Quit is one key.
+    t = Terminal("play", sys.argv[2], cwd=folder)
     try:
+        t.until("Press Enter when finished reading...")
+        t.send("\x1b")
+        t.until("Session menu")
+        t.send("2")
+        t.until("Saved to")
+        t.until("Session menu")
+        checkpoint = Path(folder) / ".grimm-saves/story-the-silent-signal.json"
+        assert json.loads(checkpoint.read_text())["flow"]["phase"] == "presenting"
+        t.send("1")
+        t.until("Press Enter when finished reading...")
+        assert b"A carrier tone rises" not in t.text
+        t.send("\x1b")
+        t.until("Session menu")
+        t.send("4")
+        t.finish()
+    finally:
+        t.close()
+
+    # A saved paused session starts in the menu, not at unusable story choices.
+    t = Terminal("play", sys.argv[2], "--load", str(checkpoint))
+    try:
+        t.until("Session menu")
+        t.send("1")
         t.until("Press Enter when finished reading...")
         t.send("\x03")
         t.finish()
