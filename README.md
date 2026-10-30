@@ -8,17 +8,18 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 - The engine owns canonical game state and rules.
 - Engine output is semantic; adapters translate it into presentation instructions.
 - Renderers handle presentation and raw interaction; input adapters translate interaction into semantic actions.
+- A playable game is a **concrete composition** of authored narrative, GRIMM, a concrete runtime/renderer, assets and other components. A standalone GRIMM-led game can select its renderer; an external 3D/game engine may instead embed GRIMM for narrative events. The supported host-integration contract remains an open question.
 - AI is optional and never directly mutates canonical state.
 - Classic games work without AI or graphics.
-- Each roadmap milestone ends with a playable or executable demonstration.
+- Every roadmap milestone includes a **playable demo game** showing every new gameplay capability, with success/failure paths and regression tests.
 
-See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), and [M0 brief](docs/milestones/m0.md).
+See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), [open questions](docs/open-questions.md), and [M0 brief](docs/milestones/m0.md).
 
 Status: M0 through M1.8 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
 Four reference adventures exercise persistent state, bounded playability checks,
 optional deterministic time, narrative-only continuation and presentation-gated decisions.
-AI and graphical frontends remain future milestones.
+The next roadmap milestones prioritize authored adventures: **M2 Interactive Scene Foundation**, **M3 Inventory, Puzzles & Character State**, **M4 Narrative Adventure** (LucasArts-style puzzle exploration combined with Telltale-style narrative decisions) and **M5 Graphic Adventure Presentation**. Choices remain the shared state-dependent action model, with optional RPG attributes and item combinations rather than hard-coded player verbs. Choices may take **authored execution time**: GRIMM resolves each choice **immediately at selection** using its duration, known scene deadline and the externally supplied selection time. It commits the outcome and sends the prescribed presentation (e.g. five-second drawer opening or a four-second attempt cut short by a deadline); the next gameplay choices become usable only after M1.8 presentation readiness. Classic **choice-selection** deadlines still resolve on timely selection or authored silence. GRIMM never reads/ticks a wall clock and needs no running action/progress callback for these authored cases. Runtime Dynamic Node Providers, generative story extensions, free text and NPC direction are deferred toward a later open-world/Story-RPG phase; their boundaries are intentionally not defined yet.
 
 ## Build and run
 
@@ -250,3 +251,8 @@ inconclusive budgets. See the [M1.5 brief](docs/milestones/m1.5.md).
 See the [M1 acceptance plan and implementation report](docs/milestones/m1.md)
 for coverage, compatibility notes and open questions, and the historical
 [M0 implementation notes](docs/milestones/m0-implementation.md) for the foundation.
+
+
+## Game composition direction (planned M5)
+
+A story graph is not a complete visual game. A standalone game's composition may explicitly select **where its concrete renderer comes from**, along with game-specific assets, scene/hotspot mappings and other required modules. An externally hosted game may already own its renderer and invoke GRIMM only for narrative decisions. A Bevy-capable renderer is not automatically capable of playing arbitrary authored 3D adventures. The headless engine remains reusable; the surrounding composition root assembles the actual product. Whether GRIMM is the application entry point or an embedded narrative subsystem is still under investigation. See [architecture](docs/architecture.md#game-composition-and-renderer-ownership-future-m5) and [open questions](docs/open-questions.md#game-composition-renderer-origin-and-packaging). The exact packaging and loading API will be designed from a complete M5 demonstration, not imposed on existing CLI games now. See [embedded-host questions](docs/open-questions.md#host-integration-standalone-game-versus-embedded-narrative-engine).
