@@ -236,12 +236,12 @@ cue_sheet {
 }
 
 # A new authored timer may instead appear as:
-cue_sheet { id: 30; play: [next_challenge]; actions: [A, B];
+cue_sheet { id: 30; cue: [next_challenge]; actions: [A, B];
 
 
 # A two-second time-buying action can increase a 30s budget to 35s:
 game_action { ref: 31, action: buy_time, scene_timer: [12 of 30]s }
-cue_sheet { id: 32; play: [blocked_mechanism]; actions: [A, B];
+cue_sheet { id: 32; cue: [blocked_mechanism]; actions: [A, B];
 
 ```
 
