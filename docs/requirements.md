@@ -51,23 +51,32 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **FLOW-04** Safe flow and persistence: automatic/non-choice transitions remain engine-authoritative, validate targets/effects, commit at most once per revision and have bounded/cycle-safe advancement. Save/load, pause/resume, disconnect and replay preserve unfinished presentation and pending deadlines; a failed/interrupted renderer must not silently progress canonical story state.
 - **FLOW-05** Renderer-neutral authoring and fallback: support explicit player-paced Continue as well as optional host-acknowledged narrative-only progression. In the text CLI, reading is acknowledged by the player (e.g. Enter) where needed; later visual renderers may acknowledge completed dialogue/camera sequences. Do not introduce renderer-authored timings, a cutscene timeline, ECS or a generic scheduler as a prerequisite.
 
-## M2
-- **GEN-01** Optional generative text adapter behind same boundary.
-- **GEN-02** Safe player-visible context projection.
-- **GEN-03** Exact authored dialogue preservation.
-- **GEN-04** Deterministic authored/plain-text fallback on model failure.
-- **GEN-05** Tests for prohibited canonical fact invention and fallback behavior (best-effort semantic validation).
+## M2 — Dynamic Narrative Foundation (no LLM dependency)
+- **DYN-01** Allow external, typed runtime narrative node/event proposals. Engine validates proposed node identity, references, permitted content, transitions, conditions/effects and current state before any atomic commit. Providers have no canonical state authority.
+- **DYN-02** Maintain a persisted dynamic graph overlay alongside the authored graph. Resolve authored and dynamic destinations consistently without rewriting the original story definition. Preserve existing scenes, M1.8 lifecycle, deadlines and hidden-state boundaries.
+- **DYN-03** Record accepted proposals/resolved events sufficiently for deterministic replay and save/restore. Reject invalid, stale, conflicting or duplicate proposals without partial mutation; bounded playability diagnostics retain explicit inconclusive outcomes.
+- **DYN-04** Demonstrate M2 with a small complete offline game (working title `The Unwritten Room`) and a deterministic rule-based proposal source; a runtime-created node must lead to a meaningful choice and reachable endings, survive save/load and replay identically.
+- **WORLD-03** When dynamic proposals require persistent world-entity state, support only the minimal validated state changes shared across scenes; defer a generic entity store, ECS and continuous simulation.
 
-## M3
+## M3 — Free Input
 - **ACT-01** Free-text input offers and intent resolver interface.
 - **ACT-02** Rule-based resolver and optional model implementation.
 - **ACT-03** Validated proposed actions, ambiguity and failure responses.
 
-## M4
-- **WORLD-03** When persistent world-entity state becomes necessary, support validated state changes shared across scenes (and persistence); defer general-purpose components and simulation unless required by an accepted milestone.
-- **DYN-01** Validated runtime event and node proposals.
-- **DYN-02** Runtime graph overlay with persistence.
-- **DYN-03** Reproducible state transitions and event history.
+## M4 — Generative Narrative (optional)
+- **GEN-06** Provide an optional generative narrative proposal source that targets the M2 typed proposal contract. Model output is never canonical until the engine validates and commits it.
+- **GEN-07** Give proposal providers an explicitly scoped, privacy-safe context projection. Hidden NPC knowledge and unavailable game facts must not leak through prompts, presentation, traces or replay artifacts.
+- **GEN-08** Validate explicit proposed world events/effects and narrative transitions; prose alone must not create or silently alter canonical facts. Define bounded rejection, retry and safe authored/rule-based fallback behavior.
+- **GEN-09** Preserve authored dialogue and narrative constraints where required; accept generated narrative only under documented consistency/trust boundaries. Do not equate successful JSON/schema parsing with semantic truth validation.
+- **GEN-10** Record model proposals or resolved inputs for deterministic replay; demonstrate optional online and fully offline paths using the same engine and output adapters.
+
+### Deferred legacy requirements from the former M2
+The original IDs below are **retained as historical proposals**, not silently reassigned to new meanings or required by the revised roadmap. Resolve their fate explicitly through [the open questions](open-questions.md#generative-narrative-and-presentation) before any implementation.
+- **GEN-01 (deferred)** Optional generative text adapter behind the existing presentation boundary.
+- **GEN-02 (deferred)** Safe player-visible context projection for that text adapter.
+- **GEN-03 (deferred)** Exact authored dialogue preservation in generative rendering.
+- **GEN-04 (deferred)** Deterministic authored/plain-text fallback on text-model failure.
+- **GEN-05 (deferred)** Best-effort validation against canonical-fact invention by generated presentation prose.
 
 ## M5
 - **NPC-01** NPC state, knowledge/beliefs, goals.
