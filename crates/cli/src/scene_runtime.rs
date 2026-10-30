@@ -34,12 +34,7 @@ pub fn parse(source: &str, yaml: &str) -> std::result::Result<SceneEngine, FileE
 }
 
 pub fn check(path: &Path) -> Result<()> {
-    let engine = parse(&path.display().to_string(), &fs::read_to_string(path)?)?;
-    println!(
-        "{}: scene DSL, typed rules, identifiers, branches and explicit graph references valid. State-dependent solvability is not proven.",
-        engine.title()
-    );
-    Ok(())
+    crate::authoring::run(false, &[path.as_os_str().to_owned()])
 }
 
 struct DriverClock {

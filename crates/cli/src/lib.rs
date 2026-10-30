@@ -1,4 +1,5 @@
 //! Host-side codecs and filesystem access. The engine has no format/I/O dependency.
+pub mod authoring;
 pub mod runtime;
 pub mod scene_runtime;
 use grimm_engine::Engine;

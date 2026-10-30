@@ -2,6 +2,7 @@
 //!
 //! Authoring definitions and checkpoints are host/engine DTOs, not projections.
 
+pub mod authoring;
 pub mod flow;
 pub mod save;
 pub mod scene;

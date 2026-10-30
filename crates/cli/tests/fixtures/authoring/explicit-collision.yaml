@@ -1,0 +1,22 @@
+schema_version: 1
+id: authoring_demo
+version: 1
+title: Authoring demo
+start: room
+globals: {ready: false}
+contexts:
+  - id: room
+    cues:
+      - {cue_id: welcome, kind: narrative, narrative_id: shared_greeting}
+      - {cue_id: welcome, kind: actions, available_actions: eligible}
+    actions:
+      - id: leave
+        outcomes: [{goto: success}]
+      - id: surrender
+        outcomes: [{goto: failure}]
+  - id: success
+    terminal: true
+    cues: [{kind: narrative, narrative_id: common.finished}]
+  - id: failure
+    terminal: true
+    cues: [{kind: narrative, narrative_id: common.finished}]
