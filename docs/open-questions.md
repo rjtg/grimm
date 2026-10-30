@@ -1,32 +1,98 @@
 # Open design questions
 
+## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
+
+This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.
+
+- **Every response is REPLACE.** GRIMM derives one *complete authoritative remaining presentation plan* for the current narrative context from canonical authored world state, scene time, authored conditions, player-action history, and semantic cue execution history. The renderer replaces the pending schedule on each response; no `ADD`, merge, inherited action-list patches, or cross-revision cue ordering.
+- **One ordered `cues: []` list.** Entries can contain `narrative_id` (semantic content binding), `available_actions` (complete replacement of the offered action list, including `[]` to lock input), timer start/visibility instructions, and optional `at` absolute time on the current scene clock. The illustrative notation is a logical model, not an imposed Rust parser grammar. Within one sheet, untimed entries run in order, including presentation completion barriers; an `at` event is clock-scheduled and may overlap a running narrative cue. An incoming REPLACE sheet's untimed prefix begins at the current paused/resumed clock time, **not** retroactively at T=0.
+- **Timing:** The renderer pauses its scene clock at player selection T while GRIMM resolves `game_action`; resumes from T on the reply. GRIMM resolves authored action duration and deadline at selection once. New `available_actions` instructions are never enabled before that action's computed earliest logical time, even if their preceding narrative finishes sooner. Conversely a sequenced choice update may wait for renderer presentation completion if it is placed *after* that narrative. Timed instructions use absolute scene-clock `at`, so a T=10 radio event can begin during a T=8–11 drawer opening. A new timer starts at its explicit instruction, after any preceding intro presentation; subsequent clock-scheduled items do not block the start.
+- **One cue identity, separate content identity.** Each authored cue instruction has a unique, stable `cue_id` **within its story/scene namespace**, independent of `narrative_id` (the reusable renderer binding). Two distinct cues can reference the same `narrative_id`. Authors may explicitly name `cue_id`; otherwise GRIMM tooling deterministically generates an ASCII-qualified ID from the authored instruction/content and timing, e.g. `locked_room.narrative_radio_johnny_returns_at_10`. Derive from authored definition, **not output list position**; M3 must reject collisions and offer diagnostics. If an author edits content/timing, the generated identity may change; explicitly authored IDs are advised when continuity and save compatibility matter. No second `cue_instance_id` is required in this model.
+- **Renderer feedback:** The renderer reports `cue_started` and `cue_completed` with `cue_id` and sheet correlation/revision, optionally current scene time. GRIMM records enough action/cue history to avoid rerunning started/completed cues while constructing the next REPLACE sheet. The same stable `cue_id` in a replacement sheet denotes **continuation** of presentation already in flight, not replay; renderer owns media-specific fades, duration and detailed resume state. Stale or duplicate events must be idempotently handled, including events from a now-replaced sheet.
+- **State boundaries:** GRIMM records semantic action decisions, cue execution statuses, and canonical game rules/state for deterministic recomputation and snapshot/restore. Cue lifecycle acknowledgements are presentation coordination **not gameplay effects**; they never independently mutate authored world variables or authorize actions. Concrete assets, text, animation/audio, UI geometry and presentation playback positions remain renderer-owned and saved by the host independently.
+- **Availability invariants:** `available_actions` always replaces the full visible/actionable offer; `[]` disables them during a narrative cue. GRIMM alone validates `game_action` input and retains rule authority even if a UI is stale. If a new sheet is issued while old action/media instructions run, only actions from the current sheet may become eligible; stale scheduled `available_actions` instructions are discarded.
+- **Timer UI:** A timer can start hidden, with a later cue entry showing it; visibility does not start/reset the timer or affect game conditions.
+
+Illustrative T=8 drawer action with three seconds of authored cost, where the T=10 radio cue overlaps the drawer presentation:
+
+```text
+game_action { action: open_drawer, scene_timer: [8 of 30]s }
+cue_sheet {
+  cues: [
+    { cue_id: drawer_input_lock, available_actions: [] },
+    { cue_id: drawer_opening, narrative_id: drawer_opened },
+    { cue_id: radio_warning, at: 10, narrative_id: radio_johnny_returns },
+    { cue_id: countdown_reveal, at: 10, timer: { visible: true } },
+    { cue_id: drawer_new_choices, at: 11, available_actions: [take_key, search_desk, hide] },
+    { cue_id: johnny_footsteps, at: 20, narrative_id: footsteps_approaching }
+  ]
+}
+```
+
+The clock resumes from T=8 after GRIMM responds; radio/countdown trigger at T=10 regardless of a concurrent drawer animation. The T=11 choice offer is a *minimum* logical-time release and must not be prematurely unblocked by short media. When choosing an action after T=10, GRIMM uses cue-history acknowledgements to omit already finished events, or preserve an in-flight cue under its same `cue_id`. When entering another authored scene, the next full REPLACE sheet starts the new scene's plan; no explicit graph-node ID leaks to renderers.
+
+
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
+
+**Milestone placement:** Historical M2 examples may use short action/cue names; later M3 authoring/indexing specifies stable qualified names for M4/M5. M3 adds an author-facing index, basic exit diagnostics, and source-located collision checks. Exact normalization details can be implemented and tested alongside the toolchain.
+
+**ID namespace decision for later stories:** Default cue/action namespacing to story-node names, normalize ASCII-only local and namespace keys to lowercase ASCII snake_case, and allow an authored override for stable bindings after refactors. Reject collisions with diagnostics. Do not retrofit the historical M2 reference traces solely to display the newer qualified IDs.
+
+## Decisions from PR #13 follow-up review
+
+- **Renderer clock lifecycle:** Initial scene cues complete before the renderer starts at T=0. Player deliberation advances the timer. On choice at T, pause the timer, submit `game_action` with time T and await GRIMM. On receiving the new Cue Sheet, resume **from T**, not from the returned target; display cues while approaching the post-action eligibility target. Example: `break_door` selected at `[3 of 30]s`, cost 5s, returns `cue: [break_door_progress]` and target `[8 of 30]s`. Enable new actions from T=8 if ready, even if the animation still plays. Engine/network/asset-loading delay while paused is excluded from the scene clock; long delays still feel sluggish.
+- **Countdown visibility (Cue Sheet, decided):** An optional dedicated `show_timer` controls renderer UI independently of whether an authored timer is running: `false` hide, `true` display, or illustrative `{at:10s}` reveal on the scene clock. For a new hidden 30s countdown a reveal at T=10 coincides with a radio-message cue and shows 20s remaining. Visibility never modifies game-time rules; omission preserves renderer-owned display state, and untriggered scheduled reveals are invalidated when another Cue Sheet replaces the current revision. The exact serialized form remains implementation-defined.
+- **Identifiers (later examples):** New M3/M4/M5 authored namespace-qualified IDs are ASCII-only and normalized deterministically to lowercase ASCII snake_case; collisions are errors. Historical M2 reference traces may continue using local unqualified IDs, and prior M1 stories are unchanged.
+- **M3 lint scope:** A simple **structural** rule: each nonterminal node must declare at least one outgoing authored exit, which may lead to a losing/failure ending. Success is not mandatory. Check declared targets and obvious dead ends; if an exit is conditional, its structural presence does **not** imply it is achievable from every world state. Report evident contradictions when possible, leave harder state-dependent viability inconclusive, and do not add imperative loop syntax.
+- **Asset indexing boundary:** GRIMM tooling exports used cue/action IDs and source references. Asset inventory and comparison with renderer-specific resources are performed by the game, renderer or later IDE, **not by the GRIMM engine/toolchain**.
+- **M4 example story:** no decision required now. Specify when M4 authoring starts.
+- **M5 game saves:** in addition to `game_action`, define a **separate host `saveAction` command** returning an opaque serialized GRIMM canonical session payload and **`restoreAction(payload)`** restoring it. The game/renderer integrates that payload in its own savegame alongside its presentation data. API naming, versioning, checkpoint safety and post-restore cue/readiness semantics remain implementation details for M5. Existing GRIMM saves stay supported.
+
+## Shared example game and renderer-owned dialogue (decision)
+
+Both the M4 **text example** and M5 **graphical example** stay in this repository, preferably under `examples/`, and load the **identical authored GRIMM script**. Given the same action IDs and timer observations, they obtain the same Cue Sheets and send the same `game_action` IDs. The M4 renderer owns a lookup from cue IDs to descriptions/dialogue text and from action IDs to displayed option labels. The M5 renderer interprets these IDs as concrete scene animation, audio dialogue, subtitles and visual choices. The core knows *semantic IDs* and their effects but **does not need the literal dialogue lines, descriptions, subtitles or user-visible action wording**. Consistency of each renderer's wording/voice with the action ID's meaning is an example-game authoring responsibility. Preserve legacy M1 text-stories; the new arrangement does not remove their format.
+
+**Narrowed questions for M4/M5:** How will each renderer/game tool compare its own asset/option inventory with GRIMM's exported ID index? How do we prove identical action/cue transcripts under a controlled clock? What is the smallest renderer-specific table/assets layout? Concrete choice remains with implementer; **a separate repository is no longer a default open decision**, and no generic GRIMM dialogue/asset format is mandated.
+
+## Post-M2 milestone plan — old inventory M3 replaced by tooling M3
+
+**Decision:** Cancel the former Inventory/Puzzles/Character State scope and replace M3 with **Story Authoring & Validation Toolchain** (index, lint, basic exit/reachability analysis). Renderer/game asset comparison is separate tooling. The stable qualified action/cue IDs themselves belong to M2; M3 adds inspection and diagnostics. Existing M2 typed canonical state, authored choices and simple conditions cover the present LucasArts/Telltale/light-RPG requirements. **M4** ships a complete text adventure (multiple contexts, related puzzles, branching outcomes and authored consequences). **M5** builds a *graphical adaptation of that exact M4 game* with concrete graphical assets and renderer, rather than inventing another demo. GRIMM should be embeddable as a **headless Rust library in the concrete game application**, which owns rendering, assets, input, and any presentation-side save. Both M4/M5 example applications stay in this repository; their precise workspace/example file layout remains open. Do not design a generic Bevy/plugin interface ahead of the real graphical game.
+
+**M4/M5 open design questions:**
+- What actual text adventure should M4 author, how substantial must its story be, and which overlapping puzzle/narrative branches best expose missing M2 DSL capabilities?
+- Can all M4 canonical authored rules and offered action IDs remain unchanged in the M5 graphical game, with differences confined to cue interpretation, input mapping and game presentation?
+- Which cue IDs and asset requirements need concrete graphical implementation, and how can that renderer/game build check them?
+- What is the smallest application/GRIMM library boundary needed to construct, drive, save and reload the same authored game from a concrete graphical runtime?
+- How does the M5 application's graphical presentation checkpoint remain consistent with GRIMM-internal canonical state, while keeping `world_state` out of Cue Sheets?
+- How should the two **same-repository** example applications be organized under `examples/` and wired to the same script without duplicating it?
+
+Historical OPEN-PUZZLE/OPEN-STAT items formerly labeled M3 are **deferred gameplay ideas**, not M3 authoring-tool deliverables; revisit only if a concrete authored game demonstrates an actual need. Existing M4/M5 host/asset questions remain open only to the extent the concrete graphical adaptation requires them.
 
 ## M2 authoring language — commitment (2026-10-30)
 
-The **small authored story DSL is now a required M2 deliverable** (see `DSL-01..DSL-12` in [requirements](requirements.md#m2-authoring-dsl--required-milestone-deliverable)). It should let an author describe graph structure, local/global visible or private state, `ON`/conditional/`ELSE` behavior, `timeout`, atomic effects, timer/action costs, conditional choices, cue IDs and ordered playback; a complete playable `The Locked Room` must be authored with it. **The implementing agent chooses concrete syntax, file format, parser and Rust internals** and must keep legacy authored YAML working. Do not freeze an ad hoc example grammar as an API before implementation.
+The **small authored story DSL is now a required M2 deliverable** (see `DSL-01..DSL-13` in [requirements](requirements.md#m2-authoring-dsl--required-milestone-deliverable)). It should let an author describe graph structure, local/global typed state, `ON`/conditional/`ELSE` behavior, `timeout`, atomic effects, timer/action costs, conditional choices, cue IDs and ordered playback; a complete playable `The Locked Room` must be authored with it. **The implementing agent chooses concrete syntax, file format, parser and Rust internals** and must keep legacy authored YAML working. Do not freeze an ad hoc example grammar as an API before implementation.
 
 The remaining DSL work is technical design and evidence, not another gameplay-model debate: choose the smallest readable syntax; specify reset semantics for context-local variables; give useful invalid-authoring errors; and test actual authored Cue Sheet traces without timing double-counting. Graph/branch checks stay deliberately basic rather than requiring a full state-space solver.
 
 ## M2 Cue Sheet and authoring review — decisions (2026-10-30)
 
-- **Renderer does not see graph or canonical state:** GRIMM alone owns nodes, contextual transitions and authored variables. M2 Cue Sheets communicate ordered `play(animation_id)` cues, accepted `actions`, current `scene_timer` if any and response `id`. The renderer interprets cue IDs, including any persistent visual effects. No `node_changed`, `ending_node` or mandatory `world_state` field is required.
+- **Renderer does not see graph or canonical state:** GRIMM alone owns nodes, contextual transitions and authored variables. M2 Cue Sheets communicate ordered `cue(cue_id)` cues, accepted `actions`, current `scene_timer` if any and response `id`. The renderer interprets cue IDs, including any persistent visual effects. No `node_changed`, `ending_node` or mandatory `world_state` field is required.
 - **Input is one revision-correlated game action:** `game_action {ref:3, action:unlock_door_key1, scene_timer:[8 of 30]s}`. Idle expiry uses the ordinary reserved choice `game_action {ref:3, action:timeout, scene_timer:[30 of 30]s}`; the renderer reports the timer's actual value, while GRIMM evaluates authored consequences. A minimal `ref` check remains valuable to prevent duplicate/late inputs from committing twice, even if the renderer is expected to behave correctly.
-- **Timer value is explicit:** each Cue Sheet supplies the *currently relevant* elapsed/total pair. A newly authored 12-second timer may be issued as `[0 of 12]s`; a continuing one carries forward its updated `[elapsed of total]s`. The renderer first plays the cues, then activates choices and counts from the specified baseline. No renderer-side inference about graph nodes or timer identity is necessary in the illustrative M2 handshake.
+- **Timer/availability fields (current design):** A REPLACE sheet uses ordered `cues` instead of top-level `new_timer`, `show_timer`, `actions_available_at`. Timer-start is explicit after intro narrative; timed `at` instructions reference absolute scene time and `available_actions` replaces the entire offer, subject to GRIMM's earliest logical eligibility.
 - **Time conditions:** `time_passed` in an action rule is the elapsed timer value in its `game_action` input; authored action duration is a known story constant/rule and is applied by GRIMM to compute the subsequent Cue Sheet. The author explicitly determines success, tie and failure branches. Fictional world chronology may be a separate ordinary state variable.
 - **World-state variables with scoping:** GRIMM retains authored canonical state with **persistent/global** and **narrative-context-local** lifetimes; the author chooses whether `drawer_open` persists across contexts. No automatic variable projection into M2 Cue Sheets. A renderer may persist its own presentation state; later graphical game saves must coordinate both owners.
 - **Saving and exhaustive gameplay checking:** postpone new M2 save/load design and full state-space exploration; do not regress already implemented saves. Start with simple authored-graph validation: one start node, at least one ending, valid referenced targets, deterministic coverage of condition branches and reachable structure (only explicit edges, no imaginary backtracking). A structural graph check is not proof that every world-state puzzle can be solved.
 - **Rust implementation:** not a user-facing gameplay choice. Once authoring format and Cue Sheet fields are settled, map them onto existing Rust types for story actions/conditions/effects, semantic outputs, host input, time handling and versioned persistence. Reuse existing implementations where possible instead of inventing competing systems.
 
-**Remaining focused M2 questions:** (1) concrete story authoring syntax for choice cases, effects, time costs and play cues; (2) exact shape of global vs narrative-context-local state and how context exits affect it; (3) minimal serialized Cue Sheet and `game_action` types including reserved `timeout` and `ref`; (4) compatibility-safe implementation. A large graph solver, new save lifecycle and advanced renderer/host framework are not prerequisites.
+**Remaining focused M2 questions:** (1) concrete story authoring syntax for choice cases, effects, time costs and presentation cues; (2) exact shape of global vs narrative-context-local state and how context exits affect it; (3) minimal serialized Cue Sheet and `game_action` types including reserved `timeout` and `ref`; (4) compatibility-safe implementation. A large graph solver, new save lifecycle and advanced renderer/host framework are not prerequisites.
 
-**Clarification (M5 presentation IDs):** `play(animation_id)` is already the complete GRIMM-to-renderer presentation instruction. Each **concrete renderer itself** interprets the identifier and owns any needed asset/animation/camera/sound mappings; no additional Cue Sheet fields or GRIMM-level mapping layer are required. Game composition only ensures the game ships the actual renderer and its dependencies. A later optional build-time check for unsupported IDs is separate from the runtime contract.
+**Clarification (M5 presentation IDs):** `cue(cue_id)` is already the complete GRIMM-to-renderer presentation instruction. Each **concrete renderer itself** interprets the identifier and owns any needed asset/animation/camera/sound mappings; no additional Cue Sheet fields or GRIMM-level mapping layer are required. Game composition only ensures the game ships the actual renderer and its dependencies. A later optional build-time check for unsupported IDs is separate from the runtime contract.
 
 ## Canonical World State and renderer-owned presentation/save (2026-10-30)
 
-**Refined M2 decision:** `world_state` means the story-authored canonical variables and current values inside GRIMM, not a required field in a renderer Cue Sheet. M2 Cue Sheets need only `id`, ordered `play(animation_id)`, authorized `actions` and optional `scene_timer`. A prerendered renderer can play cue IDs directly; a live renderer interprets them and owns resulting poses/animations/presentation state. GRIMM alone evaluates conditions such as `ON timeout IF drawer_open PLAY you_have_been_searching_my_stuff` and sends only the selected cue. **No mandatory `renderer_visible` DSL attribute and no full-state snapshot requirement in M2.**
+**Refined M2 decision:** `world_state` means the story-authored canonical variables and current values inside GRIMM, not a required field in a renderer Cue Sheet. M2 Cue Sheets need only `id`, ordered `cue(cue_id)`, authorized `actions` and optional `scene_timer`. A prerendered renderer can play cue IDs directly; a live renderer interprets them and owns resulting poses/animations/presentation state. GRIMM alone evaluates conditions such as `ON timeout IF drawer_open CUE you_have_been_searching_my_stuff` and sends only the selected cue. **No mandatory `renderer_visible` DSL attribute and no full-state snapshot requirement in M2.**
 
-**Later save question:** a renderer may contribute its own serialized presentation state to a **single consistent game checkpoint** alongside GRIMM's canonical state. The concrete game/host must coordinate saving/restoring both sides (including versioning, mismatches and recovery) when graphical presentation requires it. That is **not** a claim that renderer state becomes authoritative for gameplay facts, nor a mandate to save all renderer-only data if a concrete renderer can reconstruct it from authored cues.
+**Later save direction:** a separate host `saveAction` requests GRIMM's opaque serialized canonical session; a separate `restoreAction(payload)` restores it. A renderer/game may contribute its own serialized presentation state to a **single consistent game checkpoint** alongside GRIMM's canonical state. The concrete game/host coordinates saving/restoring both (including versioning, mismatches and recovery) when graphical presentation requires it. That is **not** a claim that renderer state becomes authoritative for gameplay facts, nor a mandate to save all renderer-only data if a concrete renderer can reconstruct it from authored cues.
 
 ## Cross-milestone consistency review (2026-10-30)
 
@@ -38,19 +104,19 @@ See the [M2 ↔ M3–M5 audit](milestones/m2-cross-milestone-audit.md) for the c
 
 | ID | Status | Target | Question |
 |---|---|---|---|
-| OPEN-M3-01 | Open | M3 | When do item identity, quantity, ownership, reference and location require first-class item semantics beyond M2's typed global/local variables? How do item lifetimes interact with narrative-context-local resets? |
+| OPEN-M3-01 | Deferred | Deferred | When do item identity, quantity, ownership, reference and location require first-class item semantics beyond M2's typed global/local variables? How do item lifetimes interact with narrative-context-local resets? |
 | OPEN-M4-06 | Open | M4 | When an authored mini-game spans several explicitly linked narrative contexts, can its state/timer be resumed on re-entry? Which local facts reset, and how does bounded checking respect only authored navigation? |
 | OPEN-M5-01 | Narrowed (renderer-owned presentation) | M5 | How does a live renderer reconstruct its starting/final pose and hotspot visibility from its saved/replayed presentation state plus cue IDs, especially after load/reconnect, **without requiring world_state in every Cue Sheet**? |
-| OPEN-M5-02 | Narrowed (renderer owns mapping) | M5 | Can the concrete renderer/game build report unsupported authored `play(animation_id)` IDs and missing media, **without altering the Cue Sheet interface** or requiring GRIMM-level asset mapping? |
+| OPEN-M5-02 | Narrowed (renderer owns mapping) | M5 | Can the concrete renderer/game build report unsupported authored `cue(cue_id)` IDs and missing media, **without altering the Cue Sheet interface** or requiring GRIMM-level asset mapping? |
 | OPEN-M5-03 | Narrowed (separate state owners) | M5 | How does a live renderer save/reload its presentation state consistently with GRIMM canonical facts and optionally host-owned physics/world state, without elevating presentation to game-rule authority? |
-| OPEN-M5-04 | Open | M5 | Would host-owned continuing hazards or cinematics ever require a timer to run **during** presentation rather than following the M2 after-cues activation rule? How is that introduced only as an explicit later mode? |
+| OPEN-M5-04 | Narrowed (renderer clock already runs during action cues) | M5 | Which truly autonomous host-world hazards, if any, require synchronization beyond GRIMM's authored action costs and a renderer-owned continuously progressing scene clock? Do not reinstate a blanket rule that the clock waits for cue completion. |
 | OPEN-LATER-01 | Deferred | Later | What explicit integration mode handles independent host events that invalidate an already-resolved authored choice during cue playback without turning all M2 actions into pending simulations? |
 
 ## Active scope boundary for M2 (2026-10-30)
 
 Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-style adventures**: context-sensitive choices, local puzzle/world-state changes, explicitly authored narrative transitions, scene deadlines, presentation cues and light optional RPG-influenced checks. Do not implicitly add host-owned traversal, Bevy integration, open-world navigation, a full RPG ruleset or generated narrative to M2. Those remain M4/M5/later questions and should not block the M2 choice/adventure model. Revisit remaining M2 questions one at a time within this scope.
 
-**M2 renderer timer rule:** The renderer plays all required `play` cues in a Cue Sheet first. Only after those cues finish does it show/enable the offered actions and start or resume the countdown at the **post-action elapsed time and budget supplied in that Cue Sheet**. Action animation duration has already been accounted for by GRIMM and is **never counted again** by the renderer. Subsequent player hesitation advances from that supplied baseline. This rule applies uniformly to first and subsequent cue sheets; no active timer countdown during required cue playback. A newly emitted cue sheet retains the same situation budget unless authored rules explicitly modify it.
+**Renderer timer and cue rule (current design):** Each response REPLACES the full pending plan. Untimed instructions sequence from receipt/resume time; absolute `at` events can overlap narrative cues. GRIMM resolves authored action cost once, recomputes the eligible plan from world state, time and history, and uses stable cue IDs for in-flight continuation.
 
 **Full reference:** [The Locked Room — complete Cue Sheet / Game Action trace](milestones/m2-cue-sheet-reference.md) expands this introductory trace with actual `door_damage += character_strength` updates, conditional `squeeze_through`, both dexterity results, strength thresholds, alternate branches, timeout and authored time-bonus behavior. It is the **M2 behavioral acceptance example**, not the final grammar.
 
@@ -59,41 +125,41 @@ Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-s
 This **worked example** uses **cumulative time since the narrative situation's timer origin** and an authored 30-second time budget. GRIMM resolves each selected action at once and returns the post-action time/state in a new cue sheet. **Not a final serialized schema**.
 
 ```text
-cue_sheet { id:1; play:[locked_in];
+cue_sheet { id:1; cue:[locked_in];
   actions:[open_drawer, open_wardrobe, carefully_look_around];
   scene_timer:[0 of 30]s }
 
 game_action { ref:1; action:open_drawer; scene_timer:[2 of 30]s }
   # 2s player hesitation; action duration 1s
-cue_sheet { id:2; play:[open_drawer];
+cue_sheet { id:2; cue:[open_drawer];
   actions:[close_drawer, take_keychain_from_drawer, open_wardrobe, carefully_look_around];
   scene_timer:[3 of 30]s }
 
 game_action { ref:2; action:take_keychain_from_drawer; scene_timer:[5 of 30]s }
   # 2s additional player hesitation; action duration 1s
-cue_sheet { id:3; play:[take_keychain];
+cue_sheet { id:3; cue:[take_keychain];
   actions:[close_drawer, open_wardrobe, unlock_door_key1, unlock_door_key2,
            carefully_look_around];
   scene_timer:[6 of 30]s }
 
 game_action { ref:3; action:unlock_door_key1; scene_timer:[8 of 30]s }
   # key 1 is wrong; trying it takes 2s
-cue_sheet { id:4; play:[wrong_key_does_not_turn];
+cue_sheet { id:4; cue:[wrong_key_does_not_turn];
   actions:[close_drawer, open_wardrobe, unlock_door_key1, unlock_door_key2,
            carefully_look_around];
   scene_timer:[10 of 30]s }
 
 game_action { ref:4; action:unlock_door_key2; scene_timer:[12 of 30]s }
   # key 2 fits; opening takes 2s
-cue_sheet { id:5; play:[unlock_door_success, escape_room]; actions:[];
+cue_sheet { id:5; cue:[unlock_door_success, escape_room]; actions:[];
   scene_timer:[14 of 30]s }
 ```
 
-GRIMM owns persistent facts (e.g. `drawer_open`, `has_keychain`, door status), authorized action lists and authored conditional outcomes; the concrete renderer owns how to play `open_drawer`, `take_keychain` and door-related visual cues. `game_action.scene_timer` means **time at player selection**, not the post-action value. `cue_sheet.scene_timer` means **time after GRIMM has already added the authored action cost**; rendering that same action duration must not deduct it *again*. The renderer must count subsequent hesitation from the post-action baseline once playback has made the next choices interactive. The opening `locked_in` cue must not silently consume the budget before its start/readiness semantics are specified.
+GRIMM owns persistent authored gameplay facts and validates actions; the renderer reports scene time at selection. `available_actions` instructions replace the full offer, never before GRIMM's authored eligibility time. No instant clock jump or double-charging presentation time.
 
 **Time-buying example:** an authored two-second choice can extend a timer budget by five seconds, yielding `[14 of 35]s` from `[12 of 30]s`. This changes the allowed deadline, **not** how much time has already passed. The rule is authored and GRIMM chooses the resulting cue sheet; the renderer does not decide the bonus.
 
-**Still to decide:** the exact lifecycle of running/restarting timer display for refreshed cue sheets; whether `[elapsed of total]` is sufficient to distinguish a continuing situation deadline from a new decision timer; the response's state projection and transition/ending markers; the time-consistency rule when the renderer performs a `play` cue that represents the already-accounted action duration; and whether a separately authored presentation cue has additional time cost or only presentation gating.
+**Already decided for the newer Cue Sheet design:** No mandatory world-state projection or node-transition marker; no additional in-game time cost for the renderer's cue playback; renderer scene clock continues through action cues, and the new `scene_timer` specifies earliest next-action readiness. Details of distinguishing a new versus continuing deadline and explicit legacy choice-selection semantics remain implementation concerns, without revisiting these decisions.
 
 ## M2 engine/renderer handshake — cue sheet (working design, 2026-10-30)
 
@@ -102,7 +168,7 @@ GRIMM's resolved output is conceptually a **Cue Sheet** specifying what to prese
 ```text
 GRIMM → Renderer:
   cue_sheet(revision=12) {
-    play: ["enter_corridor", "dialog_scene_1"]
+    cue: ["enter_corridor", "dialog_scene_1"]
     actions: [A, B, C]
     timer: 20s
   }
@@ -118,7 +184,7 @@ Renderer → GRIMM:
 
 The renderer provides the elapsed interval and not a wall-clock timestamp for this M2 example. GRIMM consumes the revision-scoped event and its elapsed duration, validates that A was offered and interprets the time according to authored rules, commits one deterministic transition and emits the **next Cue Sheet**. If the timer expires with no input, the renderer/host reports elapsed time without a choice and GRIMM selects the authored no-response consequence. The renderer never determines that story outcome.
 
-**Presentation and timer start:** required `play` cues precede the availability of the listed `actions`. The timer shown alongside those choices starts when they actually become selectable, not while earlier presentation cues are still playing. M1.8's readiness/activation protection must remain, but exact acknowledgement/event names and whether the cue-sheet timer is a choice-selection or situation/objective timer require the minimum consistent protocol. An active situation deadline carried over from earlier interactions must not inadvertently reset just because a new Cue Sheet is emitted.
+**Explicit timer and action availability (current design):** Timer start/visibility are cue instructions in a complete REPLACE plan, and `available_actions` always replaces the whole offer. `at` schedules events on the absolute scene clock; action responses resume the clock from selection time, not from a new deadline.
 
 **Unresolved implementation details:** precise event envelope/field names, whether action and elapsed input are atomic, timer origin and cumulative vs incremental elapsed observations, whether the renderer or composition host is the trusted timer source, revision validation and explicit expiry on silence. Do not introduce an independent GRIMM wall clock or renderer-authoritative authored consequences.
 
@@ -128,26 +194,26 @@ The renderer provides the elapsed interval and not a wall-clock timestamp for th
 
 - **Deadline types:** the conceptual distinction between choice-selection deadlines and multi-choice objective/situation deadlines is understood. **Do not require both timers to be active simultaneously in an M2 narrative context.** Exact authored syntax remains unspecified.
 - **Author-defined boundary:** success/failure/tie conditions are authored explicit comparisons, e.g. `time_passed > 6s` vs `time_passed = 6s` vs `time_passed < 6s`, or `>= 6s` vs `< 6s`. Do not impose a universal inclusive/exclusive success rule. `time_passed` needs a precisely defined reference interval (notably whether it includes the just-selected action's duration) so comparisons are deterministic.
-- **Time semantics:** authored action duration and its presentation/action animation duration match. Fictional chronology may be authored independent world state. Real host time matters only for timed narrative situations (which can appear frequently) and is supplied externally; GRIMM does not tick a wall clock.
+- **Time semantics (updated):** GRIMM's authored action duration is game-time accounting; an animation can run shorter or longer, as chosen by the renderer. The renderer's scene clock continues through action cues and uses the post-action `scene_timer` target to release the next actions. No wall-clock ticking occurs inside GRIMM.
 - **Host clock trust:** for M2, **accept the host's reported selection/expiry timing as the runtime observation**, without independently verifying the physical clock. Preserve existing revision-scoped stale/duplicate-input protection so a validly timestamped but obsolete input cannot commit twice.
-- **Presentation:** after a choice GRIMM returns one already-resolved authoritative outcome with ordered presentation cues, player-visible world-state projection and next allowed choices. The renderer owns **how/when it presents** cues and offers; retain the existing minimal M1.8 interaction-readiness boundary to reject premature/stale inputs rather than establishing an engine-owned animation player.
+- **Presentation (updated):** After a choice, GRIMM returns a fully resolved outcome with ordered semantic cue IDs, an offered-action list and optional post-action timer target. It does **not** send a required world-state projection, presentation durations or renderer-specific labels. The renderer can overlap action presentation with the action-eligibility moment and controls staging. Preserve input/revision checks and initial narration readiness.
 - **Pause/persistence:** a general GRIMM Pause mode is **not a new M2 requirement**. Proposal: disable saving during a running timed narrative situation and possibly any required incomplete presentation, then persist settled state at stable boundaries. Existing M1.75 pause/save compatibility **must not be removed or silently changed**; whether M2 disables those facilities for its newly authored situations requires explicit compatibility review.
 - **Authoring validation:** require each executable action to have deterministic, unambiguous **complete outcome coverage** (a fallback/ELSE or provably exhaustive branches), not a separate ELSE for every individual variable. Comprehensive global puzzle solvability and exact milestone playthrough catalog can be deferred until concrete M2 authoring demands them.
-- **Illustrative response only; schema not accepted:** `{ revision, world_state: <player-visible projection>, presentation: [{cue, duration_ms}], choices: [{id,label}], timer?: {remaining_ms} }`. A story-context/node ID or separate transition field might be useful but is not assumed. This example is **not** a final Rust API, schema or guarantee of full world-state disclosure. Choice input plus host timing/idle-expiry observations and existing presentation readiness are the likely minimal host messages, with no action-success callback.
+- **Illustrative response only; schema not accepted:** `{ revision, cue: [cue_id], actions: [action_id], scene_timer?: [elapsed of total] }`. A story-context/node ID or separate transition field might be useful but is not assumed. This example is **not** a final Rust API or schema, but illustrates the minimal cue/action/time boundary. Choice input plus host timing/idle-expiry observations and existing presentation readiness are the likely minimal host messages, with no action-success callback.
 
 **Topics for subsequent design:** exact clock reference and timer activation, host timer-event contract, interaction gating under M1.8, save compatibility, authoring format and a minimal semantic result. Distinguish these implementation details from the gameplay concepts already agreed.
 
 ## M2 scene-and-choice review — working decisions (2026-10-30)
 
 - **Do not overload “scene”:** distinguish the **narrative situation / authored gameplay context** (rules, current available choices and deadline, owned by GRIMM), a **story graph node** (authored structural unit, not required for every local action), and a **presentation shot/setting** (visual animation, camera or text presentation, owned by the concrete renderer). Naming and exact schema remain to be chosen; none must be universally 1:1.
-- **Single choice-time resolution:** GRIMM receives an authored choice plus host-correlated selection time, evaluates conditions and typed game/world state, commits the result and returns **authorized presentation cues, required visual state projection and allowed next choices**. The renderer decides the concrete *how*, not gameplay eligibility, consequences or timers. Presenting and choice readiness remain distinct under M1.8.
+- **Single choice-time resolution (updated):** GRIMM receives a player action with a correlated timer observation, resolves canonical game-state effects and any known deadline cutoff immediately, and returns semantic presentation cues, next authorized action IDs and optional post-action timer target. No required world-state projection, node-change marker or renderer outcome callback.
 - **Authored repeated actions:** game state such as `door_damage` can be updated on each `break_door` choice using a `character_strength` value; the resulting thresholds can select `break_door_nothing_happens`, `break_door_progress`, `break_door_almost_open` or `break_door_success`. Other choices can be made available from the same facts (`door_damage > 0` → `squeeze_through`) and resolve using a `character_dex` check. These are **illustrative authored rules/cues**, not engine-hardcoded actions, thresholds or asset IDs.
 - **Revision ≠ node ≠ deadline:** revision-scoped choices protect against stale clicks or duplicate lifecycle events after the offered set changes. Updating a revision does **not** automatically re-enter a narrative context or reset its countdown.
 - **Timer authority:** a renderer can be asked to *display* a timer and may notify that it appears to have expired; only GRIMM can validate expiry based on its authored deadline and host-supplied time observations and commit the authored timeout consequence. The renderer cannot reset/extend the canonical deadline.
 - **Navigation is never implicit:** a previously visited story node is **not** automatically accessible again. A Telltale-like return to the key rack needs an explicit authored choice/transition (e.g. `leave_and_search_for_key`); a host-led 3D/RPG game may instead exit the narrative interaction into host-owned free exploration and later trigger a new GRIMM interaction at the key rack. **Both must be modeled as legal transitions, not invented by the checker.**
 - **Graph checking:** check only **actual reachable transitions from each reachable (story context, committed state, remaining time, host-navigation assumptions)**. Finding a key in some graph node does not make the door puzzle solvable unless the player can legally reach that node from the current situation. Conditional exits need not be universally available, but unintended trapped nonterminal states should be diagnosed; intentional terminal failure/timeout is allowed. Bounded analysis may return *inconclusive* rather than assume free backtracking.
 
-**Conceptually answered:** local effects without node transition; renderer ownership of the *presentation process*; repeated attempts using world state; engine-selected presentation cues; persistence of canonical facts. **Still open in M2:** precise event/state-projection/schema contracts, revision lifecycle, condition/checker algorithm, expiry event handling and readiness timing. Renderer-specific cue-to-asset binding remains later M5 work.
+**Conceptually answered (updated):** Authored local state effects without node transitions; renderer-owned visual state and presentation; cue/action IDs instead of required canonical-state projections; fully resolved gameplay at choice selection; and a post-action timer target on a continuously running renderer clock. Still open: exact concrete protocol types, namespace/legacy compatibility details, save checkpoint integration and advanced state-space checker implementation.
 
 ## Choice-driven scene and adventure modeling
 
@@ -165,10 +231,10 @@ The renderer provides the elapsed interval and not a wall-clock timestamp for th
 | OPEN-SCENE-08 | Open | M4–M5 | How do game-specific bindings map semantic facts (e.g. `drawer_open`) to asset/mesh/sprite states, without putting renderer data in the headless engine? |
 | OPEN-SCENE-09 | Open | M2–M5 | Since GRIMM already decides outcomes before presenting, how should a renderer stage the action sequence, final pose and next-choice activation without an extra outcome/commit callback? |
 | OPEN-SCENE-10 | Open | M4–M5 | If an embedded host owns a physical object, which facts belong to GRIMM and how are host-world updates reconciled without competing authorities? |
-| OPEN-SCENE-11 | Open | M2 | What renderer-neutral message describes GRIMM's **fully determined** outcome and prescribed presentation sequence at choice selection (including effective duration, target state, transition and choices)? |
-| OPEN-SCENE-13 | Decided (direction above; schema open) | M2–M3 | How should authored progress across **separate repeated Choices** (e.g. 1–3 attempts to break a door based on `strength`) be modeled with existing state/effects and checked for deadlocks and unbounded repetition, without a dedicated universal action-progress primitive? |
+| OPEN-SCENE-11 | Decided conceptually (API details open) | M2 | Use a single resolved Cue Sheet with semantic cue/action IDs, correlation and optional post-action timer target; no required renderer world-state projection or graph-transition markers. Concrete serialization remains open. |
+| OPEN-SCENE-13 | Decided (direction above; schema open) | M2 | How should authored progress across **separate repeated Choices** (e.g. 1–3 attempts to break a door based on `strength`) be modeled with existing state/effects and checked for deadlocks and unbounded repetition, without a dedicated universal action-progress primitive? |
 | OPEN-SCENE-14 | Investigating (GRIMM chooses cue; asset binding open) | M2–M5 | How does a fully resolved choice select a **semantic presentation cue** (`try_break_door`, `success_break_door`, optional strength/progress variants), and where are those cues bound to a game's concrete animations/assets without renderer-specific types in GRIMM? |
-| OPEN-SCENE-15 | Open | M2–M3 | How do distinct repeated attempts consume cumulative scene deadline, persist progress through save/load, and produce different authored success/failure outcomes as `strength` or progress changes? |
+| OPEN-SCENE-15 | Open | M2 | How do distinct repeated attempts consume cumulative scene deadline, persist progress through save/load, and produce different authored success/failure outcomes as `strength` or progress changes? |
 | OPEN-SCENE-12 | Open | Later | If independent physics/NPC/host events might invalidate an action *after* selection, is a different integration mode needed? Do not impose a provisional-action lifecycle on authored M2 scenes. |
 | OPEN-TIME-01 | Decided (game_action elapsed timer input) | M2 | How is renderer/host-reported **elapsed duration relative to a known timer activation** represented, especially across successive cue sheets in the same narrative situation? How is it kept separate from fictional world chronology? |
 | OPEN-TIME-02 | Open | M2 | How do authored success, failure and deadline-cut effects commit in one atomic transition, including any predeclared partial consequences? |
@@ -180,19 +246,19 @@ The renderer provides the elapsed interval and not a wall-clock timestamp for th
 | OPEN-TIME-08 | Open | M2–M5 | How does interrupted/paused/reloaded presentation resume using the same pre-resolved semantic outcome and original game timing? |
 | OPEN-TIME-09 | Investigating (timer value on cue sheet) | M2 | How does the story format distinguish legacy **choice-selection deadlines** (silence causes authored transition) from **scene-completion deadlines** (objective must finish in time)? |
 | OPEN-TIME-10 | Open | M2 | Which **derived arithmetic facts** (effective action duration, progress fraction, time remaining) may authored conditions use when the known deadline cuts a choice short? |
-| OPEN-TIME-11 | Open | M2–M3 | How do authored outcomes combine arithmetic action progress with already committed character stats such as `suspicion` without hardcoding specific checks? |
+| OPEN-TIME-11 | Open | M2 | How do authored outcomes combine arithmetic action progress with already committed character stats such as `suspicion` without hardcoding specific checks? |
 | OPEN-TIME-12 | Deferred (exclude simultaneous active timers in M2) | Later | Should a later adventure ever have both deadline types active simultaneously? M2 does not need overlap/precedence rules. |
 | OPEN-TIME-13 | Open | M2 | What presentation is emitted for an action already known to miss the deadline: the shortened attempt, immediate failure, follow-up scene narration and choice gating? |
-| OPEN-TIME-14 | Decided (illustrative game_action + timeout; serialization open) | M2 | Define the minimal revision-scoped event shape for `[action_selected(A), timer_elapsed(5s)]` and silent `timer_elapsed(20s)`; when does the timer activate after the ordered Cue Sheet presentation, and how is duplicate/late input handled? |
+| OPEN-TIME-14 | Decided direction (serialisation open) | M2 | The host reports selection-time observations and expiry; action-result Cue Sheets give a post-action eligibility target on the renderer's continuing scene clock. Initial narrative readiness may gate first offers separately. Concrete event shape is not fixed. |
 | OPEN-TIME-15 | Open | M2 | How is canonical **logical scene time** advanced by each resolved action or deadline cut without double-counting real-time observations of player hesitation? |
 | OPEN-TIME-16 | Open | M2 | If a host delivers a choice late, which timestamp/provenance determines whether it was still valid at selection? How are stale interactions rejected? |
 | OPEN-DEMO-01 | Open | Every milestone | What complete playable acceptance game and regression routes demonstrate all new mechanics, state persistence and success/failure paths? |
-| OPEN-DEMO-02 | Open | M2–M3 | How do demos prove that a door attempt at T=6 with a five-second duration and T=10 deadline is resolved at selection to a **four-second failure presentation**, without an action-completion callback? |
-| OPEN-PUZZLE-01 | Open | M3 | Which item/inventory features require more than typed state variables: identity, ownership, location, consumption, quantities, visibility? |
-| OPEN-PUZZLE-02 | Decided in principle (DSL choice/state); item specifics open | M3 | How do authored MacGyver-like combinations and multiple puzzle solutions remain conditional choices rather than universal `Inspect/Use/Combine` commands? |
-| OPEN-PUZZLE-03 | Decided in principle (DSL effects/offers); item semantics open | M3 | How do inventory changes affect subsequent offers and remain persistent/replayable without proliferating graph nodes? |
-| OPEN-STAT-01 | Narrowed (richer character ownership only) | M3 | When do RPG attributes, skills, relationships and resources need explicit character ownership rather than normal typed variables? |
-| OPEN-STAT-02 | Open | M3 | If probabilistic checks are desired later, how are input seeds and outcomes recorded; can initial threshold checks remain deterministic? |
+| OPEN-DEMO-02 | Clarified (logical time, not mandated video length) | M2 | How do tests demonstrate a T=6 five-second action truncated by a T=10 deadline has **four seconds logical progress** and a failure cue, with renderer pacing chosen independently and no action-completion callback? |
+| OPEN-PUZZLE-01 | Open | Deferred | Which item/inventory features require more than typed state variables: identity, ownership, location, consumption, quantities, visibility? |
+| OPEN-PUZZLE-02 | Decided in principle (DSL choice/state); item specifics open | Deferred | How do authored MacGyver-like combinations and multiple puzzle solutions remain conditional choices rather than universal `Inspect/Use/Combine` commands? |
+| OPEN-PUZZLE-03 | Decided in principle (DSL effects/offers); item semantics open | Deferred | How do inventory changes affect subsequent offers and remain persistent/replayable without proliferating graph nodes? |
+| OPEN-STAT-01 | Narrowed (richer character ownership only) | Deferred | When do RPG attributes, skills, relationships and resources need explicit character ownership rather than normal typed variables? |
+| OPEN-STAT-02 | Open | Deferred | If probabilistic checks are desired later, how are input seeds and outcomes recorded; can initial threshold checks remain deterministic? |
 | OPEN-ADV-01 | Open | M4 | How do persistent locations, objects and recurring characters differ from narrative scenes and presentation phases? |
 | OPEN-ADV-02 | Decided in principle (common DSL/Cue Sheet); full adventure open | M4 | How should LucasArts-like exploration and puzzles enable Telltale-style staged, consequential narrative choices in the same authored adventure? |
 | OPEN-ADV-03 | Decided in principle (same action ID); concrete binding open | M4–M5 | How do graphical hotspots and text labels map to the same semantic offered choice within explicitly composed games? |

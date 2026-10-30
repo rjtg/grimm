@@ -1,5 +1,39 @@
 # M2 acceptance example — The Locked Room Cue Sheets and Game Actions
 
+## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
+
+This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.
+
+- **Every response is REPLACE.** GRIMM derives one *complete authoritative remaining presentation plan* for the current narrative context from canonical authored world state, scene time, authored conditions, player-action history, and semantic cue execution history. The renderer replaces the pending schedule on each response; no `ADD`, merge, inherited action-list patches, or cross-revision cue ordering.
+- **One ordered `cues: []` list.** Entries can contain `narrative_id` (semantic content binding), `available_actions` (complete replacement of the offered action list, including `[]` to lock input), timer start/visibility instructions, and optional `at` absolute time on the current scene clock. The illustrative notation is a logical model, not an imposed Rust parser grammar. Within one sheet, untimed entries run in order, including presentation completion barriers; an `at` event is clock-scheduled and may overlap a running narrative cue. An incoming REPLACE sheet's untimed prefix begins at the current paused/resumed clock time, **not** retroactively at T=0.
+- **Timing:** The renderer pauses its scene clock at player selection T while GRIMM resolves `game_action`; resumes from T on the reply. GRIMM resolves authored action duration and deadline at selection once. New `available_actions` instructions are never enabled before that action's computed earliest logical time, even if their preceding narrative finishes sooner. Conversely a sequenced choice update may wait for renderer presentation completion if it is placed *after* that narrative. Timed instructions use absolute scene-clock `at`, so a T=10 radio event can begin during a T=8–11 drawer opening. A new timer starts at its explicit instruction, after any preceding intro presentation; subsequent clock-scheduled items do not block the start.
+- **One cue identity, separate content identity.** Each authored cue instruction has a unique, stable `cue_id` **within its story/scene namespace**, independent of `narrative_id` (the reusable renderer binding). Two distinct cues can reference the same `narrative_id`. Authors may explicitly name `cue_id`; otherwise GRIMM tooling deterministically generates an ASCII-qualified ID from the authored instruction/content and timing, e.g. `locked_room.narrative_radio_johnny_returns_at_10`. Derive from authored definition, **not output list position**; M3 must reject collisions and offer diagnostics. If an author edits content/timing, the generated identity may change; explicitly authored IDs are advised when continuity and save compatibility matter. No second `cue_instance_id` is required in this model.
+- **Renderer feedback:** The renderer reports `cue_started` and `cue_completed` with `cue_id` and sheet correlation/revision, optionally current scene time. GRIMM records enough action/cue history to avoid rerunning started/completed cues while constructing the next REPLACE sheet. The same stable `cue_id` in a replacement sheet denotes **continuation** of presentation already in flight, not replay; renderer owns media-specific fades, duration and detailed resume state. Stale or duplicate events must be idempotently handled, including events from a now-replaced sheet.
+- **State boundaries:** GRIMM records semantic action decisions, cue execution statuses, and canonical game rules/state for deterministic recomputation and snapshot/restore. Cue lifecycle acknowledgements are presentation coordination **not gameplay effects**; they never independently mutate authored world variables or authorize actions. Concrete assets, text, animation/audio, UI geometry and presentation playback positions remain renderer-owned and saved by the host independently.
+- **Availability invariants:** `available_actions` always replaces the full visible/actionable offer; `[]` disables them during a narrative cue. GRIMM alone validates `game_action` input and retains rule authority even if a UI is stale. If a new sheet is issued while old action/media instructions run, only actions from the current sheet may become eligible; stale scheduled `available_actions` instructions are discarded.
+- **Timer UI:** A timer can start hidden, with a later cue entry showing it; visibility does not start/reset the timer or affect game conditions.
+
+Illustrative T=8 drawer action with three seconds of authored cost, where the T=10 radio cue overlaps the drawer presentation:
+
+```text
+game_action { action: open_drawer, scene_timer: [8 of 30]s }
+cue_sheet {
+  cues: [
+    { cue_id: drawer_input_lock, available_actions: [] },
+    { cue_id: drawer_opening, narrative_id: drawer_opened },
+    { cue_id: radio_warning, at: 10, narrative_id: radio_johnny_returns },
+    { cue_id: countdown_reveal, at: 10, timer: { visible: true } },
+    { cue_id: drawer_new_choices, at: 11, available_actions: [take_key, search_desk, hide] },
+    { cue_id: johnny_footsteps, at: 20, narrative_id: footsteps_approaching }
+  ]
+}
+```
+
+The clock resumes from T=8 after GRIMM responds; radio/countdown trigger at T=10 regardless of a concurrent drawer animation. The T=11 choice offer is a *minimum* logical-time release and must not be prematurely unblocked by short media. When choosing an action after T=10, GRIMM uses cue-history acknowledgements to omit already finished events, or preserve an in-flight cue under its same `cue_id`. When entering another authored scene, the next full REPLACE sheet starts the new scene's plan; no explicit graph-node ID leaks to renderers.
+
+
+**Protocol note (2026-10-30):** The trace below preserves the historical M2 cue/action wire notation as behavioral regression evidence. The current proposed Cue Sheet protocol uses one ordered `cues` instruction list with a stable scene-scoped `cue_id` per instruction, `narrative_id` for reusable content, `available_actions` for complete offer replacement, renderer acknowledgements, and full REPLACE regeneration from GRIMM-internal action/cue history. See [architecture](../architecture.md#current-cue-sheet-protocol-decision--full-replacement-and-stable-cue-ids-2026-10-30). Do not implement the historical top-level fields as the newer target wire protocol solely because of this example.
+
 This is a **normative behavioral example for the M2 implementation agent**, **not a prescribed parser grammar, Rust representation or exact wire syntax**. Preserve its authored choice/time/state semantics. The implementer designs a small story DSL that can express this complete scenario and emits equivalent renderer-facing Cue Sheets and correlated Game Actions.
 
 ## Why this is a mini-game, not a chain of micro-nodes
@@ -8,8 +42,9 @@ The drawer/keyring/door challenge is a complete **authored stateful mini-game**,
 
 ## Boundary and operating rules
 
-- The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to play, which actions to accept and the currently relevant elapsed/total timer. **GRIMM's canonical `world_state` is not a mandatory Cue Sheet field.**
-- The renderer first executes all `play` cues (in order), updates its own presentation state as needed, then displays/enables `actions` and **starts/resumes its timer at the supplied Cue Sheet baseline**. An authored action's animation duration is *already included* in GRIMM's post-action `scene_timer` value and **must not be counted twice**.
+- The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to present, which actions to accept and the currently relevant elapsed/total timer. **GRIMM's canonical `world_state` is not a mandatory Cue Sheet field.**
+- **Historical M2 behavior trace:** The unqualified cue/action names in this fixture are deliberate local identifiers and remain a valid illustration of its original DSL design; later M3/M4/M5 authoring may add namespace-qualified IDs. For newer action-driven renderers, **the clock pauses at action selection while awaiting GRIMM and resumes at that same selection time on the Cue Sheet response**; it then continues during cues and the returned `scene_timer` is the next-action eligibility target. An action-result animation may overlap the moment the next offers become available; first-introduction/readiness gates may still delay initial choices.
+- **Action time versus cue time (updated interpretation):** authored action costs affect GRIMM's game-time outcome at selection. The renderer may play the chosen cue for a similar physical duration, but timing is its own responsibility: it must not **double-charge** the logical cost or demand exact playback length. A five-second action selected at T=3 leads to a Cue Sheet with T=8 as the earliest next-action time, whether animation finishes before or after that point.
 - The renderer reports `game_action { ref, action, scene_timer }` when the user chooses an offered action. The timer value is the **elapsed time at selection**, before GRIMM adds that action's authored cost. `action: timeout` is the ordinary reserved input for expiry without a player choice. GRIMM validates the referenced current offer and resolves all effects, conditions, time and presentation in one transaction.
 - Timers do not automatically reset between Cue Sheets. Explicit authored time changes may increase the total budget, or start a new timer (e.g. `[0 of 12]s`). `time_passed` in a rule reads the renderer-reported elapsed value from the current `game_action`.
 - The demonstration uses simple **GRIMM-owned** authored state (no built-in door mechanics): `drawer_open`, `has_keychain`, `door_damage`, `door_open`, `character_strength`, `character_dex`. Authors choose which are persistent across narrative contexts and which are local. The comments alongside the Cue Sheets annotate GRIMM's internal state for testability; these values do **not** belong to the M2 renderer-facing Cue Sheet.
@@ -24,7 +59,7 @@ For this first trace, each drawer/keychain action costs **1 second** and each ke
 ```text
 cue_sheet {
   id: 1
-  play: [locked_in]
+  cue: [locked_in]
   actions: [open_drawer, open_wardrobe, carefully_look_around]
 
   scene_timer: [0 of 30]s
@@ -37,7 +72,7 @@ game_action { ref: 1, action: open_drawer, scene_timer: [2 of 30]s }
 # GRIMM commits drawer_open=true, adds authored 1s duration.
 cue_sheet {
   id: 2
-  play: [open_drawer]
+  cue: [open_drawer]
   actions: [close_drawer, take_keychain_from_drawer,
             open_wardrobe, carefully_look_around]
 
@@ -52,7 +87,7 @@ game_action { ref: 2, action: take_keychain_from_drawer,
 # GRIMM adds authored 1s and stores has_keychain=true.
 cue_sheet {
   id: 3
-  play: [take_keychain]
+  cue: [take_keychain]
   actions: [close_drawer, open_wardrobe, unlock_door_key1,
             unlock_door_key2, carefully_look_around, break_door]
 
@@ -64,7 +99,7 @@ game_action { ref: 3, action: unlock_door_key1,
               scene_timer: [8 of 30]s }
 cue_sheet {
   id: 4
-  play: [wrong_key_does_not_turn]
+  cue: [wrong_key_does_not_turn]
   actions: [close_drawer, open_wardrobe, unlock_door_key1,
             unlock_door_key2, carefully_look_around, break_door]
 
@@ -76,7 +111,7 @@ game_action { ref: 4, action: unlock_door_key2,
               scene_timer: [12 of 30]s }
 cue_sheet {
   id: 5
-  play: [unlock_door_success, escape_room]
+  cue: [unlock_door_success, escape_room]
   actions: []
 
   scene_timer: [14 of 30]s
@@ -105,28 +140,28 @@ ON break_door:
 
     IF door_damage >= 4:
         SET door_open true
-        PLAY break_door_success
+        CUE break_door_success
         GOTO corridor
     ELSE IF door_damage == 3:
-        PLAY break_door_almost_open
+        CUE break_door_almost_open
         # remain in current narrative context; offer break_door again
     ELSE IF door_damage == 2:
-        PLAY break_door_progress
+        CUE break_door_progress
     ELSE IF door_damage == 1:
-        PLAY break_door_barely_moves
+        CUE break_door_barely_moves
     ELSE:
-        PLAY break_door_nothing_happens
+        CUE break_door_nothing_happens
 
 ON squeeze_through:
     COST 2s
     IF character_dex > door_damage:
-        PLAY squeeze_through_success
+        CUE squeeze_through_success
         GOTO corridor
     ELSE:
-        PLAY squeeze_through_does_not_fit
+        CUE squeeze_through_does_not_fit
 
 ON timeout:
-    PLAY caught_while_escaping
+    CUE caught_while_escaping
     GOTO caught_ending
 ```
 
@@ -141,7 +176,7 @@ This is a **separate run**, with `door_damage=0`, `character_strength=1`, `chara
 ```text
 cue_sheet {
   id: 20
-  play: [door_locked]
+  cue: [door_locked]
   actions: [break_door]
 
   scene_timer: [0 of 30]s
@@ -151,7 +186,7 @@ game_action { ref: 20, action: break_door, scene_timer: [0 of 30]s }
 # door_damage = 0 + strength(1) = 1; +2s
 cue_sheet {
   id: 21
-  play: [break_door_barely_moves]
+  cue: [break_door_barely_moves]
   actions: [break_door, squeeze_through]
 
   scene_timer: [2 of 30]s
@@ -161,7 +196,7 @@ game_action { ref: 21, action: break_door, scene_timer: [2 of 30]s }
 # door_damage = 1 + strength(1) = 2; +2s
 cue_sheet {
   id: 22
-  play: [break_door_progress]
+  cue: [break_door_progress]
   actions: [break_door, squeeze_through]
 
   scene_timer: [4 of 30]s
@@ -172,7 +207,7 @@ game_action { ref: 22, action: squeeze_through, scene_timer: [4 of 30]s }
 # character_dex(3) > door_damage(2) -> success; +2s
 cue_sheet {
   id: 23
-  play: [squeeze_through_success]
+  cue: [squeeze_through_success]
   actions: []
 
   scene_timer: [6 of 30]s
@@ -183,7 +218,7 @@ game_action { ref: 22, action: break_door, scene_timer: [4 of 30]s }
 # door_damage = 3; +2s
 cue_sheet {
   id: 24
-  play: [break_door_almost_open]
+  cue: [break_door_almost_open]
   actions: [break_door, squeeze_through]
 
   scene_timer: [6 of 30]s
@@ -194,7 +229,7 @@ cue_sheet {
 game_action { ref: 24, action: squeeze_through, scene_timer: [6 of 30]s }
 cue_sheet {
   id: 25
-  play: [squeeze_through_does_not_fit]
+  cue: [squeeze_through_does_not_fit]
   actions: [break_door, squeeze_through]
 
   scene_timer: [8 of 30]s
@@ -205,7 +240,7 @@ game_action { ref: 24, action: break_door, scene_timer: [6 of 30]s }
 # door_damage = 4; door_open = true; +2s
 cue_sheet {
   id: 26
-  play: [break_door_success]
+  cue: [break_door_success]
   actions: []
 
   scene_timer: [8 of 30]s
@@ -225,23 +260,23 @@ These numeric examples differ from an earlier informal “1/2/3 attempts” illu
 ## 4. Timer timeout, fresh timer and time bonus
 
 ```text
-# No player selection, after cues finish and current timer reaches full budget:
+# No player selection, when the renderer's continuing scene timer reaches its full budget without a player choice:
 game_action { ref: 22, action: timeout, scene_timer: [30 of 30]s }
 cue_sheet {
   id: 27
-  play: [caught_while_escaping]
+  cue: [caught_while_escaping]
   actions: []
 
   scene_timer: [30 of 30]s
 }
 
 # A new authored timer may instead appear as:
-cue_sheet { id: 30; play: [next_challenge]; actions: [A, B];
+cue_sheet { id: 30; cue: [next_challenge]; actions: [A, B];
 
 
 # A two-second time-buying action can increase a 30s budget to 35s:
 game_action { ref: 31, action: buy_time, scene_timer: [12 of 30]s }
-cue_sheet { id: 32; play: [blocked_mechanism]; actions: [A, B];
+cue_sheet { id: 32; cue: [blocked_mechanism]; actions: [A, B];
 
 ```
 
@@ -250,5 +285,5 @@ cue_sheet { id: 32; play: [blocked_mechanism]; actions: [A, B];
 - Fully author the story, actions, conditions, variable declarations, time costs and cue IDs in the **new small M2 DSL**; do not hardcode this door scenario in Rust.
 - Check the **exact** `door_damage` update across repeated action calls, fresh conditional availability of `squeeze_through`, both `character_dex > door_damage` outcomes, animation selection at each progress threshold, `door_open` only on successful forcing, and preservation of the 30s timer across local interactions.
 - The M2 renderer receives **cue IDs, actions and optional time**, not GRIMM's canonical state or graph. It may interpret cues to maintain graphical presentation state. State-changing gameplay effects remain inside GRIMM, and a later graphical game may persist its renderer's presentation state alongside GRIMM's canonical save.
-- Verify elapsed-at-selection versus post-action elapsed, that required cue animation plays **before** timer resumes, and that animation time is **never charged twice**.
+- Verify elapsed-at-selection versus post-action elapsed, that the renderer clock continues through action-result cues and offers do not activate before GRIMM's post-action timer target, and that animation time is **never charged twice**.
 - Check one explicit `timeout` action, an authored timer reset, one time-buying bonus, and authored condition/ELSE validation. The Rust implementation agent may determine the concrete parser, representation, validations, serialization, revisions and integration points.
