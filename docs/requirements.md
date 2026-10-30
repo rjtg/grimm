@@ -51,45 +51,59 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **FLOW-04** Safe flow and persistence: automatic/non-choice transitions remain engine-authoritative, validate targets/effects, commit at most once per revision and have bounded/cycle-safe advancement. Save/load, pause/resume, disconnect and replay preserve unfinished presentation and pending deadlines; a failed/interrupted renderer must not silently progress canonical story state.
 - **FLOW-05** Renderer-neutral authoring and fallback: support explicit player-paced Continue as well as optional host-acknowledged narrative-only progression. In the text CLI, reading is acknowledged by the player (e.g. Enter) where needed; later visual renderers may acknowledge completed dialogue/camera sequences. Do not introduce renderer-authored timings, a cutscene timeline, ECS or a generic scheduler as a prerequisite.
 
-## M2 — Dynamic Narrative Foundation (no LLM dependency)
-- **DYN-01** Allow external, typed runtime narrative node/event proposals. Engine validates proposed node identity, references, permitted content, transitions, conditions/effects and current state before any atomic commit. Providers have no canonical state authority.
-- **DYN-02** Maintain a persisted dynamic graph overlay alongside the authored graph. Resolve authored and dynamic destinations consistently without rewriting the original story definition. Preserve existing scenes, M1.8 lifecycle, deadlines and hidden-state boundaries.
-- **DYN-03** Record accepted proposals/resolved events sufficiently for deterministic replay and save/restore. Reject invalid, stale, conflicting or duplicate proposals without partial mutation; bounded playability diagnostics retain explicit inconclusive outcomes.
-- **DYN-04** Demonstrate M2 with a small complete offline game (working title `The Unwritten Room`) and a deterministic rule-based proposal source; a runtime-created node must lead to a meaningful choice and reachable endings, survive save/load and replay identically.
-- **WORLD-03** When dynamic proposals require persistent world-entity state, support only the minimal validated state changes shared across scenes; defer a generic entity store, ECS and continuous simulation.
+## M2 — Interactive Scene Foundation
+- **SCENE-01** Authored choice actions may commit a validated state change **within the current narrative scene**, without a forced graph node transition or a mandatory fixed `Inspect/Use/Take` action taxonomy.
+- **SCENE-02** Current interaction offers are recalculated after an in-scene action from committed state. An authored action can reveal, enable, disable or replace choices and provide fresh narrative feedback; invalid and stale offers remain non-executable.
+- **SCENE-03** A time-critical situation may span multiple in-scene actions. A successful search, failed key attempt, inventory operation or newly exposed offer must not silently reset its shared deadline. Preserve M1.75 timeout precedence and M1.8 presentation/interaction readiness, pause, restore and revision safety.
+- **SCENE-04** Extend bounded diagnostics to reason about scene+relevant state, reachable options and executable exits/intentional timeouts, not only graph node links. Identify accidental nonterminal deadlocks; retain explicit inconclusive limits.
+- **SCENE-05** Playable text demo `The Locked Room`: search drawers/wardrobe/fireplace, discover a keyring and metal bar, attempt multiple wrong keys, change available choices and resolve an escape under an already-running deadline with distinct outcomes.
+- **SCENE-06** Keep ordinary authored CYOA stories and current save formats working; any optional authoring/schema extensions must be minimal, documented, deterministic and regression tested.
 
-## M3 — Free Input
-- **ACT-01** Free-text input offers and intent resolver interface.
-- **ACT-02** Rule-based resolver and optional model implementation.
-- **ACT-03** Validated proposed actions, ambiguity and failure responses.
+## M3 — Inventory, Puzzles & Character State
+- **PUZZLE-01** Optional items, discoveries, ownership and inventory-based conditions/effects; avoid an ECS or obligatory item taxonomy.
+- **PUZZLE-02** Allow authored combinations (including MacGyver-like solutions) through ordinary contextual choices with explicit preconditions and state effects; items are not required to expose universal `Use` or `Combine` commands.
+- **PUZZLE-03** Model multi-step puzzles, alternate solutions, failed attempts and optional action costs using the existing state/choice/time model. Collected or consumed items affect future offers and narrative branches.
+- **STAT-01** Optional persistent RPG-style character attributes, skills, relationships and resources are typed game state used in choice eligibility and effects. No mandatory level, class, dice or combat engine.
+- **STAT-02** Define optional attribute thresholds/checks and their deterministic resolution where a game requires them; distinguish player-visible stats from private NPC/world values and preserve replay.
+- **PUZZLE-04** Playable authored puzzle demo with collected and combined items plus at least two attribute-dependent approaches, alternative results, save/load and bounded checker coverage.
 
-## M4 — Generative Narrative (optional)
-- **GEN-06** Provide an optional generative narrative proposal source that targets the M2 typed proposal contract. Model output is never canonical until the engine validates and commits it.
-- **GEN-07** Give proposal providers an explicitly scoped, privacy-safe context projection. Hidden NPC knowledge and unavailable game facts must not leak through prompts, presentation, traces or replay artifacts.
-- **GEN-08** Validate explicit proposed world events/effects and narrative transitions; prose alone must not create or silently alter canonical facts. Define bounded rejection, retry and safe authored/rule-based fallback behavior.
-- **GEN-09** Preserve authored dialogue and narrative constraints where required; accept generated narrative only under documented consistency/trust boundaries. Do not equate successful JSON/schema parsing with semantic truth validation.
-- **GEN-10** Record model proposals or resolved inputs for deterministic replay; demonstrate optional online and fully offline paths using the same engine and output adapters.
+## M4 — Narrative Adventure
+- **ADV-01** Support semi-linear exploration across persistent locations with multiple narrative situations per location, revisiting and state-dependent offers. Do not equate location, scene and story progress.
+- **ADV-02** Combine LucasArts-like discovery/inventory puzzles with Telltale-like staged narrative choices, cinematic pacing, timed decisions and persistent consequences.
+- **ADV-03** State and puzzle solutions can enable/disable authored narrative branches without graph variant explosion; different approaches should produce distinct meaningful outcomes.
+- **ADV-04** Deliver a complete short hybrid narrative adventure with multiple locations, linked puzzles, Telltale-style consequential scenes, at least three outcomes and playability tests.
 
-### Deferred legacy requirements from the former M2
-The original IDs below are **retained as historical proposals**, not silently reassigned to new meanings or required by the revised roadmap. Resolve their fate explicitly through [the open questions](open-questions.md#generative-narrative-and-presentation) before any implementation.
+## M5 — Graphic Adventure Presentation
+- **VIS-01** Add a graphical adapter/renderer for the existing canonical action and choice semantics, with location imagery and scene-specific clickable hotspots/menus.
+- **VIS-02** Render inventory and optional character stats as views of authorized semantic state, never as a second game rules engine.
+- **VIS-03** Synchronize required dialogue/animation/camera presentation and interaction readiness with M1.8 lifecycle; preserve deadlines and no early activation.
+- **VIS-04** Demonstrate equivalent narrative/puzzle outcomes for the same adventure in text and graphical frontends, without engine-specific UI logic.
+
+## Deferred optional extensions — no near-term milestone commitment
+- **ACT-01 (deferred)** Free-text input offers and intent resolver interface.
+- **ACT-02 (deferred)** Rule-based resolver and optional model implementation.
+- **ACT-03 (deferred)** Validated proposed actions, ambiguity and failure responses.
+- **WORLD-03 (deferred)** Validated persistent world-entity state shared across scenes when justified by actual authoring, without a generic entity store by default.
+- **DYN-01 (deferred)** Provider-neutral, engine-validated runtime narrative node/event proposals, possibly from a live human DM, authoring tool, rule provider or optional LLM.
+- **DYN-02 (deferred)** Persisted runtime graph overlay and graph-extension validation, including reachable and safely escapable narrative frontiers where appropriate.
+- **DYN-03 (deferred)** Recorded provider proposals and deterministic replay, revision-bound atomic commits and no partial graph mutation.
+- **DYN-04 (deferred)** Complete future story-RPG demo with a human DM or other provider extending the graph during play.
 - **GEN-01 (deferred)** Optional generative text adapter behind the existing presentation boundary.
-- **GEN-02 (deferred)** Safe player-visible context projection for that text adapter.
+- **GEN-02 (deferred)** Safe player-visible context projection for generated text.
 - **GEN-03 (deferred)** Exact authored dialogue preservation in generative rendering.
 - **GEN-04 (deferred)** Deterministic authored/plain-text fallback on text-model failure.
 - **GEN-05 (deferred)** Best-effort validation against canonical-fact invention by generated presentation prose.
+- **GEN-06 (deferred)** Optional generative narrative provider targeting a validated dynamic proposal contract.
+- **GEN-07 (deferred)** Privacy-safe context projection for narrative proposal sources.
+- **GEN-08 (deferred)** Validated explicit proposed world events/effects and safe fallback.
+- **GEN-09 (deferred)** Consistency and author constraints on generative narrative.
+- **GEN-10 (deferred)** Recorded model outputs/proposals for deterministic replay.
+- **NPC-01 (deferred)** NPC state, knowledge/beliefs and goals.
+- **NPC-02 (deferred)** Rule-based optional controllers and event-triggered actions.
+- **NPC-03 (deferred)** Optional validated AI planning.
+- **NAR-01 (deferred)** Declarative milestones and conditions.
+- **NAR-02 (deferred)** Optional director and hard/soft constraints.
+- **NAR-03 (deferred)** Alternate-path milestone tests.
+- **NAR-04 (deferred)** Narrative progress independent of current scene/location.
 
-## M5
-- **NPC-01** NPC state, knowledge/beliefs, goals.
-- **NPC-02** Rule-based optional controllers and event-triggered actions.
-- **NPC-03** Optional validated AI planning.
-
-## M6
-- **NAR-01** Declarative milestones and conditions.
-- **NAR-02** Optional director and hard/soft constraints.
-- **NAR-03** Alternate-path milestone tests.
-- **NAR-04** Narrative progress can be represented independently of location and current scene/graph position; use world state and optional explicit milestones without requiring a second parallel progress graph.
-
-## M7
-- **VIS-01** Visual adapter/renderer implementation.
-- **VIS-02** Presentation-state snapshots, synchronization and acknowledgements.
-- **VIS-03** Visual/spatial interaction mapped to semantic actions.
+Previously used requirement IDs remain traceable and are not silently reassigned. See the [open-points catalog](open-questions.md) before reviving deferred features.
