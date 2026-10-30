@@ -6,6 +6,33 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 
 Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-style adventures**: context-sensitive choices, local puzzle/world-state changes, explicitly authored narrative transitions, scene deadlines, presentation cues and light optional RPG-influenced checks. Do not implicitly add host-owned traversal, Bevy integration, open-world navigation, a full RPG ruleset or generated narrative to M2. Those remain M4/M5/later questions and should not block the M2 choice/adventure model. Revisit remaining M2 questions one at a time within this scope.
 
+## M2 engine/renderer handshake — cue sheet (working design, 2026-10-30)
+
+GRIMM's resolved output is conceptually a **Cue Sheet** specifying what to present and which choices to offer; the renderer executes it and reports user inputs plus elapsed time against its current timer. Example (illustrative notation, **not** a committed serialized schema):
+
+```text
+GRIMM → Renderer:
+  cue_sheet(revision=12) {
+    play: ["enter_corridor", "dialog_scene_1"]
+    actions: [A, B, C]
+    timer: 20s
+  }
+
+Renderer:
+  play the two cues in order
+  display/enable A, B, C and start the 20s timer only once choices are ready
+  player selects A five seconds after that point
+
+Renderer → GRIMM:
+  [revision=12, action_selected(A), timer_elapsed(5s)]
+```
+
+The renderer provides the elapsed interval and not a wall-clock timestamp for this M2 example. GRIMM consumes the revision-scoped event and its elapsed duration, validates that A was offered and interprets the time according to authored rules, commits one deterministic transition and emits the **next Cue Sheet**. If the timer expires with no input, the renderer/host reports elapsed time without a choice and GRIMM selects the authored no-response consequence. The renderer never determines that story outcome.
+
+**Presentation and timer start:** required `play` cues precede the availability of the listed `actions`. The timer shown alongside those choices starts when they actually become selectable, not while earlier presentation cues are still playing. M1.8's readiness/activation protection must remain, but exact acknowledgement/event names and whether the cue-sheet timer is a choice-selection or situation/objective timer require the minimum consistent protocol. An active situation deadline carried over from earlier interactions must not inadvertently reset just because a new Cue Sheet is emitted.
+
+**Unresolved implementation details:** precise event envelope/field names, whether action and elapsed input are atomic, timer origin and cumulative vs incremental elapsed observations, whether the renderer or composition host is the trusted timer source, revision validation and explicit expiry on silence. Do not introduce an independent GRIMM wall clock or renderer-authoritative authored consequences.
+
 ## M2 time/deadline and interface review — current working direction (2026-10-30)
 
 **Scope:** authored LucasArts/Telltale-style adventures, optionally using lightweight RPG state; no general real-time simulator.
@@ -54,7 +81,7 @@ Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-s
 | OPEN-SCENE-14 | Investigating (GRIMM chooses cue; asset binding open) | M2–M5 | How does a fully resolved choice select a **semantic presentation cue** (`try_break_door`, `success_break_door`, optional strength/progress variants), and where are those cues bound to a game's concrete animations/assets without renderer-specific types in GRIMM? |
 | OPEN-SCENE-15 | Open | M2–M3 | How do distinct repeated attempts consume cumulative scene deadline, persist progress through save/load, and produce different authored success/failure outcomes as `strength` or progress changes? |
 | OPEN-SCENE-12 | Open | Later | If independent physics/NPC/host events might invalidate an action *after* selection, is a different integration mode needed? Do not impose a provisional-action lifecycle on authored M2 scenes. |
-| OPEN-TIME-01 | Open | M2 | How do we validate a host-supplied choice-selection timestamp against the scene's existing temporal baseline and distinguish it from authored world-time progression? |
+| OPEN-TIME-01 | Investigating (renderer-elapsed input) | M2 | How is renderer/host-reported **elapsed duration relative to a known timer activation** represented, especially across successive cue sheets in the same narrative situation? How is it kept separate from fictional world chronology? |
 | OPEN-TIME-02 | Open | M2 | How do authored success, failure and deadline-cut effects commit in one atomic transition, including any predeclared partial consequences? |
 | OPEN-TIME-03 | Decided (author comparison semantics; reference interval open) | M2 | Equality at the deadline is resolved by authored comparisons (`<`, `<=`, `=`, `>=`, `>`), **not a global success rule**. Precisely define `time_passed` and deterministic units/overflow. |
 | OPEN-TIME-04 | Open | M2 | Which gameplay inputs remain blocked during an already-resolved presentation sequence, and which host/session controls remain available? |
@@ -67,7 +94,7 @@ Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-s
 | OPEN-TIME-11 | Open | M2–M3 | How do authored outcomes combine arithmetic action progress with already committed character stats such as `suspicion` without hardcoding specific checks? |
 | OPEN-TIME-12 | Deferred (exclude simultaneous active timers in M2) | Later | Should a later adventure ever have both deadline types active simultaneously? M2 does not need overlap/precedence rules. |
 | OPEN-TIME-13 | Open | M2 | What presentation is emitted for an action already known to miss the deadline: the shortened attempt, immediate failure, follow-up scene narration and choice gating? |
-| OPEN-TIME-14 | Investigating (minimal inputs) | M2 | Can M2 use only **choice ID + host time**, externally observed idle expiry/timer time and existing M1.8 presentation readiness? What exact timer/reference and revision contract is needed? No renderer success callback. |
+| OPEN-TIME-14 | Investigating (cue-sheet handshake) | M2 | Define the minimal revision-scoped event shape for `[action_selected(A), timer_elapsed(5s)]` and silent `timer_elapsed(20s)`; when does the timer activate after the ordered Cue Sheet presentation, and how is duplicate/late input handled? |
 | OPEN-TIME-15 | Open | M2 | How is canonical **logical scene time** advanced by each resolved action or deadline cut without double-counting real-time observations of player hesitation? |
 | OPEN-TIME-16 | Open | M2 | If a host delivers a choice late, which timestamp/provenance determines whether it was still valid at selection? How are stale interactions rejected? |
 | OPEN-DEMO-01 | Open | Every milestone | What complete playable acceptance game and regression routes demonstrate all new mechanics, state persistence and success/failure paths? |
