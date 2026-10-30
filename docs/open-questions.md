@@ -2,6 +2,20 @@
 
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
 
+## Post-M2 milestone plan — M3 cancelled, one game across M4/M5
+
+**Decision:** No standalone M3 Inventory/Puzzles/Character State feature milestone. Existing M2 typed canonical state, authored choices and simple conditions cover the present LucasArts/Telltale/light-RPG requirements. **M4** ships a complete text adventure (multiple contexts, related puzzles, branching outcomes and authored consequences). **M5** builds a *graphical adaptation of that exact M4 game* with concrete graphical assets and renderer, rather than inventing another demo. GRIMM should be embeddable as a **headless Rust library in the concrete game application**, which owns rendering, assets, input, and any presentation-side save. Whether that application is in a separate project or workspace package remains open. Do not design a generic Bevy/plugin interface ahead of the real graphical game.
+
+**M4/M5 open design questions:**
+- What actual text adventure should M4 author, how substantial must its story be, and which overlapping puzzle/narrative branches best expose missing M2 DSL capabilities?
+- Can all M4 canonical authored rules and offered action IDs remain unchanged in the M5 graphical game, with differences confined to cue interpretation, input mapping and game presentation?
+- Which cue IDs and asset requirements need concrete graphical implementation, and how can that renderer/game build check them?
+- What is the smallest application/GRIMM library boundary needed to construct, drive, save and reload the same authored game from a concrete graphical runtime?
+- How does the M5 application's graphical presentation checkpoint remain consistent with GRIMM-internal canonical state, while keeping `world_state` out of Cue Sheets?
+- Should the game application be a separate repository, a workspace package or another arrangement? **Decide from implementation evidence**, not now.
+
+Historical OPEN-PUZZLE/OPEN-STAT items labeled M3 are no longer active milestone commitments; retain them as deferred possibilities only if an actual M4 game demonstrates a missing feature. Existing M4/M5 host/asset questions remain open only to the extent the concrete graphical adaptation requires them.
+
 ## M2 authoring language — commitment (2026-10-30)
 
 The **small authored story DSL is now a required M2 deliverable** (see `DSL-01..DSL-12` in [requirements](requirements.md#m2-authoring-dsl--required-milestone-deliverable)). It should let an author describe graph structure, local/global visible or private state, `ON`/conditional/`ELSE` behavior, `timeout`, atomic effects, timer/action costs, conditional choices, cue IDs and ordered playback; a complete playable `The Locked Room` must be authored with it. **The implementing agent chooses concrete syntax, file format, parser and Rust internals** and must keep legacy authored YAML working. Do not freeze an ad hoc example grammar as an API before implementation.
