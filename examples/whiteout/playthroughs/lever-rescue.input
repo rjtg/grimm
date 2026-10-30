@@ -1,0 +1,162 @@
+
+@blackout.begin
+
+
+
+
+
+:time 0
+@stores.take_thermal_liner
+
+
+
+
+
+:time 1000
+@stores.jonas_treated
+
+
+
+
+
+:time 4000
+@stores.take_copper_braid
+
+
+
+
+
+:time 5000
+@stores.take_ceramic_mug
+
+
+
+
+
+:time 6000
+@stores.take_spanner
+
+
+
+
+
+:time 7000
+@stores.take_heat_pack
+
+
+
+
+
+:time 8000
+@stores.log_read
+
+
+
+
+
+:time 10000
+@stores.take_safety_line
+
+
+
+
+
+:time 11000
+@stores.leave
+
+
+
+
+
+:time 0
+@dispatch.engineering
+
+
+
+
+
+:time 0
+@generator.deploy_heat_pack
+
+
+
+
+
+:time 1000
+@generator.make_lever
+
+
+
+
+
+:time 3000
+@generator.use_lever
+
+
+
+
+
+:time 6000
+@generator.isolate_deicer
+
+
+
+
+
+:time 8000
+@generator.start_generator
+
+
+
+
+
+:time 12000
+@generator.return
+
+
+
+
+
+:time 0
+@dispatch.communications
+
+
+
+
+
+:time 0
+@radio.hand_align
+
+
+
+
+
+:time 6000
+@radio.send_signal
+
+
+
+
+
+:time 9000
+@radio.return
+
+
+
+
+
+:time 0
+@dispatch.ridge
+
+
+
+
+
+:time 0
+@crisis.coordinate
+
+
+
+
+
+:time 0

@@ -1,0 +1,1279 @@
+# WHITEOUT rules: renderer-independent M2 DSL. Text is in text.yaml.
+# YAML anchors share expressions only; all state changes remain authored effects.
+schema_version: 1
+id: whiteout
+version: 1
+title: WHITEOUT
+start: blackout
+globals: {thermal_liner: false, jonas_treated: false, copper_braid: false, ceramic_mug: false, spanner: false, safety_line: false,
+  heat_pack: false, flare: false, log_read: false, lever: false, controls_known: false, deicer_isolated: false,
+  generator_done: false, engineering_lost: false, radio_adapter: false, dish_aligned: false, radio_done: false,
+  radio_auto: false, radio_lost: false, cold_exposure: 0, accounted_ms: 0, exposure_rate: 0, indoor_rate: 1, first_task: 0,
+  latch_damage: 0, alex_alive: true, mara_alive: true, jonas_alive: true, lea_alive: true, ending: unresolved}
+contexts:
+- id: blackout
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: blackout.arrival}
+  - {cue_id: choices, kind: actions, available_actions: eligible}
+  actions:
+  - id: begin
+    duration_ms: 0
+    effects:
+    - &charge_cold
+      op: add
+      var: global.cold_exposure
+      value:
+        calc: mul
+        args:
+        - calc: sub
+          args:
+          - {clock: time_passed}
+          - {var: global.accounted_ms}
+        - {var: global.exposure_rate}
+    - &book_time
+      op: set
+      var: global.accounted_ms
+      value: {clock: time_passed}
+    outcomes:
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: stores
+- id: stores
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: stores.arrival}
+  - {cue_id: deadline, kind: timer, start_ms: 180000, visible: true}
+  - {cue_id: choices, kind: actions, available_actions: eligible}
+  actions:
+  - id: take_thermal_liner
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.thermal_liner, value: true}
+    - {op: set, var: global.exposure_rate, value: 0}
+    - {op: set, var: global.indoor_rate, value: 0}
+    outcomes:
+    - cues:
+      - {cue_id: thermal_liner, kind: narrative, narrative_id: stores.thermal_liner}
+    when:
+      op: eq
+      left: {var: global.thermal_liner}
+      right: false
+  - id: jonas_treated
+    duration_ms: 3000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.jonas_treated, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: jonas_treated, kind: narrative, narrative_id: stores.jonas_treated}
+    when:
+      op: eq
+      left: {var: global.jonas_treated}
+      right: false
+  - id: take_copper_braid
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.copper_braid, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: copper_braid, kind: narrative, narrative_id: stores.copper_braid}
+    when:
+      op: eq
+      left: {var: global.copper_braid}
+      right: false
+  - id: take_ceramic_mug
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.ceramic_mug, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: ceramic_mug, kind: narrative, narrative_id: stores.ceramic_mug}
+    when:
+      op: eq
+      left: {var: global.ceramic_mug}
+      right: false
+  - id: take_spanner
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.spanner, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: spanner, kind: narrative, narrative_id: stores.spanner}
+    when:
+      op: eq
+      left: {var: global.spanner}
+      right: false
+  - id: take_safety_line
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.safety_line, value: true}
+    - {op: set, var: global.flare, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: safety_line, kind: narrative, narrative_id: stores.safety_line}
+    when:
+      op: eq
+      left: {var: global.safety_line}
+      right: false
+  - id: take_heat_pack
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.heat_pack, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: heat_pack, kind: narrative, narrative_id: stores.heat_pack}
+    when:
+      op: eq
+      left: {var: global.heat_pack}
+      right: false
+  - id: log_read
+    duration_ms: 2000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.log_read, value: true}
+    - {op: set, var: global.controls_known, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: log_read, kind: narrative, narrative_id: stores.log_read}
+    when:
+      op: eq
+      left: {var: global.log_read}
+      right: false
+  - id: leave
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: dispatch
+  timeout:
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.exposure_rate
+      value: {var: global.indoor_rate}
+    cues:
+    - {cue_id: timeout, kind: narrative, narrative_id: stores.timeout}
+    goto: dispatch
+- id: dispatch
+  cues:
+  - cue_id: heat_returns
+    kind: narrative
+    narrative_id: dispatch.heat_returns
+    when:
+      op: eq
+      left: {var: global.generator_done}
+      right: true
+  - cue_id: radio_first_cost
+    kind: narrative
+    narrative_id: dispatch.radio_first_cost
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.first_task}
+        right: 2
+      - op: eq
+        left: {var: global.radio_done}
+        right: true
+  - cue_id: arrival
+    kind: narrative
+    narrative_id: dispatch.arrival
+    when:
+      op: eq
+      left: {var: global.first_task}
+      right: 0
+  - cue_id: return_brief
+    kind: narrative
+    narrative_id: dispatch.return_brief
+    when:
+      op: ne
+      left: {var: global.first_task}
+      right: 0
+  - {cue_id: choices, kind: actions, available_actions: eligible}
+  actions:
+  - id: engineering
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.first_task}
+          right: 0
+        - op: eq
+          left: {var: global.thermal_liner}
+          right: true
+      effects:
+      - {op: set, var: global.first_task, value: 1}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: generator
+    - when:
+        op: eq
+        left: {var: global.first_task}
+        right: 0
+      effects:
+      - {op: set, var: global.first_task, value: 1}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 2}
+      goto: generator
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: generator
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 2}
+      goto: generator
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.generator_done}
+        right: false
+      - op: eq
+        left: {var: global.engineering_lost}
+        right: false
+  - id: communications
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.first_task}
+          right: 0
+        - op: eq
+          left: {var: global.thermal_liner}
+          right: true
+      effects:
+      - {op: set, var: global.first_task, value: 2}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: radio
+    - when:
+        op: eq
+        left: {var: global.first_task}
+        right: 0
+      effects:
+      - {op: set, var: global.first_task, value: 2}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 2}
+      goto: radio
+    - when:
+        op: eq
+        left: {var: global.generator_done}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: radio
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: radio
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 2}
+      goto: radio
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.radio_done}
+        right: false
+      - op: eq
+        left: {var: global.radio_lost}
+        right: false
+  - id: warm_hands
+    duration_ms: 4000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 20000
+      effects:
+      - {op: add, var: global.cold_exposure, value: -20000}
+      cues:
+      - {cue_id: warm_hands, kind: narrative, narrative_id: dispatch.warm_hands}
+    - effects:
+      - {op: set, var: global.cold_exposure, value: 0}
+      cues:
+      - {cue_id: warm_again, kind: narrative, narrative_id: dispatch.warm_again}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.generator_done}
+        right: true
+      - op: ge
+        left: {var: global.cold_exposure}
+        right: 1
+  - id: ridge
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: crisis
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 2}
+      goto: crisis
+    when:
+      op: all
+      tests:
+      - op: any
+        tests:
+        - op: eq
+          left: {var: global.generator_done}
+          right: true
+        - op: eq
+          left: {var: global.engineering_lost}
+          right: true
+      - op: any
+        tests:
+        - op: eq
+          left: {var: global.radio_done}
+          right: true
+        - op: eq
+          left: {var: global.radio_lost}
+          right: true
+- id: generator
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: generator.arrival}
+  - {cue_id: deadline, kind: timer, start_ms: 30000, visible: false}
+  - {cue_id: choices, kind: actions, available_actions: eligible}
+  - {cue_id: radio_warning, kind: narrative, narrative_id: generator.radio_warning, at_ms: 10000}
+  - {cue_id: reveal_clock, at_ms: 10000, kind: timer, visible: true}
+  actions:
+  - id: deploy_heat_pack
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.heat_pack, value: false}
+    outcomes:
+    - cues:
+      - {cue_id: extra_minute, kind: timer, extend_ms: 60000}
+      - {cue_id: heat_pack, kind: narrative, narrative_id: generator.heat_pack}
+    when:
+      op: eq
+      left: {var: global.heat_pack}
+      right: true
+  - id: open_generator_latch
+    duration_ms: 3000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 90000
+      cues:
+      - {cue_id: open_generator_latch_numb, kind: narrative, narrative_id: generator.open_generator_latch_numb}
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.jonas_treated}
+          right: true
+        - op: lt
+          left: {var: global.cold_exposure}
+          right: 40000
+      effects:
+      - {op: add, var: global.latch_damage, value: 3}
+      cues:
+      - cue_id: open_generator_latch_assisted_open
+        kind: narrative
+        narrative_id: whiteout.latch_open
+        when:
+          op: ge
+          left: {var: global.latch_damage}
+          right: 6
+      - cue_id: open_generator_latch_assisted_nearly
+        kind: narrative
+        narrative_id: whiteout.latch_nearly
+        when:
+          op: all
+          tests:
+          - op: ge
+            left: {var: global.latch_damage}
+            right: 4
+          - op: lt
+            left: {var: global.latch_damage}
+            right: 6
+      - cue_id: open_generator_latch_assisted_crack
+        kind: narrative
+        narrative_id: whiteout.latch_crack
+        when:
+          op: lt
+          left: {var: global.latch_damage}
+          right: 4
+      - {cue_id: open_generator_latch_assisted_release, kind: actions, available_actions: eligible, at_ms: 0}
+    - when:
+        op: lt
+        left: {var: global.cold_exposure}
+        right: 40000
+      effects:
+      - {op: add, var: global.latch_damage, value: 2}
+      cues:
+      - cue_id: open_generator_latch_steady_open
+        kind: narrative
+        narrative_id: whiteout.latch_open
+        when:
+          op: ge
+          left: {var: global.latch_damage}
+          right: 6
+      - cue_id: open_generator_latch_steady_nearly
+        kind: narrative
+        narrative_id: whiteout.latch_nearly
+        when:
+          op: all
+          tests:
+          - op: ge
+            left: {var: global.latch_damage}
+            right: 4
+          - op: lt
+            left: {var: global.latch_damage}
+            right: 6
+      - cue_id: open_generator_latch_steady_crack
+        kind: narrative
+        narrative_id: whiteout.latch_crack
+        when:
+          op: lt
+          left: {var: global.latch_damage}
+          right: 4
+      - {cue_id: open_generator_latch_steady_release, kind: actions, available_actions: eligible, at_ms: 0}
+    - effects:
+      - {op: add, var: global.latch_damage, value: 1}
+      cues:
+      - cue_id: open_generator_latch_slow_open
+        kind: narrative
+        narrative_id: whiteout.latch_open
+        when:
+          op: ge
+          left: {var: global.latch_damage}
+          right: 6
+      - cue_id: open_generator_latch_slow_nearly
+        kind: narrative
+        narrative_id: whiteout.latch_nearly
+        when:
+          op: all
+          tests:
+          - op: ge
+            left: {var: global.latch_damage}
+            right: 4
+          - op: lt
+            left: {var: global.latch_damage}
+            right: 6
+      - cue_id: open_generator_latch_slow_crack
+        kind: narrative
+        narrative_id: whiteout.latch_crack
+        when:
+          op: lt
+          left: {var: global.latch_damage}
+          right: 4
+      - {cue_id: open_generator_latch_slow_release, kind: actions, available_actions: eligible, at_ms: 0}
+    when:
+      op: all
+      tests:
+      - op: lt
+        left: {var: global.latch_damage}
+        right: 6
+      - op: lt
+        left: {var: global.cold_exposure}
+        right: 40000
+  - id: work_latch_with_numb_hands
+    duration_ms: 5000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 90000
+      cues:
+      - {cue_id: work_latch_with_numb_hands_numb, kind: narrative, narrative_id: generator.work_latch_with_numb_hands_numb}
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.jonas_treated}
+          right: true
+        - op: lt
+          left: {var: global.cold_exposure}
+          right: 40000
+      effects:
+      - {op: add, var: global.latch_damage, value: 3}
+      cues:
+      - cue_id: work_latch_with_numb_hands_assisted_open
+        kind: narrative
+        narrative_id: whiteout.latch_open
+        when:
+          op: ge
+          left: {var: global.latch_damage}
+          right: 6
+      - cue_id: work_latch_with_numb_hands_assisted_nearly
+        kind: narrative
+        narrative_id: whiteout.latch_nearly
+        when:
+          op: all
+          tests:
+          - op: ge
+            left: {var: global.latch_damage}
+            right: 4
+          - op: lt
+            left: {var: global.latch_damage}
+            right: 6
+      - cue_id: work_latch_with_numb_hands_assisted_crack
+        kind: narrative
+        narrative_id: whiteout.latch_crack
+        when:
+          op: lt
+          left: {var: global.latch_damage}
+          right: 4
+      - {cue_id: work_latch_with_numb_hands_assisted_release, kind: actions, available_actions: eligible, at_ms: 0}
+    - when:
+        op: lt
+        left: {var: global.cold_exposure}
+        right: 40000
+      effects:
+      - {op: add, var: global.latch_damage, value: 2}
+      cues:
+      - cue_id: work_latch_with_numb_hands_steady_open
+        kind: narrative
+        narrative_id: whiteout.latch_open
+        when:
+          op: ge
+          left: {var: global.latch_damage}
+          right: 6
+      - cue_id: work_latch_with_numb_hands_steady_nearly
+        kind: narrative
+        narrative_id: whiteout.latch_nearly
+        when:
+          op: all
+          tests:
+          - op: ge
+            left: {var: global.latch_damage}
+            right: 4
+          - op: lt
+            left: {var: global.latch_damage}
+            right: 6
+      - cue_id: work_latch_with_numb_hands_steady_crack
+        kind: narrative
+        narrative_id: whiteout.latch_crack
+        when:
+          op: lt
+          left: {var: global.latch_damage}
+          right: 4
+      - {cue_id: work_latch_with_numb_hands_steady_release, kind: actions, available_actions: eligible, at_ms: 0}
+    - effects:
+      - {op: add, var: global.latch_damage, value: 1}
+      cues:
+      - cue_id: work_latch_with_numb_hands_slow_open
+        kind: narrative
+        narrative_id: whiteout.latch_open
+        when:
+          op: ge
+          left: {var: global.latch_damage}
+          right: 6
+      - cue_id: work_latch_with_numb_hands_slow_nearly
+        kind: narrative
+        narrative_id: whiteout.latch_nearly
+        when:
+          op: all
+          tests:
+          - op: ge
+            left: {var: global.latch_damage}
+            right: 4
+          - op: lt
+            left: {var: global.latch_damage}
+            right: 6
+      - cue_id: work_latch_with_numb_hands_slow_crack
+        kind: narrative
+        narrative_id: whiteout.latch_crack
+        when:
+          op: lt
+          left: {var: global.latch_damage}
+          right: 4
+      - {cue_id: work_latch_with_numb_hands_slow_release, kind: actions, available_actions: eligible, at_ms: 0}
+    when:
+      op: all
+      tests:
+      - op: lt
+        left: {var: global.latch_damage}
+        right: 6
+      - op: ge
+        left: {var: global.cold_exposure}
+        right: 40000
+  - id: make_lever
+    duration_ms: 2000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.spanner, value: false}
+    - {op: set, var: global.copper_braid, value: false}
+    - {op: set, var: global.lever, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: lever_made, kind: narrative, narrative_id: generator.lever_made}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.spanner}
+        right: true
+      - op: eq
+        left: {var: global.copper_braid}
+        right: true
+      - op: eq
+        left: {var: global.lever}
+        right: false
+      - op: lt
+        left: {var: global.latch_damage}
+        right: 6
+  - id: use_lever
+    duration_ms: 3000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 90000
+      cues:
+      - {cue_id: lever_failed, kind: narrative, narrative_id: generator.lever_failed}
+    - effects:
+      - {op: set, var: global.latch_damage, value: 6}
+      cues:
+      - {cue_id: lever_open, kind: narrative, narrative_id: generator.lever_open}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.lever}
+        right: true
+      - op: lt
+        left: {var: global.latch_damage}
+        right: 6
+  - id: inspect_controls
+    duration_ms: 1000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.controls_known, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: controls, kind: narrative, narrative_id: generator.controls}
+    when:
+      op: eq
+      left: {var: global.controls_known}
+      right: false
+  - id: isolate_deicer
+    duration_ms: 2000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.deicer_isolated, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: isolated, kind: narrative, narrative_id: generator.isolated}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.controls_known}
+        right: true
+      - op: eq
+        left: {var: global.deicer_isolated}
+        right: false
+  - id: start_generator
+    duration_ms: 4000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: eq
+        left: {var: global.deicer_isolated}
+        right: false
+      cues:
+      - {cue_id: overload, kind: narrative, narrative_id: generator.overload}
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 110000
+      cues:
+      - {cue_id: starter_cold, kind: narrative, narrative_id: generator.starter_cold}
+    - effects:
+      - {op: set, var: global.generator_done, value: true}
+      - {op: set, var: global.exposure_rate, value: 0}
+      - {op: set, var: global.indoor_rate, value: 0}
+      cues:
+      - cue_id: startup_lock
+        kind: actions
+        available_actions: []
+      - {cue_id: startup_prime, kind: narrative, narrative_id: generator.startup_prime}
+      - {cue_id: startup_ignition, kind: narrative, narrative_id: generator.startup_ignition}
+      - {cue_id: startup_heat, kind: narrative, narrative_id: generator.startup_heat}
+      - {cue_id: startup_ready, kind: actions, available_actions: eligible}
+    when:
+      op: all
+      tests:
+      - op: ge
+        left: {var: global.latch_damage}
+        right: 6
+      - op: eq
+        left: {var: global.generator_done}
+        right: false
+  - id: return
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    when:
+      op: eq
+      left: {var: global.generator_done}
+      right: true
+  - id: abandon
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.engineering_lost, value: true}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    - effects:
+      - {op: set, var: global.engineering_lost, value: true}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: dispatch
+    when:
+      op: eq
+      left: {var: global.generator_done}
+      right: false
+  timeout:
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.engineering_lost, value: true}
+    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.exposure_rate
+      value: {var: global.indoor_rate}
+    cues:
+    - {cue_id: timeout, kind: narrative, narrative_id: generator.timeout}
+    goto: dispatch
+- id: radio
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: radio.arrival}
+  - {cue_id: deadline, kind: timer, start_ms: 60000, visible: true}
+  - {cue_id: choices, kind: actions, available_actions: eligible}
+  - cue_id: gust_warning
+    kind: narrative
+    narrative_id: radio.gust_warning
+    at_ms: 15000
+    when:
+      op: eq
+      left: {var: global.radio_auto}
+      right: false
+  actions:
+  - id: make_adapter
+    duration_ms: 3000
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.copper_braid, value: false}
+    - {op: set, var: global.ceramic_mug, value: false}
+    - {op: set, var: global.radio_adapter, value: true}
+    outcomes:
+    - cues:
+      - {cue_id: adapter, kind: narrative, narrative_id: radio.adapter}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.copper_braid}
+        right: true
+      - op: eq
+        left: {var: global.ceramic_mug}
+        right: true
+      - op: eq
+        left: {var: global.radio_adapter}
+        right: false
+  - id: hand_align
+    duration_ms: 6000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 90000
+      cues:
+      - {cue_id: alignment_failed, kind: narrative, narrative_id: radio.alignment_failed}
+    - effects:
+      - {op: set, var: global.dish_aligned, value: true}
+      cues:
+      - {cue_id: aligned, kind: narrative, narrative_id: radio.aligned}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.dish_aligned}
+        right: false
+      - op: eq
+        left: {var: global.radio_done}
+        right: false
+      - op: eq
+        left: {var: global.radio_adapter}
+        right: false
+  - id: send_signal
+    duration_ms: 3000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 90000
+      cues:
+      - {cue_id: cold_transmit_failure, kind: narrative, narrative_id: radio.cold_transmit_failure}
+    - when:
+        op: eq
+        left: {var: global.radio_adapter}
+        right: true
+      effects:
+      - {op: set, var: global.radio_done, value: true}
+      - {op: set, var: global.radio_auto, value: true}
+      cues:
+      - {cue_id: automatic_call, kind: narrative, narrative_id: radio.automatic_call}
+    - effects:
+      - {op: set, var: global.radio_done, value: true}
+      cues:
+      - {cue_id: manual_call, kind: narrative, narrative_id: radio.manual_call}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.radio_done}
+        right: false
+      - op: any
+        tests:
+        - op: eq
+          left: {var: global.radio_adapter}
+          right: true
+        - op: eq
+          left: {var: global.dish_aligned}
+          right: true
+  - id: warm_hands
+    duration_ms: 4000
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: ge
+        left: {var: global.cold_exposure}
+        right: 20000
+      effects:
+      - {op: add, var: global.cold_exposure, value: -20000}
+      cues:
+      - {cue_id: warmed_hands, kind: narrative, narrative_id: radio.warmed_hands}
+    - effects:
+      - {op: set, var: global.cold_exposure, value: 0}
+      cues:
+      - {cue_id: warm_again, kind: narrative, narrative_id: radio.warm_again}
+    when:
+      op: all
+      tests:
+      - op: eq
+        left: {var: global.generator_done}
+        right: true
+      - op: ge
+        left: {var: global.cold_exposure}
+        right: 1
+  - id: return
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: eq
+        left: {var: global.generator_done}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    - effects:
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: dispatch
+    when:
+      op: eq
+      left: {var: global.radio_done}
+      right: true
+  - id: abandon
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: eq
+        left: {var: global.generator_done}
+        right: true
+      effects:
+      - {op: set, var: global.radio_lost, value: true}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    - when:
+        op: eq
+        left: {var: global.thermal_liner}
+        right: true
+      effects:
+      - {op: set, var: global.radio_lost, value: true}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: dispatch
+    - effects:
+      - {op: set, var: global.radio_lost, value: true}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 1}
+      goto: dispatch
+    when:
+      op: eq
+      left: {var: global.radio_done}
+      right: false
+  timeout:
+    effects:
+    - *charge_cold
+    - *book_time
+    - {op: set, var: global.radio_lost, value: true}
+    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.exposure_rate
+      value: {var: global.indoor_rate}
+    cues:
+    - {cue_id: timeout, kind: narrative, narrative_id: radio.timeout}
+    goto: dispatch
+- id: crisis
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: crisis.arrival}
+  - {cue_id: deadline, kind: timer, start_ms: 45000, visible: true}
+  - {cue_id: choices, kind: actions, available_actions: eligible}
+  actions:
+  - id: coordinate
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.generator_done}
+          right: true
+        - op: eq
+          left: {var: global.radio_done}
+          right: true
+        - op: eq
+          left: {var: global.jonas_treated}
+          right: true
+        - op: any
+          tests:
+          - op: eq
+            left: {var: global.radio_auto}
+            right: true
+          - op: eq
+            left: {var: global.safety_line}
+            right: true
+        - op: any
+          tests:
+          - op: eq
+            left: {var: global.first_task}
+            right: 1
+          - op: eq
+            left: {var: global.safety_line}
+            right: true
+        - op: lt
+          left: {var: global.cold_exposure}
+          right: 120000
+      effects:
+      - {op: set, var: global.ending, value: full_rescue}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_full
+    - cues:
+      - {cue_id: missing_preparation, kind: narrative, narrative_id: crisis.missing_preparation}
+  - id: help_lea
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.radio_done}
+          right: true
+        - op: eq
+          left: {var: global.generator_done}
+          right: true
+        - op: eq
+          left: {var: global.jonas_treated}
+          right: true
+        - op: eq
+          left: {var: global.first_task}
+          right: 1
+        - op: lt
+          left: {var: global.cold_exposure}
+          right: 120000
+      effects:
+      - {op: set, var: global.ending, value: full_rescue}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_full
+    - when:
+        op: any
+        tests:
+        - op: eq
+          left: {var: global.radio_done}
+          right: true
+        - op: eq
+          left: {var: global.flare}
+          right: true
+      effects:
+      - {op: set, var: global.jonas_alive, value: false}
+      - {op: set, var: global.ending, value: partial_survival}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_partial
+    - effects:
+      - &alex_lost {op: set, var: global.alex_alive, value: false}
+      - &mara_lost {op: set, var: global.mara_alive, value: false}
+      - &jonas_lost {op: set, var: global.jonas_alive, value: false}
+      - &lea_lost {op: set, var: global.lea_alive, value: false}
+      - {op: set, var: global.ending, value: station_lost}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_lost
+  - id: help_jonas
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - when:
+        op: all
+        tests:
+        - op: eq
+          left: {var: global.radio_done}
+          right: true
+        - op: eq
+          left: {var: global.radio_auto}
+          right: true
+        - op: eq
+          left: {var: global.generator_done}
+          right: true
+        - op: lt
+          left: {var: global.cold_exposure}
+          right: 120000
+      effects:
+      - {op: set, var: global.ending, value: full_rescue}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_full
+    - when:
+        op: any
+        tests:
+        - op: eq
+          left: {var: global.radio_done}
+          right: true
+        - op: eq
+          left: {var: global.flare}
+          right: true
+      effects:
+      - {op: set, var: global.lea_alive, value: false}
+      - {op: set, var: global.ending, value: partial_survival}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_partial
+    - effects:
+      - *alex_lost
+      - *mara_lost
+      - *jonas_lost
+      - *lea_lost
+      - {op: set, var: global.ending, value: station_lost}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_lost
+  - id: flare_retreat
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - effects:
+      - {op: set, var: global.jonas_alive, value: false}
+      - {op: set, var: global.flare, value: false}
+      - {op: set, var: global.ending, value: partial_survival}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_partial
+    when:
+      op: eq
+      left: {var: global.flare}
+      right: true
+  - id: stay
+    duration_ms: 0
+    effects:
+    - *charge_cold
+    - *book_time
+    outcomes:
+    - effects:
+      - *alex_lost
+      - *mara_lost
+      - *jonas_lost
+      - *lea_lost
+      - {op: set, var: global.ending, value: station_lost}
+      - {op: set, var: global.accounted_ms, value: 0}
+      - {op: set, var: global.exposure_rate, value: 0}
+      goto: ending_lost
+  timeout:
+    effects:
+    - *charge_cold
+    - *book_time
+    - *alex_lost
+    - *mara_lost
+    - *jonas_lost
+    - *lea_lost
+    - {op: set, var: global.ending, value: station_lost}
+    - {op: set, var: global.accounted_ms, value: 0}
+    - {op: set, var: global.exposure_rate, value: 0}
+    cues:
+    - {cue_id: timeout, kind: narrative, narrative_id: crisis.timeout}
+    goto: ending_lost
+- id: ending_full
+  terminal: true
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: ending_full.arrival}
+  - cue_id: truth
+    kind: narrative
+    narrative_id: ending_full.truth
+    when:
+      op: eq
+      left: {var: global.log_read}
+      right: true
+- id: ending_partial
+  terminal: true
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: ending_partial.arrival}
+  - cue_id: jonas
+    kind: narrative
+    narrative_id: ending_partial.jonas
+    when:
+      op: eq
+      left: {var: global.jonas_alive}
+      right: false
+  - cue_id: lea
+    kind: narrative
+    narrative_id: ending_partial.lea
+    when:
+      op: eq
+      left: {var: global.lea_alive}
+      right: false
+  - cue_id: truth
+    kind: narrative
+    narrative_id: ending_partial.truth
+    when:
+      op: eq
+      left: {var: global.log_read}
+      right: true
+- id: ending_lost
+  terminal: true
+  cues:
+  - {cue_id: arrival, kind: narrative, narrative_id: ending_lost.arrival}
