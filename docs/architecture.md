@@ -30,7 +30,7 @@ Game definition -> Engine (state/rules/graph) -> semantic output
                                         Semantic game action -> Engine
 ```
 
-A composition root wires concrete components. Engine modules must never import adapters, renderers, UI frameworks, or LLM SDKs.
+A composition root wires concrete components. Engine modules must never import adapters, renderers, UI frameworks, or LLM SDKs. **Renderer independence is an engine property, not a guarantee that any game runs meaningfully on any renderer.** A game may require a particular presentation profile and associated art, hotspots, animation and audio; compatible host/renderer selection belongs outside the headless core. The exact game-package/profile contracts are open.
 
 ## Domain ownership
 - **Engine:** authoritative world/game state; validates actions; commits effects; records events; graph traversal.
@@ -82,6 +82,12 @@ explicit Enter; EOF cannot stand in for completion. ADR-0007 retains Proposed st
 Committed game events describe what actually happened, including offscreen events. They are not automatically visible to players. Narrative content describes what may be communicated; interaction offers describe currently valid inputs. A filtered projection exposes only player-visible information. A renderer must not receive hidden world state by default.
 
 Authored narrative and semantically described choices remain the primary inputs. M2 develops **in-scene choices** that change state and available offers without changing the narrative node; M3 adds optional inventory/item combinations and RPG-like attributes as conditional choice state; M4 brings together LucasArts-style puzzle exploration and Telltale-style consequential narrative scenes; M5 adds graphical presentation of the **same** engine-authored offers. No fixed Inspect/Use/Take/Combine primitive is required. Dynamic graph/node providers and generative narration belong to deferred open-world questions, not current milestones. See [open questions](open-questions.md).
+
+## Game identity and presentation targeting (future M5)
+
+A **story graph** supplies authored narrative structure and canonical choice rules; a **playable game** may additionally require presentation assets and authored bindings between semantic scene/choice identity and UI or spatial elements. A renderer is a concrete implementation of supported presentation capabilities, not an automatic translator from arbitrary text to a 3D world. A text-only game may legitimately have no graphical representation. A visual-only adventure may require scene art, hotspot bindings, cameras and animations. An author can optionally distribute several presentation targets for one ruleset, but that is an explicit feature to validate, not a general invariant.
+
+Keep presentation packages and renderer-specific resources outside the engine; enforce compatibility through game/host-level capability checks before play. Do not impose a mandatory new game manifest or multi-renderer support in M2; see [open questions](open-questions.md#game-realization-packaging-and-renderer-compatibility).
 
 ## State and lifecycle
 - Engine state and presentation state are distinct.
