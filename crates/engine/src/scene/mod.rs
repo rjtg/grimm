@@ -446,7 +446,9 @@ impl SceneEngine {
                 visible: false,
             };
             self.enter_clock();
-            self.eligible_ms = 0;
+            // A new scene clock starts at zero, but transitioning must not
+            // bypass the selected action's remaining logical duration.
+            self.eligible_ms = time.end.saturating_sub(time.selection);
             self.statuses.clear();
             self.issued.clear();
         }

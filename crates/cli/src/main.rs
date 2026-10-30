@@ -59,7 +59,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [] => (None, Engine::default()),
         [help] if help == "--help" || help == "-h" => {
             println!(
-                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
+                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\n       grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--load SAVE.json]\n       grimm-cli check-scene STORY.yaml\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
             );
             return Ok(());
         }

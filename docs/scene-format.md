@@ -49,7 +49,10 @@ contexts must declare an unconditional sequential timer start and a timeout.
 Untimed instructions execute in order after completion acknowledgements.
 Explicit `at_ms` uses absolute current-scene time and may overlap running media.
 An action release is never earlier than selection plus effective duration;
-implicit sequential releases additionally wait for preceding presentation.
+implicit sequential releases additionally wait for preceding presentation. A
+transition resets the scene clock to zero and rebases the selected action's
+effective duration onto that new clock, so it cannot unlock new-context actions
+early.
 Explicit transition results should contain narrative or input-lock cues; place
 new offers and timer starts in the destination's entry plan.
 

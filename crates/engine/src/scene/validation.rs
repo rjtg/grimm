@@ -320,6 +320,18 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                 )?;
                 if let Some(target) = &mut outcome.goto {
                     *target = normalize(target)?;
+                    if outcome.cues.iter().any(|cue| match &cue.instruction {
+                        AuthoredInstruction::Timer { .. } => true,
+                        AuthoredInstruction::Actions {
+                            available_actions: ActionSet::Eligible(_),
+                        } => true,
+                        AuthoredInstruction::Actions {
+                            available_actions: ActionSet::Only(ids),
+                        } => !ids.is_empty(),
+                        _ => false,
+                    }) {
+                        return Err(SceneError("a timeout transition's result may narrate/lock input; define timers and nonempty offers in the destination entry".into()));
+                    }
                 }
             }
             cues(

@@ -1,5 +1,10 @@
 # Roadmap
 
+M2 implementation: the additive scene DSL, replacement Cue Sheets and playable
+Locked Room are described in [implementation evidence](milestones/m2-implementation.md)
+and the [concrete format](scene-format.md). Historical planning sections below
+retain their original decision context.
+
 ## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
 
 This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.

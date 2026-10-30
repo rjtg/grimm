@@ -178,7 +178,38 @@ fn locked_room_is_a_real_authored_dsl_with_complete_text_bindings() {
     assert_eq!(engine.locals()["door_damage"], Value::Int(0));
     let text: serde_yaml_ng::Value =
         serde_yaml_ng::from_str(include_str!("../../../examples/locked-room/text.yaml")).unwrap();
-    assert!(text["narratives"].as_mapping().unwrap().len() >= 20);
+    let story: SceneStory = serde_yaml_ng::from_str(yaml).unwrap();
+    for context in &story.contexts {
+        let namespace = context.namespace.as_deref().unwrap_or(&context.id);
+        for action in &context.actions {
+            let id = format!("{namespace}.{}", action.id);
+            assert!(text["actions"][&id].as_str().is_some(), "missing {id}");
+        }
+        let result_cues = context.actions.iter().flat_map(|action| {
+            action
+                .outcomes
+                .iter()
+                .chain(&action.interrupted_outcomes)
+                .flat_map(|branch| &branch.outcome.cues)
+        });
+        for cue in context
+            .cues
+            .iter()
+            .chain(result_cues)
+            .chain(context.timeout.iter().flat_map(|outcome| &outcome.cues))
+        {
+            if let grimm_semantic::scene::AuthoredInstruction::Narrative { narrative_id } =
+                &cue.instruction
+            {
+                let id = if narrative_id.contains('.') {
+                    narrative_id.clone()
+                } else {
+                    format!("{namespace}.{narrative_id}")
+                };
+                assert!(text["narratives"][&id].as_str().is_some(), "missing {id}");
+            }
+        }
+    }
     assert!(
         engine
             .output()
@@ -910,4 +941,75 @@ fn untimed_narration_after_logically_delayed_actions_keeps_authored_order() {
         .position(|id| id == "room.after_choices__run_1")
         .unwrap();
     assert!(actions < narration);
+}
+
+#[test]
+fn actual_cli_save_load_continues_with_keys_without_replaying_committed_actions() {
+    let path = std::env::temp_dir().join(format!("grimm-m2-save-{}.json", std::process::id()));
+    let first = run_cli(&format!(
+        "\n:time 2000\n@locked_room.open_drawer\n\n:time 5000\n@locked_room.take_keychain\n\n:time 6000\n:save {}\n:quit\n",
+        path.display()
+    ));
+    assert!(
+        first.status.success(),
+        "{}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+    assert!(path.exists(), "{}", String::from_utf8_lossy(&first.stdout));
+    let continued = run_cli(&format!(
+        ":load {}\n@locked_room.unlock_door_key2\n\n\n",
+        path.display()
+    ));
+    std::fs::remove_file(&path).unwrap();
+    assert!(
+        continued.status.success(),
+        "{}",
+        String::from_utf8_lossy(&continued.stderr)
+    );
+    let text = String::from_utf8(continued.stdout).unwrap();
+    assert!(text.contains("ESCAPED: You reach the road"), "{text}");
+    assert!(
+        !text.contains("You pocket the keychain"),
+        "committed media replayed: {text}"
+    );
+}
+
+#[test]
+fn timeout_transition_cannot_offer_source_context_actions_in_its_destination() {
+    let yaml = OVERLAP.replace(
+        "cues: [{cue_id: timeout, kind: narrative, narrative_id: caught_at_desk}]",
+        "cues: [{cue_id: timeout, kind: actions, available_actions: eligible}]",
+    );
+    let story = serde_yaml_ng::from_str::<SceneStory>(&yaml).unwrap();
+    let error = SceneEngine::new(story).err().unwrap().to_string();
+    assert!(error.contains("timeout transition"), "{error}");
+}
+
+#[test]
+fn transition_to_interactive_context_preserves_action_duration_on_the_new_clock() {
+    let yaml = OVERLAP.replace(
+        "- id: hide\n        outcomes:",
+        "- id: hide\n        duration_ms: 3000\n        outcomes:",
+    ).replace(
+        "- id: escaped\n    terminal: true\n    cues: [{cue_id: escape_text, kind: narrative, narrative_id: escaped}]",
+        "- id: escaped\n    cues:\n      - {cue_id: escape_text, kind: narrative, narrative_id: escaped}\n      - {cue_id: new_choices, kind: actions, available_actions: eligible}\n    actions:\n      - id: finish\n        outcomes: [{goto: caught}]",
+    );
+    let mut engine = parse(&yaml);
+    let mut player = CuePlayer::default();
+    player.replace(adapter::present(&engine.output()));
+    settle(&mut engine, &mut player);
+    at(&mut engine, &mut player, 8000);
+    select(&mut engine, &mut player, "room.open_drawer");
+    at(&mut engine, &mut player, 11000);
+    settle(&mut engine, &mut player);
+    select(&mut engine, &mut player, "room.hide");
+    assert_eq!(player.clock().unwrap().elapsed_ms, 0);
+    settle(&mut engine, &mut player);
+    assert!(player.actions().is_empty());
+    at(&mut engine, &mut player, 2999);
+    settle(&mut engine, &mut player);
+    assert!(player.actions().is_empty());
+    at(&mut engine, &mut player, 3000);
+    settle(&mut engine, &mut player);
+    assert_eq!(player.actions(), ["escaped.finish"]);
 }
