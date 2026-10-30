@@ -144,6 +144,7 @@ The former M3 *Inventory/Puzzles/Character State* deliverables are **cancelled**
 - **AUTH-07** M2 still requires elementary DSL compilation/typing/reference/graph checks. M3 builds incremental authoring tooling rather than blocking M2 on an IDE or full state-space model checker.
 
 - **EXAMPLE-07 — Narration pacing via multiple cues:** One Cue Sheet can emit several ordered `cue` identifiers representing narrative beats. An M4 text renderer can reveal associated prose incrementally with manual or reading-speed-based pacing; an M5 renderer can stage separate shots/audio/animations. Per-cue presentation timing and skip/readability controls are renderer-owned. Renderers must finish the prescribed cue sequence before exposing the offered actions or starting/resuming a scene timer. The timer baseline and game consequences remain identical, regardless of presentation speed; do not add per-cue engine callbacks or text/asset timings to the GRIMM DSL.
+- **EXAMPLE-08 — Author-defined cue granularity:** The story author alone decides how finely to divide presentation into cues, from one short dialogue line or narrative beat to a full scene with numerous internal animation/camera/audio cuts. GRIMM imposes no per-cue size, duration, shot count or granularity policy. Renderers choose internal staging/pacing within each cue and preserve the authored sequence of cue IDs. The M3 indexer reports those authored IDs unchanged and must not infer/split/merge cues.
 
 ### Cross-renderer story and dialogue contract (M4/M5)
 
