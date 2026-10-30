@@ -79,7 +79,7 @@ These are **distinct opt-in policies**; do not overload one `limit_ms` field wit
 
 When a scene deadline falls within a selected action's authored duration, GRIMM can compute the **effective attempted duration** at choice selection. It may use that arithmetic fraction and committed attributes (e.g. `suspicion`) to choose an authored conditional transition for a detective entering before a weapon is hidden. This is **one deterministic choice resolution**, not a continuously running in-game action or a time-observed interruption snapshot.
 
-For a five-second door action selected at T=6s with a T=10s scene deadline, GRIMM chooses the deadline-truncated attempted-door outcome (four seconds of **logical attempted action**) and its corresponding failure cue immediately. Renderer presentation finishes before new choices activate; the underlying narrative outcome does not wait for a later callback. Exact ties, time unit precision, host timestamp validation and real-time idleness remain M2 design/test questions.
+For a five-second door action selected at T=6s with a T=10s scene deadline, GRIMM chooses the deadline-truncated outcome (four seconds of **logical attempted action**) and failure cue immediately. The renderer keeps its scene clock running during presentation and may allow the next authorized action from the indicated post-action timer target, even while finishing a visual cue; the gameplay result does not wait for playback completion. Deadline ties and timestamp units remain implementation/test details.
 
 **Concrete M2 illustrative acceptance trace:** [The Locked Room — Cue Sheets and Game Actions](milestones/m2-cue-sheet-reference.md) shows complete renderer messages and time accounting, including `open_drawer`, `take_keychain`, wrong/right keys, repeated `break_door` with `door_damage += character_strength`, threshold-based cues, conditional `squeeze_through` and `timeout`. Implementers should make the authored DSL express the example without hardcoding puzzle mechanics. The trace is a behavioral fixture, **not a fixed DSL grammar or serialized protocol**.
 
@@ -97,7 +97,7 @@ M2 acceptance includes authored `The Locked Room`, representative invalid DSL ex
 
 ## M2 Cue Sheet handshake (working design)
 
-An illustrative GRIMM response can be called a **Cue Sheet**: `cue: [enter_corridor, dialog_scene_1]; actions: [A,B,C]; timer: 20s` (with revision). The renderer executes the presentation cues, makes the actions available and starts the timer **after the required presentation**. If the player selects A five seconds later, it returns the equivalent of `[action_selected(A), timer_elapsed(5s)]`. If nobody chooses, the renderer/host reports elapsed expiry and GRIMM chooses the authored timeout result. It then returns the next Cue Sheet. This is a conceptual protocol, not yet a fixed serialized type; no clock polling or rendering dependency enters the core. For a scene-completion budget continuing across choices, refreshes must preserve the existing deadline rather than resetting `timer: 20s` on each response.
+An illustrative GRIMM response is a **Cue Sheet**: `cue: [enter_corridor, dialog_scene_1]; actions: [A,B,C]; scene_timer: [8 of 30]s` with correlation ID. The renderer keeps the scene clock active while displaying the action-result cues. It can enable these offers **at or after T=8** once the response is ready, even if an action animation remains visible. For a fresh narrative introduction, M1.8 readiness may delay the initial activation until presentation is ready. The selected action and currently observed timer are sent back to GRIMM; no wall-clock polling occurs in the core.
 
 ## M2 timer and presentation simplification (working design, not fixed schema)
 
@@ -119,7 +119,7 @@ The minimal M2 Cue Sheet conveys `id`, ordered `cue(cue_id)` cues, `actions` and
 
 **Important scope:** this model covers *fully authored, sequential choice-based actions* whose relevant consequences can be calculated from the state and time known at selection. True asynchronous external changes during an animation, cancellable actions, live physics, or external host ownership of an object may require a different later integration contract; they must not be smuggled into M2 through a premature action-progress simulator.
 
-M2 tests must show correct outcome at selection, a completed five-second drawer animation with subsequently revealed choices, a five-second door attempt cut to four seconds by a known deadline, idle-time expiry reported by the host, graphical state reconstruction from committed facts and prevention of early choice input. No polling, renderer-success message or in-progress action snapshot is required for the authored action outcome. See [open questions](open-questions.md).
+M2 tests must show correct outcome at selection, logical five-second cost and deadline-truncated four-second cost, stable scene timer accounting across repeated actions, idle-time expiry observations, and a renderer that releases offered actions at the specified post-action target rather than forcing the video/audio playback to an exact duration. Renderer-owned visual state is not a Cue Sheet world-state projection.
 
 ## Deferred generation and presentation questions
 
