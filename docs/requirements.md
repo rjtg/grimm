@@ -117,30 +117,40 @@ The agent chooses precise technical representations; the **observable behavior a
 - **SCENE-30** For M2, `world_state` means GRIMM's authored canonical variables and current values used for rules, **not a mandatory Cue Sheet field**. A renderer may interpret `play(animation_id)` to manage its own persistent presentation representation. Renderer-side state is never the authoritative source of `door_damage`, `drawer_open` or other game-rule facts.
 - **SCENE-31** For later graphical games, renderer-owned presentation state may have its own save data. The game's save/load coordinator must restore GRIMM's canonical state and renderer presentation to the **same consistent checkpoint**; choosing atomicity, ownership and resynchronization mechanisms is postponed beyond M2. Preserve implemented M1.75/M1.8 save features.
 
-## M3 — Inventory, Puzzles & Character State
+## M3 — Cancelled (historical requirements)
+
+M3 is **cancelled**. The earlier `PUZZLE-01..04` and `STAT-01..02` proposals are **not mandatory, scheduled deliverables**; they are preserved below only as historical candidates. M2 already supports authored item-like flags, repeated stateful puzzle interactions, alternative solutions and simple numeric attributes. Do not introduce an item-identity framework, generic inventory, character rules framework, reusable minigame templates or a DSL abstraction without a specific demonstrated need.
+
+<details>
+<summary>Historical M3 proposals — superseded, not acceptance criteria</summary>
+
 - **PUZZLE-01** Optional items, discoveries, ownership and inventory-based conditions/effects; avoid an ECS or obligatory item taxonomy.
-- **PUZZLE-02** Allow authored combinations (including MacGyver-like solutions) through ordinary contextual choices with explicit preconditions and state effects; items are not required to expose universal `Use` or `Combine` commands.
-- **PUZZLE-03** Model multi-step puzzles, alternate solutions, failed attempts and optional action costs using the existing state/choice/time model. Collected or consumed items affect future offers and narrative branches.
-- **STAT-01** Optional persistent RPG-style character attributes, skills, relationships and resources are typed game state used in choice eligibility and effects. No mandatory level, class, dice or combat engine.
-- **STAT-02** Define optional attribute thresholds/checks and their deterministic resolution where a game requires them; allow authored outcomes to combine **action-interruption progress** with committed attributes (e.g. suspicion for detection). Distinguish player-visible stats from private NPC/world values and preserve replay.
-- **PUZZLE-04** Playable authored puzzle demo with collected and combined items plus at least two attribute-dependent approaches, alternative results, **a timed assembly/combination action with blocked gameplay input and duration-matched feedback**, save/load and bounded checker coverage.
+- **PUZZLE-02** Allow authored combinations through ordinary contextual choices with explicit preconditions and effects.
+- **PUZZLE-03** Model multi-step puzzles, alternate solutions, failed attempts and action costs through the existing state/choice/time model.
+- **STAT-01** Optional character attributes and relationships as typed state.
+- **STAT-02** Optional deterministic attribute thresholds/checks.
+- **PUZZLE-04** Historical MacGyver-style demonstration (no longer a milestone requirement).
 
-## M4 — Narrative Adventure
-- **ADV-01** Support semi-linear exploration across persistent locations with multiple narrative situations per location, **explicitly permitted** revisits and state-dependent offers. Previously visited story nodes are not automatically reachable; a Telltale-style return requires an authored transition, while host-led exploration may resume outside GRIMM and later trigger a new narrative context. Do not equate location, scene and story progress.
-- **ADV-02** Combine LucasArts-like discovery/inventory puzzles with Telltale-like staged narrative choices, cinematic pacing, timed decisions and persistent consequences.
-- **ADV-03** State and puzzle solutions can enable/disable authored narrative branches without graph variant explosion; different approaches should produce distinct meaningful outcomes.
-- **ADV-04** Deliver a complete short hybrid narrative adventure with multiple locations, linked puzzles, Telltale-style consequential scenes, at least three outcomes, **timed multi-step actions** and playability tests.
+</details>
 
-## M5 — Graphic Adventure Presentation
-- **VIS-01** Add a graphical adapter/renderer for the existing canonical action and choice semantics, with location imagery and scene-specific clickable hotspots/menus.
-- **VIS-02** The concrete graphical renderer may interpret `play(animation_id)` and maintain its own presentation state (object poses, animation/camera positions, visual inventory). A graphical game save/load must restore a presentation consistent with GRIMM's canonical narrative/game state, using a renderer-owned save component, replay/reconstruction or another game-specific strategy. **No automatic world-state projection in every Cue Sheet is presumed.**
-- **VIS-03** Synchronize required dialogue/animation/camera presentation and interaction readiness with M1.8 lifecycle; preserve deadlines and no early activation.
-- **VIS-05** A complete game composition provides the **actual renderer/runtime implementation and origin**, configured assets, hotspots and resources. In a standalone GRIMM-led game its game definition may select that renderer; in an embedded host game (e.g. Bevy), the external host may already own it and instantiate GRIMM. No assumption of arbitrary renderer compatibility or single required entry-point direction.
-- **VIS-06** Keep game-specific rendering resources and semantic choice-to-hotspot bindings **outside headless engine internals**. Derive packaging, source and version contracts from complete M5 games, including external-host integration; do not force the narrative story graph to instantiate the external world's renderer.
-- **VIS-04** Deliver a fully playable **graphical game composition** with its concrete renderer, specific assets, semantic choice bindings, authored scenes, correct choice-resolution/presentation-readiness input gating and duration-matched animation. Do not require an arbitrary text game to run in 3D, nor mandate text/graphic parity for every game; engine rules stay renderer-independent.
+## M4 — Complete Text Adventure
 
-- **VIS-07** Verify game-level composition diagnostics for missing/invalid renderer/runtime integration, assets, choice/scene bindings and version mismatches, appropriate to the selected host. Preserve room for game-specific components without committing to a general-purpose plugin platform in M5.
-- **VIS-08 (investigation, not a required product mode)** Evaluate a minimal **host-owned runtime integration** spike: a world-location/trigger event requests GRIMM-authored narrative interaction; GRIMM validates and resolves choices; an explicit result returns to the host for a world consequence. Document feasibility, state/clock/ownership, save/replay risks, and whether embedding should become a supported mode. Do not presume GRIMM is the mandatory application entry point or promise a general host API before the spike.
+- **ADV-01** Ship an **actual, finished, text-based LucasArts/Telltale hybrid adventure** authored in the M2 story DSL and played through a concrete text renderer. Several narrative contexts/locations are connected **only by authored transitions**, with meaningful optional revisits. Keep the story graph invisible to renderer-facing Cue Sheets.
+- **ADV-02** Integrate multiple related authored puzzles, investigation, optional simple item-like variables, order-dependent events, character relationships/attributes, dialogue and timed choices into one coherent narrative. **No first-class inventory system is required** unless a concrete game obstacle demonstrates a need for it.
+- **ADV-03** Consequences of earlier decisions affect later locations/dialogues/actions and endings without an exponential authored node graph. Support intentional failure and at least three meaningful authored endings.
+- **ADV-04** Playable, self-contained M4 **text game** is the canonical game content to reuse for M5; preserve a tested story definition, canonical rules/state and semantic Cue Sheet/game_action contract for the graphical adaptation. Test alternative routes, cross-context effects, timeout behavior, save/load compatibility where existing mechanisms apply, and absence of renderer-owned gameplay decisions.
+- **ADV-05** Keep optional authoring ergonomics driven by real friction found while writing this game. Do not require generic rule reuse, scripted templates, first-class item semantics or a general game UI composition framework.
+
+## M5 — Graphic Adaptation of the M4 Adventure
+
+- **VIS-01** **Graphically render the same authored M4 adventure**, not a new unrelated demonstration story. Preserve the canonical M4 DSL-defined story rules and gameplay logic; do not duplicate or fork gameplay conditions/effects in graphical renderer code.
+- **VIS-02** The concrete graphical renderer interprets the existing `play(animation_id)` cue IDs into appropriate game-specific graphics/animations, camera/audio and presentation changes. It owns its visual/presentation state. **Do not require `world_state` snapshots or graph node IDs in Cue Sheets.**
+- **VIS-03** Provide or generate and curate usable assets and a concrete renderer/input implementation for the M4 game, including clickable/menu choices mapped to the same offered action IDs and timer/readiness semantics. Asset generation is part of game production, not a GRIMM engine feature.
+- **VIS-04** Build one **complete playable graphical game application** (possibly a separate project) which embeds GRIMM as a Rust library and brings its own renderer, media, input and lifecycle. The concrete application/host composition owns assets and presentation; GRIMM continues to own canonical story rules/world state.
+- **VIS-05** Coordinate renderer-owned presentation save/load with existing GRIMM canonical saves to produce a consistent game checkpoint as demanded by the chosen actual renderer. Avoid a generic engine-level save format for arbitrary renderer state.
+- **VIS-06** Verify equivalent meaningful narrative behavior between M4's text game and M5's graphical adaptation (key offered actions, consequences, state transitions, deadlines and endings). Rendering style and animation content need not match text one-to-one.
+- **VIS-07** Use actual game implementation to identify and fix any *necessary* GRIMM/host integration seams; validate missing/unsupported cue IDs, inputs and assets within the concrete renderer or game build rather than adding a speculative generic media-mapping framework.
+- **VIS-08 (investigation only)** A minimal embedded-host interaction may be demonstrated if it naturally fits the graphics application. Do not require a standalone Bevy/3D framework, a general-purpose plugin platform, or a particular repository structure. Decide whether the application is kept in this workspace or a separate project from implementation evidence.
 
 ## Playable demo acceptance rule
 - **DEMO-01** Each new milestone M2–M5 ships a complete, actually playable reference story (or complete playable expansion of the prior game) demonstrating **all** gameplay mechanics introduced by that milestone, not merely synthetic tests. Include clear start/run instructions, reproducible successful and failed paths, relevant state/choice visibility, save/load coverage and an authoring/playtest report.
