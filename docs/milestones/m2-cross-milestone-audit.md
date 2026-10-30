@@ -27,6 +27,12 @@ Status: **review findings, not new adopted APIs**. Read with [M2 locked-room ref
 
 **C7 — Core domain ownership versus full renderer-visible state.** In standalone authored M2, GRIMM owns narrative state. In M5 embedded mode, the host may own physical doors, actor poses or inventory. A Cue Sheet cannot automatically claim to be a full snapshot of *all host-world state*. **Action:** define its projection as the complete **GRIMM-authorized visible narrative projection**; external host combines it with host-owned world state under an explicit reconciliation boundary.
 
+## Clarification: animation IDs are already sufficient at the GRIMM boundary
+
+A Cue Sheet's `play: [animation_id]` is **fully sufficient to command presentation**. The **concrete renderer** interprets each ID as whatever game-specific animation, text, camera staging, sound or sequence it implements. No additional GRIMM fields, central asset-mapping registry or game-composition mapping layer is needed **by the Cue Sheet protocol**. The term “game composition” only means the complete game ships a renderer and whatever assets/configuration that concrete renderer itself requires. Thus M5 needs to **implement and optionally check support for all authored cue IDs**, not redesign or enrich the Cue Sheet. Previous wording implying a new mapping contract at GRIMM's boundary was misleading.
+
+This does **not** settle the independent issue in C5 of when a renderer displays the final committed world-state snapshot during its animation. That is a presentation sequencing concern, not a demand to replace `play(animation_id)`.
+
 ## Open questions narrowed or answered in principle
 
 - `OPEN-PUZZLE-02/03`: **answered in principle**: item discovery, combinations and changed choice availability use the same conditional choice + state + effect pipeline. Item identity/quantities/ownership remain open (`OPEN-PUZZLE-01`).
@@ -43,7 +49,7 @@ Status: **review findings, not new adopted APIs**. Read with [M2 locked-room ref
 - **L-M4-01:** Can a single long-running interactive narrative situation reuse/resume its authored state and timer across explicit graph/context exits and re-entry, or must a new context begin? What does context-local reset mean?
 - **L-M4-02:** For linked mini-games spanning multiple authored contexts, how do structural authored graph validation and conditional state reachability stay tractable without assuming free backtracking?
 - **L-M5-01:** How does a graphical renderer map **ordered semantic Cue Sheets + final visible state** to a correct starting pose, intermediate animation, final pose and choice/hotspot visibility, including when the renderer joins after a reconnect?
-- **L-M5-02:** How are **required cue IDs and their game-specific assets** validated against a concrete game composition without introducing generic renderer-compatibility claims?
+- **L-M5-02:** How does a concrete renderer or its game build optionally validate that every authored `play(animation_id)` is supported, without changing GRIMM's Cue Sheet protocol or requiring an extra generic binding layer?
 - **L-M5-03:** In an embedded host, what is the full visible-state authority boundary between GRIMM narrative projection and independently canonical host-world objects/inventory?
 - **L-M5-04:** Is M2's pause-during-`play` timer behavior sufficient for graphical/host-owned ongoing hazards, or does a later mode need timers continuing through presentation? How does that interact with externally cancellable actions?
 - **L-LATER-01:** If independent host events invalidate a pre-resolved choice during playback, what explicit opt-in integration contract preserves deterministic narrative authority without breaking ordinary Cue Sheet replay?
