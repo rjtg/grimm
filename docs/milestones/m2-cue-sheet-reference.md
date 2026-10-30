@@ -8,12 +8,14 @@ The drawer/keyring/door challenge is a complete **authored stateful mini-game**,
 
 ## Boundary and operating rules
 
-- The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to play, which actions to accept, the **complete authorized renderer-visible state** and the currently relevant elapsed/total timer.
-- The renderer first executes all `play` cues (in order), applies the visible state projection, then displays/enables `actions` and **starts/resumes its timer at the supplied Cue Sheet baseline**. An authored action's animation duration is *already included* in GRIMM's post-action `scene_timer` value and **must not be counted twice**.
+- The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to play, which actions to accept and the currently relevant elapsed/total timer. **GRIMM's canonical `world_state` is not a mandatory Cue Sheet field.**
+- The renderer first executes all `play` cues (in order), updates its own presentation state as needed, then displays/enables `actions` and **starts/resumes its timer at the supplied Cue Sheet baseline**. An authored action's animation duration is *already included* in GRIMM's post-action `scene_timer` value and **must not be counted twice**.
 - The renderer reports `game_action { ref, action, scene_timer }` when the user chooses an offered action. The timer value is the **elapsed time at selection**, before GRIMM adds that action's authored cost. `action: timeout` is the ordinary reserved input for expiry without a player choice. GRIMM validates the referenced current offer and resolves all effects, conditions, time and presentation in one transaction.
 - Timers do not automatically reset between Cue Sheets. Explicit authored time changes may increase the total budget, or start a new timer (e.g. `[0 of 12]s`). `time_passed` in a rule reads the renderer-reported elapsed value from the current `game_action`.
-- The demonstration uses simple authored state (no built-in door mechanics): `drawer_open`, `has_keychain`, `door_damage`, `door_open`, `character_strength`, `character_dex`. Authors choose which are persistent across narrative contexts, which are local, and which may be projected to the renderer. **The examples below show the full *visible* projection, not GRIMM's private/internal variables.**
+- The demonstration uses simple **GRIMM-owned** authored state (no built-in door mechanics): `drawer_open`, `has_keychain`, `door_damage`, `door_open`, `character_strength`, `character_dex`. Authors choose which are persistent across narrative contexts and which are local. The comments alongside the Cue Sheets annotate GRIMM's internal state for testability; these values do **not** belong to the M2 renderer-facing Cue Sheet.
 - The story must include a start, at least one authored ending, exhaustive deterministic branches/ELSE for executable actions, and explicit node transitions when authored; no implied free navigation/backtracking.
+
+**Canonical-state assertions accompanying the traces (not Cue Sheet fields):** after `open_drawer`, GRIMM has `drawer_open=true`; after `take_keychain`, `has_keychain=true`; after a wrong key `door_open=false`; a correct key or successful `break_door` sets `door_open=true`. In the alternative run, `door_damage` changes from 0 → 1 → 2 → 3 → 4 on successive `break_door` actions with `character_strength=1`. The renderer may mirror visual consequences internally but never decides them.
 
 ## 1. Original drawer and keys trace (30-second scene budget)
 
@@ -24,8 +26,7 @@ cue_sheet {
   id: 1
   play: [locked_in]
   actions: [open_drawer, open_wardrobe, carefully_look_around]
-  world_state: { drawer_open: false, has_keychain: false, door_open: false,
-                 door_damage: 0 }
+
   scene_timer: [0 of 30]s
 }
 
@@ -39,8 +40,7 @@ cue_sheet {
   play: [open_drawer]
   actions: [close_drawer, take_keychain_from_drawer,
             open_wardrobe, carefully_look_around]
-  world_state: { drawer_open: true, has_keychain: false, door_open: false,
-                 door_damage: 0 }
+
   scene_timer: [3 of 30]s
 }
 
@@ -55,8 +55,7 @@ cue_sheet {
   play: [take_keychain]
   actions: [close_drawer, open_wardrobe, unlock_door_key1,
             unlock_door_key2, carefully_look_around, break_door]
-  world_state: { drawer_open: true, has_keychain: true, door_open: false,
-                 door_damage: 0 }
+
   scene_timer: [6 of 30]s
 }
 
@@ -68,8 +67,7 @@ cue_sheet {
   play: [wrong_key_does_not_turn]
   actions: [close_drawer, open_wardrobe, unlock_door_key1,
             unlock_door_key2, carefully_look_around, break_door]
-  world_state: { drawer_open: true, has_keychain: true, door_open: false,
-                 door_damage: 0 }
+
   scene_timer: [10 of 30]s
 }
 
@@ -80,8 +78,7 @@ cue_sheet {
   id: 5
   play: [unlock_door_success, escape_room]
   actions: []
-  world_state: { drawer_open: true, has_keychain: true, door_open: true,
-                 door_damage: 0 }
+
   scene_timer: [14 of 30]s
 }
 ```
@@ -146,8 +143,7 @@ cue_sheet {
   id: 20
   play: [door_locked]
   actions: [break_door]
-  world_state: { door_damage: 0, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [0 of 30]s
 }
 
@@ -157,8 +153,7 @@ cue_sheet {
   id: 21
   play: [break_door_barely_moves]
   actions: [break_door, squeeze_through]
-  world_state: { door_damage: 1, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [2 of 30]s
 }
 
@@ -168,8 +163,7 @@ cue_sheet {
   id: 22
   play: [break_door_progress]
   actions: [break_door, squeeze_through]
-  world_state: { door_damage: 2, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [4 of 30]s
 }
 
@@ -180,8 +174,7 @@ cue_sheet {
   id: 23
   play: [squeeze_through_success]
   actions: []
-  world_state: { door_damage: 2, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [6 of 30]s
 }
 
@@ -192,8 +185,7 @@ cue_sheet {
   id: 24
   play: [break_door_almost_open]
   actions: [break_door, squeeze_through]
-  world_state: { door_damage: 3, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [6 of 30]s
 }
 
@@ -204,8 +196,7 @@ cue_sheet {
   id: 25
   play: [squeeze_through_does_not_fit]
   actions: [break_door, squeeze_through]
-  world_state: { door_damage: 3, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [8 of 30]s
 }
 
@@ -216,8 +207,7 @@ cue_sheet {
   id: 26
   play: [break_door_success]
   actions: []
-  world_state: { door_damage: 4, door_open: true,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [8 of 30]s
 }
 ```
@@ -241,27 +231,24 @@ cue_sheet {
   id: 27
   play: [caught_while_escaping]
   actions: []
-  world_state: { door_damage: 2, door_open: false,
-                 character_strength: 1, character_dex: 3 }
+
   scene_timer: [30 of 30]s
 }
 
 # A new authored timer may instead appear as:
 cue_sheet { id: 30; play: [next_challenge]; actions: [A, B];
-            world_state: { ...complete visible projection... };
-            scene_timer: [0 of 12]s }
+
 
 # A two-second time-buying action can increase a 30s budget to 35s:
 game_action { ref: 31, action: buy_time, scene_timer: [12 of 30]s }
 cue_sheet { id: 32; play: [blocked_mechanism]; actions: [A, B];
-            world_state: { ...complete visible projection... };
-            scene_timer: [14 of 35]s }
+
 ```
 
 ## 5. Required DSL / runtime acceptance behavior
 
-- Fully author the story, actions, conditions, variable declarations, time costs, visible-state projection and cue IDs in the **new small M2 DSL**; do not hardcode this door scenario in Rust.
+- Fully author the story, actions, conditions, variable declarations, time costs and cue IDs in the **new small M2 DSL**; do not hardcode this door scenario in Rust.
 - Check the **exact** `door_damage` update across repeated action calls, fresh conditional availability of `squeeze_through`, both `character_dex > door_damage` outcomes, animation selection at each progress threshold, `door_open` only on successful forcing, and preservation of the 30s timer across local interactions.
-- The renderer receives a **full authorized visible-state snapshot**, not an incremental mutation event. The graph remains invisible to it. A run or branch may have additional private engine state that is not projected.
+- The M2 renderer receives **cue IDs, actions and optional time**, not GRIMM's canonical state or graph. It may interpret cues to maintain graphical presentation state. State-changing gameplay effects remain inside GRIMM, and a later graphical game may persist its renderer's presentation state alongside GRIMM's canonical save.
 - Verify elapsed-at-selection versus post-action elapsed, that required cue animation plays **before** timer resumes, and that animation time is **never charged twice**.
 - Check one explicit `timeout` action, an authored timer reset, one time-buying bonus, and authored condition/ELSE validation. The Rust implementation agent may determine the concrete parser, representation, validations, serialization, revisions and integration points.
