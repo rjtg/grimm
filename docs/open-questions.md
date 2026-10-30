@@ -2,6 +2,12 @@
 
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
 
+## Shared example game and renderer-owned dialogue (decision)
+
+Both the M4 **text example** and M5 **graphical example** stay in this repository, preferably under `examples/`, and load the **identical authored GRIMM script**. Given the same action IDs and timer observations, they obtain the same Cue Sheets and send the same `game_action` IDs. The M4 renderer owns a lookup from cue IDs to descriptions/dialogue text and from action IDs to displayed option labels. The M5 renderer interprets these IDs as concrete scene animation, audio dialogue, subtitles and visual choices. The core knows *semantic IDs* and their effects but **does not need the literal dialogue lines, descriptions, subtitles or user-visible action wording**. Consistency of each renderer's wording/voice with the action ID's meaning is an example-game authoring responsibility. Preserve legacy M1 text-stories; the new arrangement does not remove their format.
+
+**Narrowed questions for M4/M5:** How should each example renderer validate missing cue/action IDs? How do we prove identical action/cue transcripts under a controlled clock? What is the smallest renderer-specific table/assets layout? Concrete choice remains with implementer; **a separate repository is no longer a default open decision**, and no generic GRIMM dialogue/asset format is mandated.
+
 ## Post-M2 milestone plan — M3 cancelled, one game across M4/M5
 
 **Decision:** No standalone M3 Inventory/Puzzles/Character State feature milestone. Existing M2 typed canonical state, authored choices and simple conditions cover the present LucasArts/Telltale/light-RPG requirements. **M4** ships a complete text adventure (multiple contexts, related puzzles, branching outcomes and authored consequences). **M5** builds a *graphical adaptation of that exact M4 game* with concrete graphical assets and renderer, rather than inventing another demo. GRIMM should be embeddable as a **headless Rust library in the concrete game application**, which owns rendering, assets, input, and any presentation-side save. Whether that application is in a separate project or workspace package remains open. Do not design a generic Bevy/plugin interface ahead of the real graphical game.
@@ -12,7 +18,7 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 - Which cue IDs and asset requirements need concrete graphical implementation, and how can that renderer/game build check them?
 - What is the smallest application/GRIMM library boundary needed to construct, drive, save and reload the same authored game from a concrete graphical runtime?
 - How does the M5 application's graphical presentation checkpoint remain consistent with GRIMM-internal canonical state, while keeping `world_state` out of Cue Sheets?
-- Should the game application be a separate repository, a workspace package or another arrangement? **Decide from implementation evidence**, not now.
+- How should the two **same-repository** example applications be organized under `examples/` and wired to the same script without duplicating it?
 
 Historical OPEN-PUZZLE/OPEN-STAT items labeled M3 are no longer active milestone commitments; retain them as deferred possibilities only if an actual M4 game demonstrates a missing feature. Existing M4/M5 host/asset questions remain open only to the extent the concrete graphical adaptation requires them.
 
