@@ -6,6 +6,47 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 
 Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-style adventures**: context-sensitive choices, local puzzle/world-state changes, explicitly authored narrative transitions, scene deadlines, presentation cues and light optional RPG-influenced checks. Do not implicitly add host-owned traversal, Bevy integration, open-world navigation, a full RPG ruleset or generated narrative to M2. Those remain M4/M5/later questions and should not block the M2 choice/adventure model. Revisit remaining M2 questions one at a time within this scope.
 
+## M2 worked Cue Sheet trace — locked room and keyring (illustrative)
+
+This **worked example** uses **cumulative time since the narrative situation's timer origin** and an authored 30-second time budget. GRIMM resolves each selected action at once and returns the post-action time/state in a new cue sheet. **Not a final serialized schema**.
+
+```text
+cue_sheet { id:1; play:[locked_in];
+  actions:[open_drawer, open_wardrobe, carefully_look_around];
+  scene_timer:[0 of 30]s }
+
+game_action { ref:1; action:open_drawer; scene_timer:[2 of 30]s }
+  # 2s player hesitation; action duration 1s
+cue_sheet { id:2; play:[open_drawer];
+  actions:[close_drawer, take_keychain_from_drawer, open_wardrobe, carefully_look_around];
+  scene_timer:[3 of 30]s }
+
+game_action { ref:2; action:take_keychain_from_drawer; scene_timer:[5 of 30]s }
+  # 2s additional player hesitation; action duration 1s
+cue_sheet { id:3; play:[take_keychain];
+  actions:[close_drawer, open_wardrobe, unlock_door_key1, unlock_door_key2,
+           carefully_look_around];
+  scene_timer:[6 of 30]s }
+
+game_action { ref:3; action:unlock_door_key1; scene_timer:[8 of 30]s }
+  # key 1 is wrong; trying it takes 2s
+cue_sheet { id:4; play:[wrong_key_does_not_turn];
+  actions:[close_drawer, open_wardrobe, unlock_door_key1, unlock_door_key2,
+           carefully_look_around];
+  scene_timer:[10 of 30]s }
+
+game_action { ref:4; action:unlock_door_key2; scene_timer:[12 of 30]s }
+  # key 2 fits; opening takes 2s
+cue_sheet { id:5; play:[unlock_door_success, escape_room]; actions:[];
+  scene_timer:[14 of 30]s }
+```
+
+GRIMM owns persistent facts (e.g. `drawer_open`, `has_keychain`, door status), authorized action lists and authored conditional outcomes; the concrete renderer owns how to play `open_drawer`, `take_keychain` and door-related visual cues. `game_action.scene_timer` means **time at player selection**, not the post-action value. `cue_sheet.scene_timer` means **time after GRIMM has already added the authored action cost**; rendering that same action duration must not deduct it *again*. The renderer must count subsequent hesitation from the post-action baseline once playback has made the next choices interactive. The opening `locked_in` cue must not silently consume the budget before its start/readiness semantics are specified.
+
+**Time-buying example:** an authored two-second choice can extend a timer budget by five seconds, yielding `[14 of 35]s` from `[12 of 30]s`. This changes the allowed deadline, **not** how much time has already passed. The rule is authored and GRIMM chooses the resulting cue sheet; the renderer does not decide the bonus.
+
+**Still to decide:** the exact lifecycle of running/restarting timer display for refreshed cue sheets; whether `[elapsed of total]` is sufficient to distinguish a continuing situation deadline from a new decision timer; the response's state projection and transition/ending markers; the time-consistency rule when the renderer performs a `play` cue that represents the already-accounted action duration; and whether a separately authored presentation cue has additional time cost or only presentation gating.
+
 ## M2 engine/renderer handshake — cue sheet (working design, 2026-10-30)
 
 GRIMM's resolved output is conceptually a **Cue Sheet** specifying what to present and which choices to offer; the renderer executes it and reports user inputs plus elapsed time against its current timer. Example (illustrative notation, **not** a committed serialized schema):
