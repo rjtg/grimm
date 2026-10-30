@@ -2,6 +2,10 @@
 
 This is a **normative behavioral example for the M2 implementation agent**, **not a prescribed parser grammar, Rust representation or exact wire syntax**. Preserve its authored choice/time/state semantics. The implementer designs a small story DSL that can express this complete scenario and emits equivalent renderer-facing Cue Sheets and correlated Game Actions.
 
+## Why this is a mini-game, not a chain of micro-nodes
+
+The drawer/keyring/door challenge is a complete **authored stateful mini-game**, expressed with the **same story DSL** as the surrounding narrative. One story node or narrative context may host all intermediate actions (search, take, wrong keys, repeated door forcing, squeeze through) and multiple resulting Cue Sheets. A separate graph node is **not needed** for every increment of `door_damage`, new action, failed attempt or presentation cue. Story nodes chiefly structure the authored adventure; explicit transitions are for narrative structure, and are invisible to the renderer. The DSL and its normal choice/state/timer rules handle the mini-game without a separate subsystem.
+
 ## Boundary and operating rules
 
 - The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to play, which actions to accept, the **complete authorized renderer-visible state** and the currently relevant elapsed/total timer.
