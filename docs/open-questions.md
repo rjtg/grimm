@@ -2,6 +2,10 @@
 
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
 
+## Active scope boundary for M2 (2026-10-30)
+
+Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-style adventures**: context-sensitive choices, local puzzle/world-state changes, explicitly authored narrative transitions, scene deadlines, presentation cues and light optional RPG-influenced checks. Do not implicitly add host-owned traversal, Bevy integration, open-world navigation, a full RPG ruleset or generated narrative to M2. Those remain M4/M5/later questions and should not block the M2 choice/adventure model. Revisit remaining M2 questions one at a time within this scope.
+
 ## M2 scene-and-choice review — working decisions (2026-10-30)
 
 - **Do not overload “scene”:** distinguish the **narrative situation / authored gameplay context** (rules, current available choices and deadline, owned by GRIMM), a **story graph node** (authored structural unit, not required for every local action), and a **presentation shot/setting** (visual animation, camera or text presentation, owned by the concrete renderer). Naming and exact schema remain to be chosen; none must be universally 1:1.
