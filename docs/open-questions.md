@@ -20,6 +20,8 @@ The remaining DSL work is technical design and evidence, not another gameplay-mo
 
 **Remaining focused M2 questions:** (1) concrete story authoring syntax for choice cases, effects, time costs and play cues; (2) exact shape of global vs narrative-context-local state and how context exits affect it; (3) minimal serialized Cue Sheet and `game_action` types including reserved `timeout` and `ref`; (4) compatibility-safe implementation. A large graph solver, new save lifecycle and advanced renderer/host framework are not prerequisites.
 
+**Clarification (M5 presentation IDs):** `play(animation_id)` is already the complete GRIMM-to-renderer presentation instruction. Each **concrete renderer itself** interprets the identifier and owns any needed asset/animation/camera/sound mappings; no additional Cue Sheet fields or GRIMM-level mapping layer are required. Game composition only ensures the game ships the actual renderer and its dependencies. A later optional build-time check for unsupported IDs is separate from the runtime contract.
+
 ## Cross-milestone consistency review (2026-10-30)
 
 See the [M2 ↔ M3–M5 audit](milestones/m2-cross-milestone-audit.md) for the complete assessment. Its **C1–C7** items distinguish confirmed stale/contradictory acceptance text from real later design questions. The audit is **not** a decision to implement embedded-host physics, generic renderer compatibility or a richer RPG engine in M2. Keep the current DSL/Cue Sheet acceptance as the M2 scope boundary.
@@ -33,7 +35,7 @@ See the [M2 ↔ M3–M5 audit](milestones/m2-cross-milestone-audit.md) for the c
 | OPEN-M3-01 | Open | M3 | When do item identity, quantity, ownership, reference and location require first-class item semantics beyond M2's typed global/local variables? How do item lifetimes interact with narrative-context-local resets? |
 | OPEN-M4-06 | Open | M4 | When an authored mini-game spans several explicitly linked narrative contexts, can its state/timer be resumed on re-entry? Which local facts reset, and how does bounded checking respect only authored navigation? |
 | OPEN-M5-01 | Open | M5 | Can an ordered Cue Sheet plus a **final authorized visible-state snapshot** express the start pose, animated intermediate state, final pose and timed hotspot visibility of graphical objects without leaking graph nodes or misrepresenting the committed state? |
-| OPEN-M5-02 | Open | M5 | How does a concrete game composition validate all required cue IDs, assets, duration adaptations and hotspot bindings without relying on generic 3D renderer capability flags? |
+| OPEN-M5-02 | Narrowed (renderer owns mapping) | M5 | Can the concrete renderer/game build report unsupported authored `play(animation_id)` IDs and missing media, **without altering the Cue Sheet interface** or requiring GRIMM-level asset mapping? |
 | OPEN-M5-03 | Open | M5 | What is the projection boundary between GRIMM-owned narrative facts and independently canonical external host-world state when the renderer needs a complete visible scene? |
 | OPEN-M5-04 | Open | M5 | Would host-owned continuing hazards or cinematics ever require a timer to run **during** presentation rather than following the M2 after-cues activation rule? How is that introduced only as an explicit later mode? |
 | OPEN-LATER-01 | Deferred | Later | What explicit integration mode handles independent host events that invalidate an already-resolved authored choice during cue playback without turning all M2 actions into pending simulations? |
