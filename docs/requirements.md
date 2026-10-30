@@ -104,6 +104,8 @@ M2 **must implement a small, documented, human-authorable story DSL** for the au
 
 The agent chooses precise technical representations; the **observable behavior above is required**. Prefer the smallest surface that reuses already implemented GRIMM model concepts.
 
+- **DSL-13 — Order-sensitive, untimed authored interactions:** The DSL must support several concurrently offered actions whose **execution order**, without any active countdown or additional graph node, changes later authored outcomes/offers via canonical state. Acceptance example: a detective at a crime scene may `search_crime_scene` or `examine_body` first. Searching while `suspect_present=true` reveals `confront_suspect`; examining the body first commits `suspect_present=false`, so later searching instead yields `find_suspect_footprints`. This is explicit authored cause/effect, **not an autonomous NPC timer or simulation**. Verify both orders produce distinct deterministic Cue Sheets. No bespoke sequence-engine primitive is required.
+
 ### M2 scope/design clarifications (proposed details, not yet a schema)
 - **TIME-AUTH-01** For M2 authored conditions, explicit operators (`<`, `<=`, `=`, `>=`, `>`) decide whether a deadline boundary counts as a separate outcome. Define the `time_passed` reference interval and its units; do not hardcode a universal equal-boundary policy.
 - **TIME-AUTH-02** Match authored action duration and required action-presentation duration; treat fictional world chronology independently as author-controlled state. No core wall-clock polling. M2 need not activate choice-selection and scene-completion deadlines concurrently.
