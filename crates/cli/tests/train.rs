@@ -675,8 +675,8 @@ fn silent_signal_actual_cli_routes_reach_all_three_endings() {
         ("3", "An Open Door"),
     ] {
         let mut process = Process::start(&["play", path]);
-        for _ in 0..3 {
-            // Three narrative-only scenes, then an immediately active decision.
+        for _ in 0..4 {
+            // Three narrative-only scenes, then the gated relay presentation.
             process.until("Press Enter when finished reading...");
             process.send("");
         }
@@ -724,6 +724,108 @@ fn actual_gated_cli_reading_can_outlast_deadline_then_choice_or_timeout_resolves
             "Ending: Expired"
         });
     }
+}
+
+#[test]
+fn silent_signal_actual_cli_reading_outlasts_authored_deadline_without_spending_it() {
+    let temp = Temp::new();
+    let save = temp.file("relay-reading.json");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../stories/the-silent-signal.yaml"
+    );
+    let story: Story =
+        serde_yaml_ng::from_str(include_str!("../../../stories/the-silent-signal.yaml")).unwrap();
+    let limit = story
+        .nodes
+        .iter()
+        .find(|node| node.id == "relay")
+        .unwrap()
+        .decision
+        .as_ref()
+        .unwrap()
+        .limit_ms;
+    let mut process = Process::start(&["play", path]);
+    for _ in 0..3 {
+        process.until("Press Enter when finished reading...");
+        process.send("");
+    }
+    process.until("The captain whispers");
+    process.until("Press Enter when finished reading...");
+    thread::sleep(Duration::from_millis(limit + 1000)); // Actual authored game, not a shortened fixture.
+    process.send(&format!(":save {}", save.display()));
+    process.until("Saved to");
+    let snapshot = read_save(&save).unwrap();
+    assert_eq!(snapshot.node_id, "relay");
+    assert_eq!(
+        snapshot.flow.unwrap().phase,
+        grimm_semantic::flow::FlowPhase::Presenting
+    );
+    let decision = snapshot.temporal.unwrap().decision.unwrap();
+    assert_eq!(decision.remaining_ms, limit);
+    assert_eq!(decision.phase, DecisionPhase::AwaitingReady);
+    assert!(!process.text.contains("1. Answer the captain"));
+    assert!(!process.text.contains("Time remaining:"));
+    assert!(!process.text.contains("Decision time"));
+    assert!(!process.text.contains("The relay clicks shut"));
+    process.until("Press Enter when finished reading...");
+    process.send("");
+    process.until("> ");
+    assert!(process.text.contains(&format!(
+        "Decision time (starts after prompt): {}.0s",
+        limit / 1000
+    )));
+    // Complete a genuine rescue after the prolonged reading, with the full budget.
+    process.send("1");
+    for _ in 0..2 {
+        process.until("> ");
+        process.send("1");
+    }
+    for _ in 0..2 {
+        process.until("Press Enter when finished reading...");
+        process.send("");
+    }
+    process.until("> ");
+    process.send("1");
+    process.finish("Ending: A Voice That Answers");
+}
+
+#[test]
+fn silent_signal_actual_cli_acknowledged_relay_expires_to_authored_lost_call() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../stories/the-silent-signal.yaml"
+    );
+    let story: Story =
+        serde_yaml_ng::from_str(include_str!("../../../stories/the-silent-signal.yaml")).unwrap();
+    let limit = story
+        .nodes
+        .iter()
+        .find(|node| node.id == "relay")
+        .unwrap()
+        .decision
+        .as_ref()
+        .unwrap()
+        .limit_ms;
+    let mut process = Process::start(&["play", path]);
+    for _ in 0..4 {
+        process.until("Press Enter when finished reading...");
+        process.send("");
+    }
+    process.until("> ");
+    assert!(process.text.contains(&format!(
+        "Decision time (starts after prompt): {}.0s",
+        limit / 1000
+    )));
+    thread::sleep(Duration::from_millis(limit + 250)); // Deliberately provide no choice after activation.
+    process.until("The relay clicks shut");
+    process.until("Press Enter to acknowledge");
+    process.send(""); // Discard the old revision-bound pipe read, not a story choice.
+    process.until("Input from the previous prompt was ignored");
+    process.until("> ");
+    process.send("2");
+    process.finish("Ending: The Cost of Silence");
+    assert!(!process.text.contains("Ending: A Voice That Answers"));
 }
 
 #[test]

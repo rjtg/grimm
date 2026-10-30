@@ -427,12 +427,12 @@ graphics, multiplayer arbitration or general async framework is implemented.
 
 ## Story schema 3: narrative flow and presentation gating (M1.8)
 
-Authoring recommendation after playtesting: put longer buildup in narrative-only
-segments, then enter a short ungated timed node whose text is comparable in length
-to its choices. That node displays choices and starts counting down immediately;
-the player does not choose a separate "start timer" action. The Silent Signal
-version 2 uses this arrangement. Gating remains available where a scene genuinely
-needs required presentation (including future non-text renderers).
+Authoring supports narrative-only buildup and both gated and ungated interactive
+scenes. The Silent Signal version 3 uses three atmospheric narrative-only opening
+segments, then a short **gated timed** relay scene and a later gated untimed final
+decision. Required presentation must complete before offers appear; the deadline
+starts only after interaction readiness. Ungated timed nodes remain supported for
+situations that require no prior presentation, as in The Last Train.
 
 Play the full reference adventure:
 

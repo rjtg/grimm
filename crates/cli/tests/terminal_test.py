@@ -157,16 +157,16 @@ nodes:
     finally:
         t.close()
 
-    # Real story: reading leads to a compact decision that activates by itself,
-    # then single-key choices and command editing remain available.
+    # Actual story: three narrative segments, then a gated timed interaction.
+    # Reading completion precedes full-budget choices; the Esc menu still works.
     t = Terminal("play", sys.argv[2])
     try:
-        for _ in range(3):
+        for _ in range(4):
             t.until("Press Enter when finished reading...")
             t.send("\r")
         t.until("1. Answer the captain")
         assert b"12.0s" in t.text
-        assert b"Press Enter" not in t.text[t.text.index(b"The relay snaps open"):]
+        assert b"The captain whispers" in t.text
         t.send("\x1b")
         t.until("Session menu")
         t.send("1")

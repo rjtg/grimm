@@ -12,20 +12,9 @@ use grimm_semantic::{
 
 const SIGNAL: &str = include_str!("../../../stories/the-silent-signal.yaml");
 
-// Keep a gated timed fixture to test the reusable lifecycle independently of
-// the playtest-driven narrative-only buildup + immediate decision in the game.
-fn gated_story() -> Story {
-    let mut story: Story = serde_yaml_ng::from_str(SIGNAL).unwrap();
-    let relay = story.nodes.remove(3);
-    let emergency = &mut story.nodes[2];
-    emergency.continue_to = None;
-    emergency.presentation_required = true;
-    emergency.choices = relay.choices;
-    emergency.decision = relay.decision;
-    story
-}
+// Load the actual reference adventure; do not synthesize additional gates.
 fn engine() -> Engine {
-    Engine::new(gated_story()).unwrap()
+    parse_story("signal", SIGNAL).unwrap().1
 }
 fn flow(engine: &mut Engine, event: FlowEvent) {
     engine
@@ -57,6 +46,8 @@ fn emergency() -> Engine {
     assert_eq!(engine.save().node_id, "carrier");
     flow(&mut engine, FlowEvent::PresentationComplete);
     assert_eq!(engine.save().node_id, "emergency");
+    flow(&mut engine, FlowEvent::PresentationComplete);
+    assert_eq!(engine.save().node_id, "relay");
     engine
 }
 
@@ -453,7 +444,7 @@ fn authored_routes_cover_all_endings_and_state_dependent_offers() {
             .iter()
             .filter(|node| node.presentation_required)
             .count()
-            >= 1
+            >= 2
     );
     for (answer, lead, end, expected) in [
         ("answer", "spectrum", "guide", "rescue"),
@@ -467,9 +458,10 @@ fn authored_routes_cover_all_endings_and_state_dependent_offers() {
             flow(&mut engine, FlowEvent::PresentationComplete);
         }
         assert_eq!(engine.save().node_id, "relay");
-        assert!(engine.output().flow.is_none());
-        assert!(engine.output().content.len() == 1);
-        time(&mut engine, TimeEvent::Ready);
+        assert_eq!(engine.output().flow.unwrap().phase, FlowPhase::Presenting);
+        assert!(engine.output().offers.is_empty());
+        flow(&mut engine, FlowEvent::PresentationComplete);
+        flow(&mut engine, FlowEvent::InteractionReady);
         choose(&mut engine, answer);
         choose(&mut engine, lead);
         let action = match lead {
@@ -577,6 +569,7 @@ fn deterministic_lifecycle_replay_has_identical_checkpoints() {
             FlowEvent::PresentationComplete,
             FlowEvent::PresentationComplete,
             FlowEvent::PresentationComplete,
+            FlowEvent::PresentationComplete,
             FlowEvent::InteractionReady,
         ] {
             flow(&mut engine, event);
@@ -593,7 +586,7 @@ fn deterministic_lifecycle_replay_has_identical_checkpoints() {
 
 #[test]
 fn rejects_invalid_configurations_and_continuation_cycles() {
-    let story = gated_story();
+    let story: Story = serde_yaml_ng::from_str(SIGNAL).unwrap();
     let mut bad = vec![];
     let mut s = story.clone();
     s.nodes[0].continue_to = Some("missing".into());
@@ -605,16 +598,20 @@ fn rejects_invalid_configurations_and_continuation_cycles() {
     s.nodes[0].continue_to = Some("storm".into());
     bad.push((s, "cycle"));
     let mut s = story.clone();
-    s.nodes[0].choices = story.nodes[2].choices.clone();
+    s.nodes[0].choices = story.nodes[3].choices.clone();
     bad.push((s, "cannot accompany"));
     let mut s = story.clone();
-    s.nodes[0].decision = story.nodes[2].decision.clone();
+    s.nodes[0].decision = story.nodes[3].decision.clone();
     bad.push((s, "cannot accompany"));
     let mut s = story.clone();
     s.nodes[0].presentation_required = true;
     bad.push((s, "cannot accompany"));
     let mut s = story.clone();
-    s.nodes[10].presentation_required = true;
+    s.nodes
+        .iter_mut()
+        .find(|node| node.ending.is_some())
+        .unwrap()
+        .presentation_required = true;
     bad.push((s, "ending"));
     let mut s = story.clone();
     s.schema_version = 2;
@@ -637,11 +634,11 @@ fn rejects_invalid_configurations_and_continuation_cycles() {
 
 #[test]
 fn untimed_flow_is_optional_and_overflow_and_bad_destinations_do_not_commit() {
-    let mut story = gated_story();
+    let mut story: Story = serde_yaml_ng::from_str(SIGNAL).unwrap();
     story.time = None;
-    story.nodes[2].decision = None;
+    story.nodes[3].decision = None;
     // lost was reachable only by timeout; keep it reachable via a choice.
-    story.nodes[2].choices[1].target = "lost".into();
+    story.nodes[3].choices[1].target = "lost".into();
     let mut engine = Engine::new(story.clone()).unwrap();
     let mut save = engine.save();
     save.revision = u64::MAX - 2;
@@ -658,10 +655,10 @@ fn untimed_flow_is_optional_and_overflow_and_bad_destinations_do_not_commit() {
     assert_eq!(engine.save(), before);
     assert!(engine.save().temporal.is_none());
     // Inject a conditional deadlock behind a narrative segment, still structurally valid.
-    story.nodes[1].continue_to = Some("investigation".into());
-    story.nodes[0].continue_to = Some("emergency".into());
-    story.nodes[2].choices[0].target = "carrier".into();
-    for choice in &mut story.nodes[4].choices {
+    story.nodes[2].continue_to = Some("investigation".into());
+    story.nodes[0].continue_to = Some("relay".into());
+    story.nodes[3].choices[0].target = "carrier".into();
+    for choice in &mut story.nodes[5].choices {
         choice.condition = Some(grimm_semantic::story::Condition::Equals {
             variable: "trust".into(),
             value: grimm_semantic::story::Value::Bool(false),

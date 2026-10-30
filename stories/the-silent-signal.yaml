@@ -1,6 +1,6 @@
 schema_version: 3
 id: the-silent-signal
-version: 2
+version: 3
 title: The Silent Signal
 time: {}
 start: storm
@@ -51,9 +51,10 @@ nodes:
           If the relay resets unanswered, the captain's reply is lost.
     continue_to: relay
   - id: relay
+    presentation_required: true
     content:
       - kind: narration
-        text: "The relay snaps open. The captain is on the line. Twelve seconds until reset."
+        text: "The captain whispers: 'The lights below us are moving.' Imani holds the relay while you listen. Finish reading before answering; once the choices appear, you have twelve seconds until reset."
     decision:
       limit_ms: 12000
       timeout:

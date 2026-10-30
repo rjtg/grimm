@@ -37,9 +37,11 @@ cargo run -p grimm-cli -- play stories/the-silent-signal.yaml
 ```
 
 It has 14 nodes and three endings. Narrative-only segments carry the longer
-storm and emergency buildup. The relay decision itself is brief: entering it
-immediately displays the choices and starts its 12-second deadline. The investigation and
-final gated choice are untimed. Evidence, trust and reserve power change rescue
+storm and emergency buildup. Two interactive scenes require presentation completion:
+the relay and the final decision. Read the relay freely, then press Enter to finish
+its presentation. Choices appear next and the full 12-second countdown starts only
+when they are usable. The investigation and final gated choice are untimed.
+Evidence, trust and reserve power change rescue
 options; silence after activation has an authored consequence. In a terminal,
 press a choice's number key to act immediately, without Enter. **Esc opens the
 session menu:** `1` Continue, `2` Save, `3` Load, `4` Quit. Esc also closes the
@@ -55,7 +57,7 @@ directory (path shown in the menu). For The Silent Signal, resume later using:
 cargo run -p grimm-cli -- play stories/the-silent-signal.yaml --load .grimm-saves/story-the-silent-signal.json
 ```
 
-The adventure is now story version 2; saves from its initial playtest version 1
+The adventure is now story version 3; saves from playtest versions 1 and 2
 are rejected rather than mapped onto the revised scenes. Unfinished presentation
 replays; offline time stays frozen. Opening the menu and continuing
 preserve the reading phase and remaining deadline. EOF exits without completing
@@ -69,6 +71,8 @@ Reproduce the renderer-neutral lifecycle and all new game endings:
 cargo test --locked -p grimm-cli --test flow
 cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_routes_reach_all_three_endings
 cargo test --locked -p grimm-cli --test train actual_gated_cli_reading_can_outlast_deadline_then_choice_or_timeout_resolves
+cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_reading_outlasts_authored_deadline_without_spending_it
+cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_acknowledged_relay_expires_to_authored_lost_call
 cargo run --locked -p grimm-cli -- check stories/the-silent-signal.yaml
 ```
 
