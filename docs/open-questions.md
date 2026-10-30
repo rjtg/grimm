@@ -81,33 +81,33 @@ Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-s
 This **worked example** uses **cumulative time since the narrative situation's timer origin** and an authored 30-second time budget. GRIMM resolves each selected action at once and returns the post-action time/state in a new cue sheet. **Not a final serialized schema**.
 
 ```text
-cue_sheet { id:1; play:[locked_in];
+cue_sheet { id:1; cue:[locked_in];
   actions:[open_drawer, open_wardrobe, carefully_look_around];
   scene_timer:[0 of 30]s }
 
 game_action { ref:1; action:open_drawer; scene_timer:[2 of 30]s }
   # 2s player hesitation; action duration 1s
-cue_sheet { id:2; play:[open_drawer];
+cue_sheet { id:2; cue:[open_drawer];
   actions:[close_drawer, take_keychain_from_drawer, open_wardrobe, carefully_look_around];
   scene_timer:[3 of 30]s }
 
 game_action { ref:2; action:take_keychain_from_drawer; scene_timer:[5 of 30]s }
   # 2s additional player hesitation; action duration 1s
-cue_sheet { id:3; play:[take_keychain];
+cue_sheet { id:3; cue:[take_keychain];
   actions:[close_drawer, open_wardrobe, unlock_door_key1, unlock_door_key2,
            carefully_look_around];
   scene_timer:[6 of 30]s }
 
 game_action { ref:3; action:unlock_door_key1; scene_timer:[8 of 30]s }
   # key 1 is wrong; trying it takes 2s
-cue_sheet { id:4; play:[wrong_key_does_not_turn];
+cue_sheet { id:4; cue:[wrong_key_does_not_turn];
   actions:[close_drawer, open_wardrobe, unlock_door_key1, unlock_door_key2,
            carefully_look_around];
   scene_timer:[10 of 30]s }
 
 game_action { ref:4; action:unlock_door_key2; scene_timer:[12 of 30]s }
   # key 2 fits; opening takes 2s
-cue_sheet { id:5; play:[unlock_door_success, escape_room]; actions:[];
+cue_sheet { id:5; cue:[unlock_door_success, escape_room]; actions:[];
   scene_timer:[14 of 30]s }
 ```
 
