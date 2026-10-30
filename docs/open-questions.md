@@ -41,6 +41,24 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 
 A choice is an **authored, currently executable semantic offer**. It may investigate, reveal, collect, combine, affect character stats, consume time, refresh available options or advance the story. An optional execution duration makes the selected action **in progress** and blocks further gameplay choices while a previously running **scene-completion** timer keeps progressing; the host must not sleep inside the engine. A separate **choice-selection** timer is satisfied by accepting a choice (or triggers authored silence/default consequences if unanswered). On scene deadline expiry mid-action, the engine evaluates an authored interruption using deterministic partial progress and committed state, not merely a static timeout target. Animation/progress for that action has the same authored execution duration (five seconds means five seconds), with presentation driven by the action timeline rather than extending it. Precise completion, failure and persistence policies are OPEN-TIME questions. The engine validates effects; renderers only present authorized offers. Neither a fixed LucasArts verb API nor a mandatory RPG ruleset is needed. A narrative scene is not the same as a persistent location.
 
+## Game realization, packaging and renderer compatibility
+
+**Architectural distinction:** A headless renderer-independent engine does **not** imply a renderer-independent game. A game may deliberately target a text CLI, visual-novel presentation, 2D point-and-click adventure or 3D Bevy experience, with specific art/assets, interaction affordances and presentation timing. Cross-renderer compatibility is **opt-in**, not a universal promise. The questions below are not a decided manifest or asset format.
+
+| ID | Status | Target | Question |
+|---|---|---|---|
+| OPEN-GAME-01 | Open | M2–M5 | What is the identity of a playable **game** versus an engine story graph, a presentation profile, a collection of assets, a runtime host and a renderer implementation? |
+| OPEN-GAME-02 | Open | M4–M5 | How does a game declare **required presentation capabilities**, such as text dialogue, clickable scene hotspots, inventory widgets, action-progress animation, camera movement, audio or spatial navigation, without coupling the headless engine to Bevy/CLI types? |
+| OPEN-GAME-03 | Open | M4–M5 | Is a game bound to exactly one renderer, to a renderer **profile/class** (text / 2D adventure / visual novel / 3D), or to one or more explicit supported presentation targets? How are optional and required capabilities distinguished? |
+| OPEN-GAME-04 | Open | M5 | Where do game-authored presentation bindings live: narrative/choice IDs to hotspots, scene backgrounds, actor placement, sprites/models, animations, timings and audio? Should they be separate from canonical story rules? |
+| OPEN-GAME-05 | Open | M5 | What constitutes a complete distributable game: story data, renderer-specific presentation package(s), assets, dependencies, versioning, save compatibility and launch/runtime configuration? |
+| OPEN-GAME-06 | Open | M5 | What validation runs **before game launch** to report missing assets, incompatible renderer capabilities, unbound choices or unsupported interaction types? Is graceful degradation ever acceptable, or only if explicitly authored? |
+| OPEN-GAME-07 | Open | M5 | Can a single authored game ship both text and graphical presentations? If so, what rules/choice IDs must remain common, and how do we test parity without requiring universal interchangeability? |
+| OPEN-GAME-08 | Open | M4–M5 | How are text-only narrative experiences distinguished from spatial/visual puzzle games, and at what stage do we need game-level metadata before a full asset/package system? |
+| OPEN-GAME-09 | Open | M5 | How should action duration and pre-choice presentation gating interact with animation assets unavailable to a particular renderer? Must the game reject that target or provide explicitly authored alternatives? |
+
+**Guardrails:** Keep canonical state and action semantics engine-owned. Do not require that a text-only graph magically render as a 3D world. Do not bake renderer-specific asset identifiers, scene graphs, hotkey schemes or Bevy data types into the headless core. Multi-renderer support is an authoring capability that must be declared and validated, not assumed. M2 should remain text-based and does not need to solve M5 packaging in advance.
+
 ## Later: open-world / dynamic narrative (deferred)
 
 **Do not specify or implement dynamic node providers in M2–M5.** Once an authored adventure can model locations, inventory, puzzles, persistent character state and scene transitions, revisit whether an open-world/Story-RPG mode benefits from live graph extension. A future provider might be a human dungeon master, authoring interface, rule system or LLM, but its boundary and proposal schema are intentionally **undefined today**.
