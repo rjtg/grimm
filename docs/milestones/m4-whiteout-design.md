@@ -1,6 +1,6 @@
 # WHITEOUT — M4 Adventure Design Brief (proposed)
 
-**Status:** M4/M5 game-design proposal, not an M2 implementation requirement. **No code changes.**
+**Status:** M4/M5 game-design proposal, following the merged M2 implementation. **No code changes.**
 **Working title:** WHITEOUT
 **Setting:** Isolated polar research station Aurora during an escalating storm and power failure.
 **Delivery:** A finished M4 text adventure authored in the M2 DSL, later adapted in M5 to a graphical renderer using **the same GRIMM story script and semantic IDs**. Both example applications live in this repository.
@@ -53,7 +53,7 @@ These are distinct authored narrative contexts. Story-graph cycles are allowed b
 **Core rule: elapsed time is game-significant, without continuous GRIMM simulation.**
 
 - The renderer owns the progressing scene clock and submits observed elapsed time at player selection, per the M2 contract.
-- GRIMM maintains a **last-accounted time anchor** for the active timed exposure context. At the next action or authored timeout, it computes the *unaccounted elapsed interval once* and applies the authored environmental rate to `cold_exposure`. The time anchor is advanced atomically with that calculation.
+- The authored game tracks a **last-accounted time anchor** for the active timed scene (e.g. in world-state variables), using M2 clock expressions and action effects. At the next action or authored timeout, it computes the *unaccounted elapsed interval once* and applies the authored environmental rate to `cold_exposure`. The time anchor advances atomically with the calculation. **Scene time resets on `goto`:** settle any prior scene's exposure before transition, then initialize the next scene's anchor against its new T=0 origin; never subtract timestamps from different scene epochs.
 - Cold-exposure rate may depend on authored conditions (room temperature, heating restored, protective clothing). When a rate changes, account for the previous interval before adopting the new rate. An authored event/timeout provides an evaluation point when necessary; there is **no requirement for per-second GRIMM state updates**.
 - Duration spent deliberating counts; action logical cost also counts when it occurs within an exposure interval. **Do not double-charge** time that is already represented by the renderer's clock or the committed authored action-cost interval. In particular, GRIMM must define and test whether it books action cost at selection and how the next observed timestamp excludes already-accounted duration.
 - Thresholds are evaluated when an action/timeout is processed, not continuously streamed to the UI. **Do not remove or reject a previously offered action merely because exposure increased while the player was thinking.** Treat it as a valid authored attempt whose outcome may now fail.
@@ -102,6 +102,6 @@ No UI refresh is required at intermediate cold thresholds while the player is id
 
 ## Delivery and scope
 
-This design is for later **M4 authoring**, after M2 is mature enough to support it. It does not change the ongoing M2 implementation requirements or require an immediate new engine capability. M3's authoring validator can help report generated cue/action IDs and structural exits, but remains independent of renderer asset manifests. M5 uses the same story script with a separate concrete renderer.
+This design is for later **M4 authoring**, building on the now-merged M2 foundation. It does not retroactively change M2 acceptance requirements or require an immediate new engine capability. M3's authoring validator can help report generated cue/action IDs and structural exits, but remains independent of renderer asset manifests. M5 uses the same story script with a separate concrete renderer.
 
-When M4 implementation begins, finalize actual character arcs, location graph, item recipes, difficulty balancing and the precise authored DSL syntax against real M2 capabilities. Include automated outcome/time tests and a complete playable text walkthrough. Do not silently extend the M2 agent's active scope to cover WHITEOUT.
+When M4 implementation begins, finalize actual character arcs, location graph, item recipes, difficulty balancing and the precise authored DSL syntax against real M2 capabilities. Include automated outcome/time tests and a complete playable text walkthrough. Keep WHITEOUT implementation separate from the completed M2 milestone.
