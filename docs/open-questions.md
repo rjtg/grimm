@@ -20,6 +20,24 @@ The remaining DSL work is technical design and evidence, not another gameplay-mo
 
 **Remaining focused M2 questions:** (1) concrete story authoring syntax for choice cases, effects, time costs and play cues; (2) exact shape of global vs narrative-context-local state and how context exits affect it; (3) minimal serialized Cue Sheet and `game_action` types including reserved `timeout` and `ref`; (4) compatibility-safe implementation. A large graph solver, new save lifecycle and advanced renderer/host framework are not prerequisites.
 
+## Cross-milestone consistency review (2026-10-30)
+
+See the [M2 ↔ M3–M5 audit](milestones/m2-cross-milestone-audit.md) for the complete assessment. Its **C1–C7** items distinguish confirmed stale/contradictory acceptance text from real later design questions. The audit is **not** a decision to implement embedded-host physics, generic renderer compatibility or a richer RPG engine in M2. Keep the current DSL/Cue Sheet acceptance as the M2 scope boundary.
+
+**Answered in principle, detailed later work still open:** `OPEN-PUZZLE-02/03` (conditional stateful choice pipeline), `OPEN-ADV-02` (shared authored DSL for LucasArts/Telltale interactions), `OPEN-ADV-03` (hotspot/text menu submits one offered semantic choice), `OPEN-SCENE-14` (GRIMM selects cue, renderer-specific binding remains M5). `OPEN-STAT-01` is narrowed to whether first-class character ownership ever exceeds ordinary typed state.
+
+**New deferred follow-up questions, not M2 commitments:**
+
+| ID | Status | Target | Question |
+|---|---|---|---|
+| OPEN-M3-01 | Open | M3 | When do item identity, quantity, ownership, reference and location require first-class item semantics beyond M2's typed global/local variables? How do item lifetimes interact with narrative-context-local resets? |
+| OPEN-M4-06 | Open | M4 | When an authored mini-game spans several explicitly linked narrative contexts, can its state/timer be resumed on re-entry? Which local facts reset, and how does bounded checking respect only authored navigation? |
+| OPEN-M5-01 | Open | M5 | Can an ordered Cue Sheet plus a **final authorized visible-state snapshot** express the start pose, animated intermediate state, final pose and timed hotspot visibility of graphical objects without leaking graph nodes or misrepresenting the committed state? |
+| OPEN-M5-02 | Open | M5 | How does a concrete game composition validate all required cue IDs, assets, duration adaptations and hotspot bindings without relying on generic 3D renderer capability flags? |
+| OPEN-M5-03 | Open | M5 | What is the projection boundary between GRIMM-owned narrative facts and independently canonical external host-world state when the renderer needs a complete visible scene? |
+| OPEN-M5-04 | Open | M5 | Would host-owned continuing hazards or cinematics ever require a timer to run **during** presentation rather than following the M2 after-cues activation rule? How is that introduced only as an explicit later mode? |
+| OPEN-LATER-01 | Deferred | Later | What explicit integration mode handles independent host events that invalidate an already-resolved authored choice during cue playback without turning all M2 actions into pending simulations? |
+
 ## Active scope boundary for M2 (2026-10-30)
 
 Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-style adventures**: context-sensitive choices, local puzzle/world-state changes, explicitly authored narrative transitions, scene deadlines, presentation cues and light optional RPG-influenced checks. Do not implicitly add host-owned traversal, Bevy integration, open-world navigation, a full RPG ruleset or generated narrative to M2. Those remain M4/M5/later questions and should not block the M2 choice/adventure model. Revisit remaining M2 questions one at a time within this scope.
@@ -163,13 +181,13 @@ The renderer provides the elapsed interval and not a wall-clock timestamp for th
 | OPEN-DEMO-01 | Open | Every milestone | What complete playable acceptance game and regression routes demonstrate all new mechanics, state persistence and success/failure paths? |
 | OPEN-DEMO-02 | Open | M2–M3 | How do demos prove that a door attempt at T=6 with a five-second duration and T=10 deadline is resolved at selection to a **four-second failure presentation**, without an action-completion callback? |
 | OPEN-PUZZLE-01 | Open | M3 | Which item/inventory features require more than typed state variables: identity, ownership, location, consumption, quantities, visibility? |
-| OPEN-PUZZLE-02 | Open | M3 | How do authored MacGyver-like combinations and multiple puzzle solutions remain conditional choices rather than universal `Inspect/Use/Combine` commands? |
-| OPEN-PUZZLE-03 | Open | M3 | How do inventory changes affect subsequent offers and remain persistent/replayable without proliferating graph nodes? |
-| OPEN-STAT-01 | Open | M3 | When do RPG attributes, skills, relationships and resources need explicit character ownership rather than normal typed variables? |
+| OPEN-PUZZLE-02 | Decided in principle (DSL choice/state); item specifics open | M3 | How do authored MacGyver-like combinations and multiple puzzle solutions remain conditional choices rather than universal `Inspect/Use/Combine` commands? |
+| OPEN-PUZZLE-03 | Decided in principle (DSL effects/offers); item semantics open | M3 | How do inventory changes affect subsequent offers and remain persistent/replayable without proliferating graph nodes? |
+| OPEN-STAT-01 | Narrowed (richer character ownership only) | M3 | When do RPG attributes, skills, relationships and resources need explicit character ownership rather than normal typed variables? |
 | OPEN-STAT-02 | Open | M3 | If probabilistic checks are desired later, how are input seeds and outcomes recorded; can initial threshold checks remain deterministic? |
 | OPEN-ADV-01 | Open | M4 | How do persistent locations, objects and recurring characters differ from narrative scenes and presentation phases? |
-| OPEN-ADV-02 | Open | M4 | How should LucasArts-like exploration and puzzles enable Telltale-style staged, consequential narrative choices in the same authored adventure? |
-| OPEN-ADV-03 | Open | M4–M5 | How do graphical hotspots and text labels map to the same semantic offered choice within explicitly composed games? |
+| OPEN-ADV-02 | Decided in principle (common DSL/Cue Sheet); full adventure open | M4 | How should LucasArts-like exploration and puzzles enable Telltale-style staged, consequential narrative choices in the same authored adventure? |
+| OPEN-ADV-03 | Decided in principle (same action ID); concrete binding open | M4–M5 | How do graphical hotspots and text labels map to the same semantic offered choice within explicitly composed games? |
 | OPEN-ADV-04 | Open | M4 | How does bounded playability distinguish explicitly authored returns, host-led open-world travel and intended failure endings from accidental softlocks, **without granting implicit access to previously visited story nodes**? |
 | OPEN-ADV-05 | Open | M4–M5 | How does a narrative interaction **return control to an external host** (e.g. BG-style exploration resumes), and how does a later world trigger enter a key-rack or locked-door narrative context? What reachable host navigation can the authored checker safely know or require the host to declare? |
 
