@@ -67,6 +67,17 @@ CLI fallback: for reading-intensive storytelling, display the narrative and requ
 
 See [ADR-0007](adr/0007-narrative-flow-and-presentation-gating.md) and [M1.8](milestones/m1.8.md). These refine the existing M0 dependency boundaries and M1.75 temporal lifecycle without making visual rendering mandatory.
 
+M1.8's implemented lifecycle is specified in the [pre-API design](milestones/m1.8-design.md)
+and [schema/protocol reference](story-format.md#story-schema-3-narrative-flow-and-presentation-gating-m18).
+Opt-in schema-3 nodes expose Presenting → AwaitingInteraction → Interactive,
+with orthogonal pause state. Revision-scoped presentation feedback travels from
+renderer to host, through adapter translation into `FlowInput`, then engine
+validation. Completion reserves a new revision before offers become available;
+readiness activates the existing deadline only afterward. Narrative-only
+completion commits one validated successor edge. The core never waits for a
+renderer, and continuation-only cycles are rejected. Required CLI reading uses
+explicit Enter; EOF cannot stand in for completion. ADR-0007 retains Proposed status.
+
 ## Event and presentation semantics
 Committed game events describe what actually happened, including offscreen events. They are not automatically visible to players. Narrative content describes what may be communicated; interaction offers describe currently valid inputs. A filtered projection exposes only player-visible information. A renderer must not receive hidden world state by default.
 

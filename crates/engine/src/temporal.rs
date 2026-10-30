@@ -1,7 +1,7 @@
 use crate::{ActionError, Engine, ValidationError};
 use grimm_semantic::{
     SemanticOutput,
-    save::{SaveGame, TEMPORAL_SAVE_SCHEMA_VERSION},
+    save::{FLOW_SAVE_SCHEMA_VERSION, SaveGame, TEMPORAL_SAVE_SCHEMA_VERSION},
     story::{Choice, Node},
     time::{DecisionPhase, DecisionView, TimeEvent, TimeInput},
 };
@@ -10,7 +10,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub(crate) struct ActiveDecision {
     pub view: DecisionView,
-    last_elapsed_ms: u64,
+    pub(crate) last_elapsed_ms: u64,
 }
 
 impl ActiveDecision {
@@ -27,6 +27,7 @@ impl ActiveDecision {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TimeError {
+    Flow(crate::FlowError),
     StaleRevision,
     NoTemporalRules,
     NoDecision,
@@ -38,6 +39,7 @@ pub enum TimeError {
 impl fmt::Display for TimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Flow(error) => error.fmt(f),
             Self::StaleRevision => f.write_str("time input refers to a stale interaction revision"),
             Self::NoTemporalRules => f.write_str("story has no temporal rules"),
             Self::NoDecision => f.write_str("there is no pending decision deadline"),
@@ -78,6 +80,24 @@ impl Engine {
     pub fn time_input(&mut self, input: &TimeInput) -> Result<SemanticOutput, TimeError> {
         if input.revision != self.revision {
             return Err(TimeError::StaleRevision);
+        }
+        if self.flow.is_some() {
+            use grimm_semantic::flow::{FlowEvent, FlowInput};
+            let event = match input.event {
+                TimeEvent::Ready => Some(FlowEvent::InteractionReady),
+                TimeEvent::Pause => Some(FlowEvent::Pause),
+                TimeEvent::Resume => Some(FlowEvent::Resume),
+                TimeEvent::AdvanceWorld { .. } => return Err(TimeError::InvalidPhase),
+                TimeEvent::Elapsed { .. } => None,
+            };
+            if let Some(event) = event {
+                return self
+                    .flow_input(&FlowInput {
+                        revision: input.revision,
+                        event,
+                    })
+                    .map_err(TimeError::Flow);
+            }
         }
         let world = self.world_minutes.ok_or(TimeError::NoTemporalRules)?;
         if self.story.nodes[self.node].ending.is_some() {
@@ -167,9 +187,11 @@ impl Engine {
             }
             return Ok((None, None));
         };
-        if save.schema_version != TEMPORAL_SAVE_SCHEMA_VERSION {
+        if save.schema_version != TEMPORAL_SAVE_SCHEMA_VERSION
+            && save.schema_version != FLOW_SAVE_SCHEMA_VERSION
+        {
             return Err(ValidationError(
-                "temporal stories require save schema 2".into(),
+                "temporal stories require save schema 2 (or 3 for flow stories)".into(),
             ));
         }
         let temporal = save

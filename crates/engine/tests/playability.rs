@@ -6,6 +6,8 @@ use grimm_semantic::{
 
 fn node(id: &str, target: &str) -> Node {
     Node {
+        continue_to: None,
+        presentation_required: false,
         decision: None,
         id: id.into(),
         content: vec![NarrativeContent::Narration { text: id.into() }],

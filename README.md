@@ -14,10 +14,10 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 
 See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), and [M0 brief](docs/milestones/m0.md).
 
-Status: M0 through M1.75 implemented: an authored CYOA engine with YAML stories, typed
+Status: M0 through M1.8 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
-Three reference adventures exercise persistent state, bounded playability checks,
-and optional deterministic world time and real-time decisions.
+Four reference adventures exercise persistent state, bounded playability checks,
+optional deterministic time, narrative-only continuation and presentation-gated decisions.
 AI and graphical frontends remain future milestones.
 
 ## Build and run
@@ -30,18 +30,69 @@ cargo build --workspace --locked
 cargo run --locked -p grimm-cli -- play stories/the-last-witness.yaml
 ```
 
+Play **The Silent Signal**, M1.8's atmospheric research-station mystery:
+
+```sh
+cargo run -p grimm-cli -- play stories/the-silent-signal.yaml
+```
+
+It has 14 nodes and three endings. Narrative-only segments carry the longer
+storm and emergency buildup. Two interactive scenes require presentation completion:
+the relay and the final decision. Read the relay freely, then press Enter to finish
+its presentation. Choices appear next and the full 12-second countdown starts only
+when they are usable. The investigation and final gated choice are untimed.
+Evidence, trust and reserve power change rescue
+options; silence after activation has an authored consequence. In a terminal,
+press a choice's number key to act immediately, without Enter. **Esc opens the
+session menu:** `1` Continue, `2` Save, `3` Load, `4` Quit. Esc also closes the
+menu. All menu actions are single keypresses; no command typing. More than nine
+choices use number + Enter. Redirected input keeps the original line-based format.
+
+During required reading, only blank Enter completes presentation; numbers do not
+acknowledge or choose. The menu pauses any active deadline and preserves unfinished
+reading. Save/Load use one checkpoint per story under `.grimm-saves/` in the current
+directory (path shown in the menu). For The Silent Signal, resume later using:
+
+```sh
+cargo run -p grimm-cli -- play stories/the-silent-signal.yaml --load .grimm-saves/story-the-silent-signal.json
+```
+
+The adventure is now story version 3; saves from playtest versions 1 and 2
+are rejected rather than mapped onto the revised scenes. Unfinished presentation
+replays; offline time stays frozen. Opening the menu and continuing
+preserve the reading phase and remaining deadline. EOF exits without completing
+required storytelling. On an active countdown it still permits authored expiry,
+but cannot skip a successor's required reading. Stale lines and lifecycle commands
+cannot acknowledge or alter a later interaction. Old games keep their usual prompts.
+
+Reproduce the renderer-neutral lifecycle and all new game endings:
+
+```sh
+cargo test --locked -p grimm-cli --test flow
+cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_routes_reach_all_three_endings
+cargo test --locked -p grimm-cli --test train actual_gated_cli_reading_can_outlast_deadline_then_choice_or_timeout_resolves
+cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_reading_outlasts_authored_deadline_without_spending_it
+cargo test --locked -p grimm-cli --test train silent_signal_actual_cli_acknowledged_relay_expires_to_authored_lost_call
+cargo run --locked -p grimm-cli -- check stories/the-silent-signal.yaml
+```
+
+See [flow design](docs/milestones/m1.8-design.md),
+[schema/lifecycle reference](docs/story-format.md#story-schema-3-narrative-flow-and-presentation-gating-m18),
+and [authoring/playtest findings](docs/milestones/m1.8-playtest.md).
+
 Choose displayed numbers to play **The Last Witness**. Investigate a mill fire,
 find evidence, and decide whether to earn the witness's trust. Three endings
-depend on your choices. Session commands are `:save PATH`, `:load PATH`, and
+depend on your choices. In a terminal, Esc opens the session menu above.
+For piped input, session commands remain `:save PATH`, `:load PATH`, and
 `:quit`. Paths may contain spaces; enter them without surrounding quotes.
 EOF exits without taking a choice. Completed stories display their ending and
 exit. The engine API can also save and restore completed sessions.
 
-For example, save at Mara's first appearance by entering `1`, `1`, then
-`:save /tmp/last-witness.json`. Resume with:
+For example, save at Mara's first appearance by pressing `1`, `1`, then Esc, `2`.
+Resume with:
 
 ```sh
-cargo run --offline --locked -p grimm-cli -- play stories/the-last-witness.yaml --load /tmp/last-witness.json
+cargo run --offline --locked -p grimm-cli -- play stories/the-last-witness.yaml --load .grimm-saves/story-the-last-witness.json
 ```
 
 Reproduce all endings from the repository root:
@@ -70,11 +121,10 @@ and uses the existing M1 story format.
 cargo run --locked -p grimm-cli -- play stories/the-last-lighthouse.yaml
 ```
 
-To save at the night watch, enter `1`, `1`, `1`, `1`, then
-`:save /tmp/lighthouse.json`. Resume with:
+To save at the night watch, press `1`, `1`, `1`, `1`, then Esc, `2`. Resume with:
 
 ```sh
-cargo run --offline --locked -p grimm-cli -- play stories/the-last-lighthouse.yaml --load /tmp/lighthouse.json
+cargo run --offline --locked -p grimm-cli -- play stories/the-last-lighthouse.yaml --load .grimm-saves/story-the-last-lighthouse.json
 ```
 
 Reproduce each ending:
@@ -124,16 +174,17 @@ The opening lets you read the controls without a timer. A timely, prepared stop
 and a late evacuation have different consequences; hesitation has an authored
 outcome rather than an I/O error.
 
-During a live deadline, use `:pause`, then `:save /tmp/train.json`. `:resume`
+During a live deadline, press Esc to pause, then `2` to save. `1` (or Esc)
 continues after displaying the prompt again. To load the checkpoint later:
 
 ```sh
-cargo run -p grimm-cli -- play stories/the-last-train.yaml --load /tmp/train.json
+cargo run -p grimm-cli -- play stories/the-last-train.yaml --load .grimm-saves/story-the-last-train.json
 cargo run --offline --locked -p grimm-cli -- check stories/the-last-train.yaml
 ```
 
-Closed games do not consume decision time. Saving alone does not pause a running
-session. The engine preserves remaining time; the host activates it only after
+Closed games do not consume decision time. The terminal menu pauses before saving;
+a piped `:save PATH` alone does not pause a running session. The engine preserves
+remaining time; the host activates it only after
 flushing the prompt. At the exact deadline, timeout wins because the host sends
 its elapsed observation before a player action. No-input expiry works with an
 open stdin; real hesitation never automatically advances fictional minutes.
@@ -180,6 +231,9 @@ and the demo work with `--offline`. Running the built `target/debug/grimm-cli`
 requires no network, browser, graphics, model, or other service.
 
 ## Verification
+
+Unix terminal regression tests also require Python 3 (standard library only)
+to drive a real pseudo-terminal and verify immediate keys and terminal restoration.
 
 ```sh
 cargo fmt --check

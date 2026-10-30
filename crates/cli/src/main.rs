@@ -3,7 +3,12 @@ use grimm_cli::{load_story, read_save, write_save};
 use grimm_cli_renderer::CliRenderer;
 use grimm_engine::{Engine, PlayabilityLimits};
 use grimm_presentation::PresentationCommand;
-use std::{env, io, path::Path, process::ExitCode};
+use std::{
+    env,
+    io::{self, IsTerminal},
+    path::Path,
+    process::ExitCode,
+};
 
 fn main() -> ExitCode {
     match run() {
@@ -46,7 +51,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [] => (None, Engine::default()),
         [help] if help == "--help" || help == "-h" => {
             println!(
-                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\nSession commands: :save PATH, :load PATH, :quit"
+                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
             );
             return Ok(());
         }
@@ -65,7 +70,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => return Err("Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]".into()),
     };
-    if engine.save().temporal.is_some() {
+    if engine.save().temporal.is_some()
+        || engine.save().schema_version == 3
+        || (io::stdin().is_terminal() && io::stdout().is_terminal())
+    {
         return grimm_cli::runtime::play(title.as_deref().unwrap_or("GRIMM"), engine);
     }
     let mut adapter = TextAdapter::default();

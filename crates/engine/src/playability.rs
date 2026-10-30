@@ -101,7 +101,13 @@ impl Engine {
             let mut executable = false;
             let mut failures = Vec::new();
             let timeout = crate::temporal::timeout_choice(node);
-            for choice in node.choices.iter().chain(timeout.iter()) {
+            let continuation = crate::flow::continuation(node);
+            for choice in node
+                .choices
+                .iter()
+                .chain(timeout.iter())
+                .chain(continuation.iter())
+            {
                 if report.transitions_checked == limits.max_transitions {
                     report.truncated = true;
                     // A partially inspected node must not be called a deadlock.
@@ -111,7 +117,12 @@ impl Engine {
                 if !eligible(choice, &state.variables, state.world_minutes) {
                     continue;
                 }
-                match self.preview(choice, &state.variables, state.world_minutes) {
+                let preview = if node.continue_to.is_some() {
+                    self.preview_continuation(choice, &state.variables, state.world_minutes)
+                } else {
+                    self.preview(choice, &state.variables, state.world_minutes)
+                };
+                match preview {
                     Err(error) => failures.push(format!("choice '{}': {error}", choice.id)),
                     Ok((next, variables, world_minutes)) => {
                         executable = true;

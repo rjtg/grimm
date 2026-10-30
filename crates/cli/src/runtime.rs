@@ -1,13 +1,15 @@
 //! Real-time composition root. The sole clock lives here, never in the engine.
+mod terminal;
 use crate::{read_save, write_save};
-use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter};
+use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter, lifecycle_input};
 use grimm_cli_renderer::CliRenderer;
 use grimm_engine::Engine;
 use grimm_presentation::{PresentationCommand, RawInput};
+use grimm_semantic::flow::FlowPhase;
 use grimm_semantic::time::{DecisionPhase, TimeEvent, TimeInput};
 use std::{
-    io,
-    path::Path,
+    io::{self, IsTerminal, Write},
+    path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, RecvTimeoutError, Sender},
     thread,
     time::{Duration, Instant},
@@ -59,6 +61,42 @@ fn input(engine: &mut Engine, event: TimeEvent) -> HostResult<()> {
     Ok(())
 }
 
+fn is_paused(engine: &Engine) -> bool {
+    let output = engine.output();
+    output.flow.as_ref().is_some_and(|flow| flow.paused)
+        || output
+            .decision
+            .as_ref()
+            .is_some_and(|decision| decision.phase == DecisionPhase::Paused)
+}
+
+fn suspend(engine: &mut Engine) -> HostResult<()> {
+    let output = engine.output();
+    if !is_paused(engine) && (output.flow.is_some() || output.decision.is_some()) {
+        input(engine, TimeEvent::Pause)?;
+    }
+    Ok(())
+}
+
+fn checkpoint_path(engine: &Engine) -> PathBuf {
+    let mut id = String::new();
+    for byte in engine.save().story_id.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_') {
+            id.push(char::from(byte));
+        } else {
+            id.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    PathBuf::from(".grimm-saves").join(format!("story-{id}.json"))
+}
+
+fn menu_commands(engine: &Engine) -> Vec<PresentationCommand> {
+    vec![PresentationCommand::Text(format!(
+        "\nSession menu — game paused\n[1] Continue    [2] Save    [3] Load    [4] Quit\nEsc: return to game. Checkpoint: {}",
+        checkpoint_path(engine).display()
+    ))]
+}
+
 /// One baseline per explicitly activated/resumed interaction; no second clock.
 struct Observation {
     origin: Instant,
@@ -88,18 +126,40 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         input(&mut engine, TimeEvent::Pause)?;
         input(&mut engine, TimeEvent::Resume)?;
     }
-    let (request, receiver) = reader();
+    let mut terminal = if io::stdin().is_terminal() && io::stdout().is_terminal() {
+        Some(terminal::Terminal::enter()?)
+    } else {
+        None
+    };
+    let lines = terminal.is_none().then(reader);
     let mut pending_read = None;
-    let mut renderer = CliRenderer::new(io::empty(), io::stdout().lock());
+    let mut output = terminal::Output {
+        inner: io::stdout().lock(),
+        raw: terminal.is_some(),
+    };
+    let mut renderer = CliRenderer::new(io::empty(), &mut output);
     let mut adapter = TextAdapter::default();
-    renderer.render(&[PresentationCommand::Text(title.into()), PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Countdown starts after each timed prompt is displayed.".into())])?;
+    renderer.render(&[PresentationCommand::Text(title.into())])?;
+    if terminal.is_some() {
+        renderer.render(&[PresentationCommand::Text("Press a number key to choose immediately. Esc opens the session menu. Required reading waits for Enter. Lists with more than nine choices use number + Enter.".into())])?;
+    } else {
+        renderer.render(&[PresentationCommand::Text("Commands: :pause, :resume, :save PATH, :load PATH, :quit. Required reading waits for Enter; countdown starts when the decision choices are available.".into())])?;
+    }
+    let mut menu_open = terminal.is_some() && is_paused(&engine);
+    if menu_open {
+        terminal.as_mut().expect("terminal menu").set_menu(true)?;
+        renderer.render(&menu_commands(&engine))?;
+    }
     let mut rendered_revision = None;
     let mut clock: Option<Observation> = None;
     let mut shown_seconds = None;
     let mut eof = false;
     loop {
         let output = engine.output();
-        if rendered_revision != Some(output.revision) {
+        if !menu_open && rendered_revision != Some(output.revision) {
+            if let Some(terminal) = &mut terminal {
+                terminal.begin_prompt()?;
+            }
             let needs_ack = pending_read.is_some_and(|revision| revision != output.revision);
             renderer.render(&adapter.present(&output))?;
             if needs_ack && output.ending.is_none() {
@@ -109,10 +169,25 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                 .decision
                 .as_ref()
                 .map(|decision| decision.remaining_ms.div_ceil(1000));
-            if output
-                .decision
-                .as_ref()
-                .is_some_and(|decision| decision.phase == DecisionPhase::AwaitingReady)
+            if !needs_ack
+                && output.flow.as_ref().is_some_and(|flow| {
+                    !flow.paused && flow.phase == FlowPhase::AwaitingInteraction
+                })
+            {
+                let feedback = renderer
+                    .interaction_ready()
+                    .expect("adapter requested interaction availability");
+                let origin = Instant::now();
+                engine.flow_input(&lifecycle_input(feedback))?;
+                clock = output.decision.as_ref().map(|_| Observation {
+                    origin,
+                    last_total_ms: 0,
+                });
+            } else if output.flow.is_none()
+                && output
+                    .decision
+                    .as_ref()
+                    .is_some_and(|decision| decision.phase == DecisionPhase::AwaitingReady)
                 && !needs_ack
             {
                 // Full prompt flush above is the readiness acknowledgement.
@@ -122,19 +197,26 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
                     origin,
                     last_total_ms: 0,
                 });
-            } else {
+            } else if output
+                .decision
+                .as_ref()
+                .is_none_or(|decision| decision.phase != DecisionPhase::Active)
+            {
                 clock = None;
             }
             rendered_revision = Some(output.revision);
         }
         let output = engine.output();
-        if output.ending.is_some() {
+        if !menu_open && output.ending.is_some() {
             return Ok(());
         }
         if output.decision.is_none() && output.offers.is_empty() {
             engine.validate_current_state()?;
         }
-        if !eof && pending_read.is_none() {
+        if let Some((request, _)) = &lines
+            && !eof
+            && pending_read.is_none()
+        {
             request.send(output.revision)?;
             pending_read = Some(output.revision);
         }
@@ -143,20 +225,46 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
             .as_ref()
             .filter(|decision| decision.phase == DecisionPhase::Active);
         let wait = active.map(|decision| Duration::from_millis(decision.remaining_ms.min(250)));
-        let message = if eof {
+        let message = if let Some(terminal) = &mut terminal {
+            // Only the host polls the terminal. Every event is stamped before
+            // elapsed observation, so a key at expiry cannot choose its successor.
+            let mut echo = terminal::Output {
+                inner: io::stdout(),
+                raw: true,
+            };
+            let event = terminal.poll(
+                output.revision,
+                wait.unwrap_or(Duration::from_millis(250)),
+                output.offers.len() <= 9,
+                &mut echo,
+            )?;
+            echo.flush()?;
+            event.map(|(revision, input)| Message::Line {
+                revision,
+                submitted_at: Instant::now(),
+                input,
+            })
+        } else if eof {
             let Some(wait) = wait else {
                 return Ok(());
             };
             thread::sleep(wait); // host only; EOF still permits authored timeout
             None
         } else if let Some(wait) = wait {
-            match receiver.recv_timeout(wait) {
+            match lines.as_ref().expect("line transport").1.recv_timeout(wait) {
                 Ok(message) => Some(message),
                 Err(RecvTimeoutError::Timeout) => None,
                 Err(RecvTimeoutError::Disconnected) => Some(Message::Eof),
             }
         } else {
-            Some(receiver.recv().unwrap_or(Message::Eof))
+            Some(
+                lines
+                    .as_ref()
+                    .expect("line transport")
+                    .1
+                    .recv()
+                    .unwrap_or(Message::Eof),
+            )
         };
         // Elapsed time is observed before any action/command at this instant.
         if active.is_some() {
@@ -211,7 +319,7 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         };
         if revision != engine.output().revision {
             renderer.render(&[PresentationCommand::Text(
-                "Input from the previous prompt was ignored. Current scene acknowledged; choose after the new prompt.".into(),
+                "Input from the previous prompt was ignored. Old read cleared; follow the current prompt.".into(),
             )])?;
             rendered_revision = None;
             continue;
@@ -219,6 +327,50 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
         let line = raw.line.trim();
         if line == ":quit" {
             return Ok(());
+        }
+        if let Some(terminal) = &mut terminal
+            && (line == ":menu" || (menu_open && line == ":menu-continue"))
+        {
+            if menu_open {
+                if is_paused(&engine) {
+                    input(&mut engine, TimeEvent::Resume)?;
+                }
+                menu_open = false;
+                terminal.set_menu(false)?;
+                rendered_revision = None;
+            } else {
+                suspend(&mut engine)?;
+                clock = None;
+                menu_open = true;
+                terminal.set_menu(true)?;
+                renderer.render(&menu_commands(&engine))?;
+            }
+            continue;
+        }
+        if menu_open {
+            let path = checkpoint_path(&engine);
+            let result: HostResult<String> = match line {
+                ":menu-save" => {
+                    std::fs::create_dir_all(path.parent().expect("checkpoint directory"))
+                        .map_err(Into::into)
+                        .and_then(|()| {
+                            write_save(&path, &engine)
+                                .map(|()| format!("Saved to {}.", path.display()))
+                                .map_err(Into::into)
+                        })
+                }
+                ":menu-load" => read_save(&path).map_err(Into::into).and_then(|save| {
+                    engine.restore(save)?;
+                    suspend(&mut engine)?;
+                    Ok(format!("Loaded {}.", path.display()))
+                }),
+                _ => continue,
+            };
+            renderer.render(&[PresentationCommand::Text(
+                result.unwrap_or_else(|error| error.to_string()),
+            )])?;
+            renderer.render(&menu_commands(&engine))?;
+            continue;
         }
         // Lifecycle/file commands, like choices, belong to the read's revision.
         // A command queued for an expired prompt cannot control its successor.
@@ -265,9 +417,34 @@ pub fn play(title: &str, mut engine: Engine) -> HostResult<()> {
             }
             continue;
         }
+        if engine
+            .output()
+            .flow
+            .as_ref()
+            .is_some_and(|flow| flow.phase == FlowPhase::Presenting && !flow.paused)
+        {
+            if let Some(feedback) = renderer.acknowledge(&raw) {
+                engine.flow_input(&lifecycle_input(feedback))?;
+            } else {
+                renderer.render(&[PresentationCommand::Text(
+                    if terminal.is_some() {
+                        "Press Enter after reading, or Esc for the session menu."
+                    } else {
+                        "Press Enter after reading, or use a session command."
+                    }
+                    .into(),
+                )])?;
+            }
+            continue;
+        }
         let Some(action) = adapter.resolve(&raw) else {
             renderer.render(&[PresentationCommand::Text(
-                "Enter a displayed choice number (or :resume when paused).".into(),
+                if terminal.is_some() {
+                    "Press a displayed number key, or Esc for the session menu."
+                } else {
+                    "Enter a displayed choice number (or :resume when paused)."
+                }
+                .into(),
             )])?;
             continue;
         };

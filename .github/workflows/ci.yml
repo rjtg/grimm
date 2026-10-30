@@ -38,6 +38,7 @@ jobs:
           cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-witness.yaml
           cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-lighthouse.yaml
           cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-last-train.yaml
+          cargo run --offline --locked --quiet -p grimm-cli -- check stories/the-silent-signal.yaml
       - name: Play The Last Lighthouse offline through every ending
         shell: bash
         run: |

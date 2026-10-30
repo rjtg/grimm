@@ -4,10 +4,13 @@ use serde::{Deserialize, Serialize};
 
 pub const SAVE_SCHEMA_VERSION: u32 = 1;
 pub const TEMPORAL_SAVE_SCHEMA_VERSION: u32 = 2;
+pub const FLOW_SAVE_SCHEMA_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SaveGame {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow: Option<crate::flow::FlowView>,
     pub schema_version: u32,
     pub story_id: String,
     pub story_version: u32,

@@ -4,7 +4,10 @@ use crate::{
 };
 use grimm_semantic::{
     NarrativeContent,
-    story::{Effect, Node, STORY_SCHEMA_VERSION, Story, TEMPORAL_STORY_SCHEMA_VERSION},
+    story::{
+        Effect, FLOW_STORY_SCHEMA_VERSION, Node, STORY_SCHEMA_VERSION, Story,
+        TEMPORAL_STORY_SCHEMA_VERSION,
+    },
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,16 +21,17 @@ fn nonempty(value: &str, context: &str) -> Result<(), ValidationError> {
 pub(crate) fn validate(story: &Story) -> Result<(), ValidationError> {
     if story.schema_version != STORY_SCHEMA_VERSION
         && story.schema_version != TEMPORAL_STORY_SCHEMA_VERSION
+        && story.schema_version != FLOW_STORY_SCHEMA_VERSION
     {
         return Err(ValidationError(format!(
-            "unsupported story schema version {}; expected 1 or 2",
+            "unsupported story schema version {}; expected 1, 2 or 3",
             story.schema_version
         )));
     }
-    let temporal = story.time.is_some() && story.schema_version == TEMPORAL_STORY_SCHEMA_VERSION;
+    let temporal = story.time.is_some() && story.schema_version >= TEMPORAL_STORY_SCHEMA_VERSION;
     if story.time.is_some() && !temporal {
         return Err(ValidationError(
-            "time configuration requires story schema 2".into(),
+            "time configuration requires story schema 2 or 3".into(),
         ));
     }
     nonempty(&story.id, "story id")?;
@@ -41,6 +45,31 @@ pub(crate) fn validate(story: &Story) -> Result<(), ValidationError> {
     let mut nodes = BTreeMap::new();
     let mut endings = BTreeSet::new();
     for node in &story.nodes {
+        if (node.continue_to.is_some() || node.presentation_required)
+            && story.schema_version != FLOW_STORY_SCHEMA_VERSION
+        {
+            return Err(ValidationError(format!(
+                "node '{}': narrative flow requires schema 3",
+                node.id
+            )));
+        }
+        if node.continue_to.is_some()
+            && (node.ending.is_some()
+                || node.decision.is_some()
+                || node.presentation_required
+                || !node.choices.is_empty())
+        {
+            return Err(ValidationError(format!(
+                "node '{}': continue_to cannot accompany choices, ending, deadline or presentation_required",
+                node.id
+            )));
+        }
+        if node.presentation_required && node.ending.is_some() {
+            return Err(ValidationError(format!(
+                "node '{}': an ending cannot require interaction presentation",
+                node.id
+            )));
+        }
         nonempty(&node.id, "node id")?;
         if nodes.insert(node.id.as_str(), node).is_some() {
             return Err(ValidationError(format!("duplicate node '{}'", node.id)));
@@ -80,7 +109,7 @@ pub(crate) fn validate(story: &Story) -> Result<(), ValidationError> {
                     node.id
                 )));
             }
-        } else if node.choices.is_empty() && node.decision.is_none() {
+        } else if node.choices.is_empty() && node.decision.is_none() && node.continue_to.is_none() {
             return Err(ValidationError(format!(
                 "node '{}' has no choices and is not an ending",
                 node.id
@@ -90,7 +119,7 @@ pub(crate) fn validate(story: &Story) -> Result<(), ValidationError> {
             let context = format!("node '{}' decision timeout", node.id);
             if !temporal {
                 return Err(ValidationError(format!(
-                    "{context}: requires schema 2 and time configuration"
+                    "{context}: requires schema 2 or 3 and time configuration"
                 )));
             }
             if decision.limit_ms == 0 {
@@ -113,7 +142,7 @@ pub(crate) fn validate(story: &Story) -> Result<(), ValidationError> {
             let context = format!("node '{}', choice '{}'", node.id, choice.id);
             if choice.advance_minutes > 0 && !temporal {
                 return Err(ValidationError(format!(
-                    "{context}: advance_minutes requires schema 2 and time configuration"
+                    "{context}: advance_minutes requires schema 2 or 3 and time configuration"
                 )));
             }
             nonempty(&choice.id, &format!("{context} id"))?;
@@ -141,6 +170,31 @@ pub(crate) fn validate(story: &Story) -> Result<(), ValidationError> {
         )));
     }
     for node in &story.nodes {
+        if let Some(target) = &node.continue_to {
+            if !nodes.contains_key(target.as_str()) {
+                return Err(ValidationError(format!(
+                    "node '{}' continuation target '{}' does not exist",
+                    node.id, target
+                )));
+            }
+            let mut visited = BTreeSet::new();
+            let mut current = node;
+            while let Some(target) = &current.continue_to {
+                if !visited.insert(current.id.as_str()) {
+                    return Err(ValidationError(format!(
+                        "node '{}': automatic continuation cycle at '{}'",
+                        node.id, current.id
+                    )));
+                }
+                let Some(next) = nodes.get(target.as_str()) else {
+                    return Err(ValidationError(format!(
+                        "node '{}' continuation target '{}' does not exist",
+                        current.id, target
+                    )));
+                };
+                current = next;
+            }
+        }
         for choice in &node.choices {
             if !nodes.contains_key(choice.target.as_str()) {
                 return Err(ValidationError(format!(
@@ -224,4 +278,5 @@ fn targets(node: &Node) -> impl Iterator<Item = &str> {
                 .iter()
                 .map(|decision| decision.timeout.target.as_str()),
         )
+        .chain(node.continue_to.as_deref())
 }

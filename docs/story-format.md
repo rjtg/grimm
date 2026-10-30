@@ -424,3 +424,215 @@ arithmetic is unsupported, active-deadline world advances must be authored actio
 costs, and analysis is bounded. Counter exhaustion fails transactionally rather
 than wrapping. No offline catch-up, event scheduler, NPC simulation, provider,
 graphics, multiplayer arbitration or general async framework is implemented.
+
+## Story schema 3: narrative flow and presentation gating (M1.8)
+
+Authoring supports narrative-only buildup and both gated and ungated interactive
+scenes. The Silent Signal version 3 uses three atmospheric narrative-only opening
+segments, then a short **gated timed** relay scene and a later gated untimed final
+decision. Required presentation must complete before offers appear; the deadline
+starts only after interaction readiness. Ungated timed nodes remain supported for
+situations that require no prior presentation, as in The Last Train.
+
+Play the full reference adventure:
+
+```sh
+cargo run -p grimm-cli -- play stories/the-silent-signal.yaml
+```
+
+Schema 3 supports all earlier authoring fields. `time` remains optional; flow
+does not require a fictional clock. Two optional node fields add narrative flow:
+
+- `continue_to: node-id`: narrative-only content, then one engine-owned
+  transition when the host acknowledges presentation completion. No choices,
+  ending, decision deadline, or `presentation_required` may accompany it.
+- `presentation_required: true`: an interactive scene must finish required
+  storytelling before offers appear. It needs choices and/or a deadline, and
+  cannot be an ending. Omitted/false keeps ordinary node behavior.
+
+Complete minimal gated example (schema 3 without `time` or `decision` also works):
+
+```yaml
+schema_version: 3
+id: gated-example
+version: 1
+title: The Door
+time: {}
+start: footsteps
+nodes:
+  - id: footsteps
+    content: [{kind: narration, text: "Footsteps stop outside the radio room."}]
+    continue_to: voice
+  - id: voice
+    content: [{kind: dialogue, speaker: Keeper, text: "Do you hear me?"}]
+    continue_to: decision
+  - id: decision
+    presentation_required: true
+    content: [{kind: narration, text: "Read this before opening the decision."}]
+    decision:
+      limit_ms: 5000
+      timeout: {target: silent}
+    choices:
+      - {id: answer, label: "Answer the voice.", target: answered}
+  - id: answered
+    content: [{kind: narration, text: "The keeper opens the door."}]
+    ending: {id: answered, title: An Answer}
+  - id: silent
+    content: [{kind: narration, text: "The footsteps retreat."}]
+    ending: {id: silent, title: Silence}
+```
+
+### Two acknowledgements, one deadline model
+
+An opted-in node exposes `flow: {phase, paused}` in semantic output. While
+`phase: presenting`, prose is available but offers are empty. Output generation,
+printing, flush, elapsed wall time and loading a checkpoint cannot complete it.
+Private variables, successor targets and timeout effects are never projected.
+
+Hosts submit `FlowInput { revision, event }` via `Engine::flow_input`:
+
+| Event | Precondition | Canonical result |
+|---|---|---|
+| `presentation_complete` | Presenting and not paused | Narrative-only: validate and commit successor; gated: AwaitingInteraction and a new revision |
+| `interaction_ready` | AwaitingInteraction and not paused | Interactive; activate existing deadline if any, preserving remaining duration |
+| `pause` | Any unpaused flow phase | Preserve progress, freeze deadline, advance revision |
+| `resume` | Paused | Presenting stays Presenting; other phases become AwaitingInteraction; advance revision |
+
+PresentationComplete and InteractionReady are different facts. In
+AwaitingInteraction offers can be delivered, but actions remain invalid until
+readiness. A renderer may finish its cinematic without having installed usable
+controls yet. Only InteractionReady activates the existing M1.75 decision timer.
+Untimed gated choices use the same readiness boundary without a timer.
+
+Every completion, pause, resume and restore reserves a new engine-owned revision.
+An early queued readiness event from before completion is therefore stale, even
+if it arrives later. InteractionReady retains the revision (as legacy Ready
+does), but rejects duplicates by phase. Wrong-order, duplicate, future and stale
+events are errors without mutation. No acknowledgement can revive an expired
+interaction or automatically acknowledge its successor. Existing temporal
+`Ready`, `Pause`, `Resume` delegate to flow on opted-in nodes. Explicit host
+AdvanceWorld is rejected at flow nodes; authored action costs still work.
+
+Expiry keeps the M1.75 rule: host elapsed observation precedes input, and
+`elapsed >= remaining` wins. Paused or unready phases consume no time. There is
+no second timer, implicit cinematic duration or core clock.
+
+### Renderer → host → engine
+
+The text adapter emits presentation-protocol commands:
+`AwaitCompletion { revision, prompt }` after required prose, or
+`InteractionAvailable { revision }` after the offers. A renderer reports
+`PresentationFeedback { revision, event: Complete | InteractionReady }`.
+The host correlates this with its active read/callback, translates it through
+`grimm_adapters::lifecycle_input`, and submits FlowInput. The engine checks
+revision and phase independently. Renderer code imports presentation types only;
+it cannot call the engine or pick an authored successor. A visual renderer can
+report Complete after required audio/animation; the mock-host integration test
+uses that exact feedback contract with arbitrary external work and no clock.
+
+In the CLI, required prose ends with **Press Enter when finished reading...**.
+Only a newline-terminated blank line acknowledges reading; an unterminated
+whitespace fragment at EOF is interrupted input, not Enter. A number neither acknowledges nor
+selects a choice. Narrative-only completion advances one segment; a gated
+completion displays choices, then successful offer flush reports availability
+and starts the full timer. The prose is not repeated during that activation.
+The acknowledgement itself never acts as a gameplay action.
+
+Session commands remain usable while reading and paused. Every line, including
+commands and Enter, belongs to its read's revision. After asynchronous timeout,
+an old line is discarded; it cannot complete a new required presentation. The
+new segment still requires its own fresh Enter. EOF during required presentation
+exits without completing it or skipping prose. Save first to resume later.
+EOF on an active decision permits authored timeout; if its successor requires
+reading, the chain stops there without a fabricated acknowledgement. EOF on an
+ungated timed successor retains M1.75's automatic host readiness/expiry behavior.
+There is no input spin and no arbitrary reading delay.
+
+For actual terminals (stdin and stdout both terminal devices), the CLI host uses
+`crossterm` raw key events: keys 1–9 immediately submit a displayed choice. Lists
+larger than nine keep a numeric editor with Enter. Required narrative-only/gated
+reading still uses Enter. Esc is the only entry to the session menu. Its single-key
+actions are `1` Continue, `2` Save, `3` Load, `4` Quit; Esc returns to the game.
+The host observes elapsed time before opening the menu, then pauses via the existing
+engine lifecycle if applicable. Exact-boundary timeout still wins over an old Esc.
+Time spent in the menu does not consume remaining decision time. Closing it resumes
+through engine Resume/readiness; it does not complete required narration. A paused
+checkpoint loaded at startup opens in the menu, with Continue available.
+
+Save/Load use `.grimm-saves/story-<encoded-story-id>.json` under the working
+directory, shown in the menu. Save creates the directory on demand and replaces
+that story's single checkpoint. ID bytes except ASCII alphanumerics and `-`/`_`
+are percent-encoded, keeping distinct IDs distinct and preventing parent paths.
+Load stays in the menu;
+failed loads leave canonical state unchanged. Menu numbers/Enter cannot select
+gameplay choices or acknowledge prose. Terminal colon commands are removed;
+piped line commands retain custom paths and prior revision checks.
+
+No pending blocking read is needed for the terminal
+transport, so ordinary timed successor scenes activate without an extra Enter
+barrier. Queued old keys are discarded before new prompts; key repeat events
+are ignored where the terminal reports them. Terminal modes restore on ordinary
+return/error, Ctrl-C/Ctrl-D host exit and panic unwinding.
+
+Pipes/files retain the revision-bound line reader and its existing EOF/stale-read
+policy. The engine, semantic/presentation protocols, adapters and renderer gain
+no terminal dependency. The CLI composition root alone uses crossterm (events and
+Windows support; no async framework). Unix regression tests drive a real PTY
+through Python's standard library; Windows builds use crossterm but are not
+PTY-tested here. Host observation/OS buffering still has no hardware timestamp
+or hard realtime fairness guarantee.
+
+### Continuation validation and bounded analysis
+
+Successors must exist and configurations must be unambiguous. Continuations have
+no effects, costs or conditions in M1.8: use ordinary choices for state changes.
+The engine previews the target, checks immediate playability and revision
+capacity, then commits atomically. Failed completion leaves the pending scene
+unchanged. Every event processes at most one edge; a chain requires distinct
+completion acknowledgements. Continuation-only cycles are rejected structurally,
+even when another part of the graph has an exit. Interactive cycles remain legal.
+
+The bounded checker follows `<continue>` diagnostic edges and `<timeout>` edges
+alongside meaningful choices. These names appear only in author diagnostics, not
+player offers. Continuation preview matches runtime validation. State-dependent
+failures after continuation remain findings, not authored endings. Budgets,
+explicit inconclusive results, and the absence of a global termination guarantee
+are unchanged. A successful acknowledgement edge alone is no solvability proof.
+
+### Save schema 3 and migration
+
+Schema-3 stories write save schema 3, adding optional current-node `flow`:
+
+```json
+"flow": { "phase": "presenting", "paused": false }
+```
+
+`flow` is absent on ungated nodes/endings. Existing `temporal` is present only
+when the story configures time. Validate flow/node/deadline consistency before
+replacement; missing flow, invalid phases or contradictory paused/deadline state
+are rejected. Presenting timed nodes must retain their full budget.
+
+Restore policy: unfinished presentation replays the current segment in full.
+Completed storytelling stays completed, while Interactive becomes
+AwaitingInteraction so controls must be made available again. Paused stays
+paused; Resume never completes unfinished prose. Offline time stays frozen and
+remaining decision milliseconds are preserved. Every schema-3 restore reserves
+a revision above both current and saved, including fresh untimed processes.
+Callbacks from the saved epoch are stale. A save after continuation names the
+successor, so the acknowledged predecessor cannot run twice. Record lifecycle,
+time and action inputs in order for deterministic replay.
+
+Schema-1/2 story files and saves retain their behavior and omitted-field wire
+shapes. Old stories reject schema-3 saves; schema-3 stories require schema-3 saves.
+There is no automatic migration or inference that older saves completed new
+presentation requirements. To adopt flow, bump authored schema (and story version
+when changing an existing game) and start a new compatible checkpoint.
+
+Rust DTO literals add `Node.continue_to: None`,
+`Node.presentation_required: false`, `SemanticOutput.flow: None`, and
+`SaveGame.flow: None`. New protocol enum variants require exhaustive-match
+updates. The GameAction/offer shapes and legacy time events are unchanged.
+ADR-0007 remains Proposed; its lifecycle direction was implemented as requested.
+Deferred: partial animation checkpoints, per-block completion, cinematic timelines,
+nonterminal continuation effects, raw-terminal UX, arbitrary timeout chains,
+provider integration and general background scheduling.
