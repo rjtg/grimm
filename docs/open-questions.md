@@ -43,7 +43,7 @@ A choice is an **authored, currently executable semantic offer**. It may investi
 
 ## Game composition, renderer origin and packaging
 
-**Accepted direction (conceptual, not a committed schema):** A playable GRIMM **game is a concrete composition** of the reusable headless engine, authored gameplay/story rules, a **concrete game-selected renderer implementation and where it comes from**, the assets and mappings needed by that renderer, and potentially more game-specific components. A story graph alone is not the game. **A renderer claiming 3D capability cannot render an arbitrary game's 3D world.** Renderer/profile interchangeability is not a product requirement. The details below remain OPEN until a complete graphical demo motivates a minimal contract.
+**Working direction (not a fixed ownership model or schema):** A playable game composes authored gameplay/story rules, GRIMM's headless narrative engine, a **concrete game-specific presentation/runtime implementation**, the assets and mappings it needs, and potentially more components. In a standalone GRIMM-led game the game configuration may select the concrete renderer; in an embedded game (e.g. Bevy) the external host may instead own the application and instantiate GRIMM as a narrative subsystem. A story graph alone is not the game. **A renderer claiming 3D capability cannot render an arbitrary game's 3D world.** Renderer/profile interchangeability is not a product requirement. The details below remain OPEN until a complete graphical demo motivates a minimal contract.
 
 | ID | Status | Target | Question |
 |---|---|---|---|
@@ -58,7 +58,28 @@ A choice is an **authored, currently executable semantic offer**. It may investi
 | OPEN-GAME-09 | Open | M5 | How does the game-selected renderer bind action execution duration, partial-action interruption outcomes and M1.8 presentation gating to its specific authored animations without introducing a second authoritative timeline? |
 | OPEN-GAME-10 | Open | M5+ | Which **additional game components** beyond engine/renderer/story/assets might be legitimate (game logic modules, dialogue tools, audio, physics, scripts, UI, save facilities), and how are their permissions and authority limited without pre-building a general plugin framework? |
 
-**Boundaries:** Game-selected code/assets/configuration belong to the game-level host/composition, not inside the headless core. The engine remains authoritative over state, choices and validated transitions. M2–M4 build full playable authored CLI demos with existing composition, and M5 designs the minimum concrete game packaging model using a real, asset-complete graphic adventure. Do not define a generic renderer capability profile as the primary identity or treat a 3D feature list as sufficient for game compatibility.
+**Boundaries:** Game-specific code/assets/configuration belong to the surrounding host/composition, not inside the headless core. Do not require the story graph to identify an external host's renderer in the embedded mode. The engine remains authoritative over state, choices and validated transitions. M2–M4 build full playable authored CLI demos with existing composition, and M5 designs the minimum concrete game packaging model using a real, asset-complete graphic adventure. Do not define a generic renderer capability profile as the primary identity or treat a 3D feature list as sufficient for game compatibility.
+
+## Host integration: standalone game versus embedded narrative engine
+
+**Open architectural direction:** GRIMM is a headless **narrative engine**, not necessarily the game's main loop or entry point. Standalone text adventures may launch GRIMM and let it drive the current narrative scene. A host game engine (e.g. Bevy) may instead own the 3D world, movement, physics, input and main loop and invoke GRIMM **only when narrative resolution is required**. Both are plausible; neither should be prematurely encoded as the sole composition model. Do not confuse a *game's main engine* with GRIMM's narrative domain authority.
+
+**Illustrative integration:** player reaches a 3D area trigger → host requests narrative entry/transition from GRIMM → GRIMM evaluates authored conditions/choices and emits validated narrative outcomes → host applies permitted game-world consequences (such as unlocking a door, starting dialogue or updating a quest) through an explicit bridge. GRIMM must not silently claim authority over spatial simulation that belongs to the host; the host must not bypass GRIMM's validation for narrative state that GRIMM owns. Cross-boundary commits/retries need explicit policy.
+
+| ID | Status | Target | Question |
+|---|---|---|---|
+| OPEN-HOST-01 | Open | M4–M5 | What is the application **entry point**: standalone GRIMM-driven game, externally driven host with embedded GRIMM, or both? Which is proven by which playable demo? |
+| OPEN-HOST-02 | Open | M4–M5 | Which actor owns the **main loop**, time observations, pause/resume, input routing and lifecycle when GRIMM is embedded in Bevy or another runtime? |
+| OPEN-HOST-03 | Open | M4–M5 | How does an external host **enter, suspend, resume, cancel or leave** a narrative scene from world events (e.g. entering a spatial trigger), without inventing renderer-specific node APIs? |
+| OPEN-HOST-04 | Open | M4–M5 | Which state is **canonical to GRIMM** (story choices, narrative consequences, story deadlines) versus canonical to the host (position, physics, visual/world simulation, perhaps inventory)? What is the contract for projecting host facts into narrative conditions? |
+| OPEN-HOST-05 | Open | M4–M5 | How do committed GRIMM story outcomes become authorized, idempotent **host commands/events** (e.g. unlock a 3D door), and how are failures, retries, atomicity and divergence handled across two state owners? |
+| OPEN-HOST-06 | Open | M5 | Can a single game-specific **composition root** be owned by the external engine while GRIMM remains an embedded library/service, rather than the game definition loading a renderer as its dependency? |
+| OPEN-HOST-07 | Open | M5 | How should action execution times, scene-completion deadlines, animation and external host pause/time-scale work when the 3D engine drives the frame clock? What happens during scene unload, disconnect or level transitions? |
+| OPEN-HOST-08 | Open | M4–M5 | Are GRIMM narrative interactions modal (world gameplay temporarily suspended), concurrent with exploration, or selectable per authored scene? What new risks arise when the player can leave mid-action? |
+| OPEN-HOST-09 | Open | M5 | What is the smallest **embedded-host demonstration** (e.g. entering a 3D/2D trigger, resolving an authored choice, applying a validated world effect) needed before choosing a concrete integration API? |
+| OPEN-HOST-10 | Open | M5 | How are save/load, replay and compatibility coordinated when both the external world engine and GRIMM have independent state and versions? |
+
+**Guardrails:** Reuse semantic events/actions and explicit host adapters rather than letting Bevy types leak into the GRIMM core. A shared crate or one universal state store is **not** required. GRIMM can be authoritative for the narrative domain without owning all world state of an embedded host game. Final entry-point, command/outbox, ownership and runtime contracts remain open until exercised with a real playable embedding demo.
 
 ## Later: open-world / dynamic narrative (deferred)
 
