@@ -8,6 +8,7 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 - The engine owns canonical game state and rules.
 - Engine output is semantic; adapters translate it into presentation instructions.
 - Renderers handle presentation and raw interaction; input adapters translate interaction into semantic actions.
+- A playable game is a **concrete composition** of the engine, authored gameplay, a game-selected renderer implementation/source, assets and other required components; renderer capability alone does not make games interchangeable.
 - AI is optional and never directly mutates canonical state.
 - Classic games work without AI or graphics.
 - Every roadmap milestone includes a **playable demo game** showing every new gameplay capability, with success/failure paths and regression tests.
@@ -250,3 +251,8 @@ inconclusive budgets. See the [M1.5 brief](docs/milestones/m1.5.md).
 See the [M1 acceptance plan and implementation report](docs/milestones/m1.md)
 for coverage, compatibility notes and open questions, and the historical
 [M0 implementation notes](docs/milestones/m0-implementation.md) for the foundation.
+
+
+## Game composition direction (planned M5)
+
+A story graph is not a complete visual game. Future game definitions will explicitly select **where the concrete renderer comes from**, along with its game-specific assets, scene/hotspot mappings and other required modules. A Bevy-capable renderer is not automatically capable of playing arbitrary authored 3D adventures. The headless engine remains reusable; the game-specific composition root assembles the actual product. See [architecture](docs/architecture.md#game-composition-and-renderer-ownership-future-m5) and [open questions](docs/open-questions.md#game-composition-renderer-origin-and-packaging). The exact packaging and loading API will be designed from a complete M5 demonstration, not imposed on existing CLI games now.
