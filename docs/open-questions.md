@@ -26,6 +26,8 @@ Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-s
 
 **M2 renderer timer rule:** The renderer plays all required `play` cues in a Cue Sheet first. Only after those cues finish does it show/enable the offered actions and start or resume the countdown at the **post-action elapsed time and budget supplied in that Cue Sheet**. Action animation duration has already been accounted for by GRIMM and is **never counted again** by the renderer. Subsequent player hesitation advances from that supplied baseline. This rule applies uniformly to first and subsequent cue sheets; no active timer countdown during required cue playback. A newly emitted cue sheet retains the same situation budget unless authored rules explicitly modify it.
 
+**Full reference:** [The Locked Room — complete Cue Sheet / Game Action trace](milestones/m2-cue-sheet-reference.md) expands this introductory trace with actual `door_damage += character_strength` updates, conditional `squeeze_through`, both dexterity results, strength thresholds, alternate branches, timeout and authored time-bonus behavior. It is the **M2 behavioral acceptance example**, not the final grammar.
+
 ## M2 worked Cue Sheet trace — locked room and keyring (illustrative)
 
 This **worked example** uses **cumulative time since the narrative situation's timer origin** and an authored 30-second time budget. GRIMM resolves each selected action at once and returns the post-action time/state in a new cue sheet. **Not a final serialized schema**.
