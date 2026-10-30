@@ -6,6 +6,8 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 
 Focus subsequent discussion and M2 acceptance on **authored LucasArts/Telltale-style adventures**: context-sensitive choices, local puzzle/world-state changes, explicitly authored narrative transitions, scene deadlines, presentation cues and light optional RPG-influenced checks. Do not implicitly add host-owned traversal, Bevy integration, open-world navigation, a full RPG ruleset or generated narrative to M2. Those remain M4/M5/later questions and should not block the M2 choice/adventure model. Revisit remaining M2 questions one at a time within this scope.
 
+**M2 renderer timer rule:** The renderer plays all required `play` cues in a Cue Sheet first. Only after those cues finish does it show/enable the offered actions and start or resume the countdown at the **post-action elapsed time and budget supplied in that Cue Sheet**. Action animation duration has already been accounted for by GRIMM and is **never counted again** by the renderer. Subsequent player hesitation advances from that supplied baseline. This rule applies uniformly to first and subsequent cue sheets; no active timer countdown during required cue playback. A newly emitted cue sheet retains the same situation budget unless authored rules explicitly modify it.
+
 ## M2 worked Cue Sheet trace — locked room and keyring (illustrative)
 
 This **worked example** uses **cumulative time since the narrative situation's timer origin** and an authored 30-second time budget. GRIMM resolves each selected action at once and returns the post-action time/state in a new cue sheet. **Not a final serialized schema**.
