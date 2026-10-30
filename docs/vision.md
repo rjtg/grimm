@@ -7,11 +7,11 @@ GRIMM (Generate Real IMMersion) is a Rust-based, headless narrative game engine.
 - Authored narrative adventures combining Telltale-style consequential, cinematic, optionally timed decisions with LucasArts-style exploration, object puzzles and multiple solutions.
 - Optional RPG-like character attributes, skills and relationships driving conditional choices using the same canonical state model.
 - Later open-world/Story-RPG extensions: optional free input, human-DM or generated narrative additions, autonomous NPCs and story milestones.
-- Game-specific presentation targets, from CLI text to 2D graphic adventures and potentially Bevy-based 3D; each game may require a particular renderer capability profile. Renderer-independent engine rules do **not** imply that every game is playable with every renderer.
+- Concrete game compositions from CLI text through 2D graphic adventures to optional Bevy-based 3D. A game definition explicitly selects the renderer implementation/source and provides its own assets, authored bindings and other required modules; a renderer's abstract capabilities do not make it compatible with arbitrary games.
 
 ## Invariants
 - A static story must remain playable offline without LLMs or graphical rendering.
-- Engine truth is separate from presentation interpretation; game-authored presentation resources may be specific to one renderer family.
+- Engine truth is separate from presentation interpretation. A game is a concrete assembly of engine, authored gameplay, game-selected renderer, game-specific assets and potentially other components; renderer-specific code/resources remain outside the reusable headless engine.
 - Every capability beyond basic graph traversal is opt-in where practical.
 - Choices are the shared gameplay mechanism: exploring, taking, combining, checking stats and progressing a narrative are authored conditional offers, not a mandatory fixed verb list.
 - AI may later help interpret actions, narrate, or propose events, but engine rules commit consequences.
