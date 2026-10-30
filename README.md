@@ -10,7 +10,7 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 - Renderers handle presentation and raw interaction; input adapters translate interaction into semantic actions.
 - AI is optional and never directly mutates canonical state.
 - Classic games work without AI or graphics.
-- Each roadmap milestone ends with a playable or executable demonstration.
+- Every roadmap milestone includes a **playable demo game** showing every new gameplay capability, with success/failure paths and regression tests.
 
 See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), [open questions](docs/open-questions.md), and [M0 brief](docs/milestones/m0.md).
 
@@ -18,7 +18,7 @@ Status: M0 through M1.8 implemented: an authored CYOA engine with YAML stories, 
 conditions/effects, structured narrative output, and versioned session saves.
 Four reference adventures exercise persistent state, bounded playability checks,
 optional deterministic time, narrative-only continuation and presentation-gated decisions.
-The next roadmap milestones prioritize authored adventures: **M2 Interactive Scene Foundation**, **M3 Inventory, Puzzles & Character State**, **M4 Narrative Adventure** (LucasArts-style puzzle exploration combined with Telltale-style narrative decisions) and **M5 Graphic Adventure Presentation**. Choices remain the shared state-dependent action model, with optional RPG attributes and item combinations rather than hard-coded player verbs. Runtime Dynamic Node Providers, generative story extensions, free text and NPC direction are deferred toward a later open-world/Story-RPG phase; their boundaries are intentionally not defined yet.
+The next roadmap milestones prioritize authored adventures: **M2 Interactive Scene Foundation**, **M3 Inventory, Puzzles & Character State**, **M4 Narrative Adventure** (LucasArts-style puzzle exploration combined with Telltale-style narrative decisions) and **M5 Graphic Adventure Presentation**. Choices remain the shared state-dependent action model, with optional RPG attributes and item combinations rather than hard-coded player verbs. Choices may take **execution time**: during an action new gameplay inputs are blocked, while an existing scene deadline continues. The headless engine tracks progress from host-supplied elapsed observations and never blocks or sleeps. Runtime Dynamic Node Providers, generative story extensions, free text and NPC direction are deferred toward a later open-world/Story-RPG phase; their boundaries are intentionally not defined yet.
 
 ## Build and run
 
