@@ -18,7 +18,7 @@ Status: M0 through M1.8 implemented: an authored CYOA engine with YAML stories, 
 conditions/effects, structured narrative output, and versioned session saves.
 Four reference adventures exercise persistent state, bounded playability checks,
 optional deterministic time, narrative-only continuation and presentation-gated decisions.
-The next planned milestone is M2 Dynamic Narrative Foundation (typed, validated runtime story proposals without an LLM requirement), followed by M3 Free Input and optional M4 Generative Narrative. The former stand-alone Generative Presentation milestone is retired; its open design questions are tracked in the catalog. AI and graphical frontends remain future capabilities.
+The next roadmap milestones prioritize authored adventures: **M2 Interactive Scene Foundation**, **M3 Inventory, Puzzles & Character State**, **M4 Narrative Adventure** (LucasArts-style puzzle exploration combined with Telltale-style narrative decisions) and **M5 Graphic Adventure Presentation**. Choices remain the shared state-dependent action model, with optional RPG attributes and item combinations rather than hard-coded player verbs. Runtime Dynamic Node Providers, generative story extensions, free text and NPC direction are deferred toward a later open-world/Story-RPG phase; their boundaries are intentionally not defined yet.
 
 ## Build and run
 
