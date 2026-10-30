@@ -2,6 +2,8 @@
 
 Every milestone ends with an executable demo and regression tests. Milestones describe capabilities, not mandatory features for every game.
 
+**Current M2 design focus:** authored, choice-driven **LucasArts-style puzzles/exploration** and **Telltale-style staged narrative decisions**, with at most lightweight optional RPG-like state checks (`strength`, `dexterity`, `suspicion`). All movement between narrative contexts is explicitly authored through choices; **no embedded Bevy/3D host, open-world traversal, host-controlled free movement, complex RPG framework or generated story system belongs to M2 scope**. External host integration remains a later separate question. M2 must demonstrate its mechanics in a complete playable adventure, not just isolated protocol fixtures.
+
 | Milestone | Scope | Acceptance demo |
 |---|---|---|
 | M0 Architecture Foundation | All core boundaries, minimal semantic messages, stub engine/adapter/renderer loop, dependency tests | End-to-end action -> engine -> adapter -> renderer -> input -> engine |
