@@ -274,6 +274,9 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                     )?;
                     if let Some(target) = &mut branch.outcome.goto {
                         *target = normalize(target)?;
+                        if branch.outcome.cues.iter().any(|cue| cue.at_ms.is_some()) {
+                            return Err(SceneError("transition outcome cues cannot specify at_ms; author timed cues in the destination context's entry cue plan".into()));
+                        }
                         if branch
                             .outcome
                             .cues
@@ -320,6 +323,9 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                 )?;
                 if let Some(target) = &mut outcome.goto {
                     *target = normalize(target)?;
+                    if outcome.cues.iter().any(|cue| cue.at_ms.is_some()) {
+                        return Err(SceneError("timeout transition outcome cues cannot specify at_ms; author timed cues in the destination context's entry cue plan".into()));
+                    }
                     if outcome.cues.iter().any(|cue| match &cue.instruction {
                         AuthoredInstruction::Timer { .. } => true,
                         AuthoredInstruction::Actions {

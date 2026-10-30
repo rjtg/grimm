@@ -1013,3 +1013,152 @@ fn transition_to_interactive_context_preserves_action_duration_on_the_new_clock(
     settle(&mut engine, &mut player);
     assert_eq!(player.actions(), ["escaped.finish"]);
 }
+
+#[test]
+fn timed_transition_results_are_rejected_for_actions_cutoffs_and_timeouts() {
+    for field in ["outcomes", "interrupted_outcomes", "timeout"] {
+        for kind in [
+            "kind: narrative, narrative_id: leaving",
+            "kind: actions, available_actions: []",
+        ] {
+            let mut story: SceneStory = serde_yaml_ng::from_str(OVERLAP).unwrap();
+            let cue =
+                serde_yaml_ng::from_str(&format!("{{cue_id: leaving, at_ms: 0, {kind}}}")).unwrap();
+            match field {
+                "timeout" => story.contexts[0].timeout.as_mut().unwrap().cues = vec![cue],
+                _ => {
+                    let branch = grimm_semantic::scene::Branch {
+                        when: None,
+                        outcome: grimm_semantic::scene::Outcome {
+                            effects: vec![],
+                            cues: vec![cue],
+                            goto: Some("escaped".into()),
+                        },
+                    };
+                    if field == "outcomes" {
+                        story.contexts[0].actions[0].outcomes = vec![branch];
+                    } else {
+                        story.contexts[0].actions[0].interrupted_outcomes = vec![branch];
+                    }
+                }
+            }
+            let error = SceneEngine::new(story).err().unwrap().to_string();
+            assert!(error.contains("cannot specify at_ms"), "{field}: {error}");
+            assert!(
+                error.contains("destination context's entry cue plan"),
+                "{error}"
+            );
+        }
+    }
+}
+
+#[test]
+fn destination_entry_timed_cues_use_new_origin_after_action_or_timeout() {
+    for timeout in [false, true] {
+        let mut story: SceneStory = serde_yaml_ng::from_str(OVERLAP).unwrap();
+        let target = if timeout { 2 } else { 1 };
+        story.contexts[target].cues = serde_yaml_ng::from_str(
+            "- {cue_id: immediate, at_ms: 0, kind: narrative, narrative_id: arrived}\n- {cue_id: later, at_ms: 2000, kind: narrative, narrative_id: settled}",
+        ).unwrap();
+        let mut engine = SceneEngine::new(story).unwrap();
+        let mut player = CuePlayer::default();
+        player.replace(adapter::present(&engine.output()));
+        settle(&mut engine, &mut player);
+        at(&mut engine, &mut player, 25000);
+        pump(&mut engine, &mut player);
+        if timeout {
+            at(&mut engine, &mut player, 30000);
+        } else {
+            select(&mut engine, &mut player, "room.hide");
+        }
+        let namespace = if timeout { "caught" } else { "escaped" };
+        assert_eq!(player.clock().unwrap().elapsed_ms, 0);
+        assert_eq!(player.clock().unwrap().epoch, 1);
+        assert!(pump(&mut engine, &mut player).contains(&format!("{namespace}.immediate")));
+        at(&mut engine, &mut player, 1999);
+        assert!(!pump(&mut engine, &mut player).contains(&format!("{namespace}.later")));
+        at(&mut engine, &mut player, 2000);
+        assert!(pump(&mut engine, &mut player).contains(&format!("{namespace}.later")));
+    }
+}
+
+#[test]
+fn deliberation_can_turn_an_offered_attempt_into_authored_failure() {
+    let yaml = r#"
+schema_version: 1
+id: cold_attempt
+version: 1
+title: Cold attempt
+start: ledge
+globals: {cold: 0, accounted_ms: 0, attempts: 0}
+contexts:
+  - id: ledge
+    cues: [{kind: actions, available_actions: eligible}]
+    actions:
+      - id: climb
+        when: {op: eq, left: {var: global.attempts}, right: 0}
+        effects:
+          - {op: add, var: global.cold, value: {calc: sub, args: [{clock: selection_ms}, {var: global.accounted_ms}]}}
+          - {op: set, var: global.accounted_ms, value: {clock: selection_ms}}
+          - {op: add, var: global.attempts, value: 1}
+        outcomes:
+          - when: {op: lt, left: {var: global.cold}, right: 5000}
+            goto: done
+            cues: [{cue_id: success, kind: narrative, narrative_id: climbed}]
+          - goto: done
+            cues: [{cue_id: failure, kind: narrative, narrative_id: too_cold_to_climb}]
+      - id: hidden
+        when: {op: eq, left: {var: global.attempts}, right: -1}
+        outcomes: [{goto: done}]
+  - id: done
+    terminal: true
+    cues: []
+"#;
+    for (selected, outcome) in [(1000, "success"), (6000, "failure")] {
+        let mut engine = parse(yaml);
+        let mut player = CuePlayer::default();
+        player.replace(adapter::present(&engine.output()));
+        settle(&mut engine, &mut player);
+        assert_eq!(player.actions(), ["ledge.climb"]);
+        let offered = engine.save();
+        for (id, revision) in [
+            ("ledge.unknown", player.revision()),
+            ("ledge.hidden", player.revision()),
+            ("ledge.climb", player.revision() + 1),
+        ] {
+            assert!(
+                engine
+                    .apply(&grimm_semantic::scene::SceneAction {
+                        revision,
+                        action_id: id.into(),
+                        scene_time_ms: 0,
+                    })
+                    .is_err()
+            );
+            assert_eq!(engine.save(), offered);
+        }
+        at(&mut engine, &mut player, selected);
+        assert_eq!(engine.globals()["cold"], Value::Int(0)); // Observation is not a simulation tick.
+        select(&mut engine, &mut player, "ledge.climb");
+        assert_eq!(engine.globals()["cold"], Value::Int(selected as i64));
+        assert_eq!(engine.globals()["attempts"], Value::Int(1));
+        assert!(
+            engine
+                .output()
+                .cues
+                .iter()
+                .any(|cue| cue.cue_id.contains(outcome))
+        );
+        let after = engine.save();
+        assert!(
+            engine
+                .apply(&grimm_semantic::scene::SceneAction {
+                    revision: player.revision() - 1,
+                    action_id: "ledge.climb".into(),
+                    scene_time_ms: selected,
+                })
+                .is_err()
+        );
+        assert_eq!(engine.save(), after); // No second exposure charge on stale replay.
+    }
+}

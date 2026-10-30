@@ -53,8 +53,12 @@ implicit sequential releases additionally wait for preceding presentation. A
 transition resets the scene clock to zero and rebases the selected action's
 effective duration onto that new clock, so it cannot unlock new-context actions
 early.
-Explicit transition results should contain narrative or input-lock cues; place
-new offers and timer starts in the destination's entry plan.
+Transition results may contain only untimed narrative or input-lock cues.
+Any explicit `at_ms` in a `goto` outcome is a compile error, including `at_ms: 0`,
+conditional cues, interrupted outcomes and authored timeout transitions. Author
+all timed cues, new offers and timer starts in the destination context's entry
+cue plan, where absolute scheduling uses the new scene clock origin. M2 does not
+rebase transition-result schedules or reuse the old scene clock epoch.
 
 Identifiers normalize ASCII letters to lowercase and spaces/hyphens to underscores;
 invalid components and collisions fail compilation. Context namespaces qualify
@@ -96,3 +100,31 @@ termination. Conditions are evaluated when a plan is built and actions are
 revalidated at selection; hosts must submit accurate monotonically increasing
 scene times. This release does not implement M3 indexing, lint tooling, dynamic
 node providers or a general scripting language.
+
+## Offer eligibility versus success
+
+An action's `when` controls whether it can be offered and is defensively checked
+again at selection. Use it for legitimate availability constraints, such as
+possessing an item or not having attempted a one-shot interaction. Unknown,
+never-offered and stale actions remain protocol errors.
+
+A deteriorating chance of success is gameplay, not loss of the right to attempt.
+Keep cold, fatigue or similar success thresholds in the ordered `outcomes`, with
+an unconditional authored failure fallback. Do not put such a threshold in
+`action.when`: a time-varying eligibility guard can reject the selected action.
+The existing DSL needs no new simulation or engine-time mechanism for this.
+
+For elapsed-time exposure, author an `accounted_ms` global and, in the action's
+base effects, add `selection_ms - accounted_ms` to exposure, then set
+`accounted_ms` to `selection_ms`. Normal base effects execute once, before outcome
+conditions, so deliberation can turn an offered attempt into a `too_cold` outcome.
+Observing the clock alone never applies these effects. If duration itself should
+count, author the calculation against `time_passed` instead. Deadline-cutoff
+branches replace normal effects: author their corresponding partial consequences
+in `interrupted_outcomes` when needed. An invalid or stale replay commits neither
+exposure nor an attempt. All these effects remain transactional.
+
+`deliberation_can_turn_an_offered_attempt_into_authored_failure` demonstrates the
+same offered climb succeeding at T=1s and failing at T=6s, with exposure accounted
+exactly once and invalid/hidden/stale action IDs rejected. This is an authoring
+convention for M2, not an implementation of WHITEOUT or M4.

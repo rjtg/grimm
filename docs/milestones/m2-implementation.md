@@ -55,7 +55,7 @@ only the deterministic test host. All M2 automated timing scenarios use explicit
 clock observations, without sleeps; existing legacy real-time regressions remain.
 
 Final local verification: formatting, workspace build, Clippy with warnings denied,
-and **121 tests** (20 M2 tests plus the 101 legacy tests, including doctests).
+and **124 tests** (23 M2 tests plus the 101 legacy tests, including doctests).
 The real CLI scripted demo and interactive terminal roof escape also passed.
 
 Remaining limits and questions:
@@ -80,3 +80,18 @@ Remaining limits and questions:
 
 These are bounded M2 choices, not new architectural dependency directions. No
 accepted ADR has been modified.
+
+## PR #14 review follow-up
+
+The chosen M2 simplification rejects explicit `at_ms` on every transition-result
+cue, for ordinary action branches, deadline-cutoff branches and timeout `goto`
+outcomes. Untimed narration/input locks remain valid; timed content belongs in
+the destination entry plan. Regression tests check both rejected result cues and
+successful destination scheduling at T=0/T=2s after leaving an old scene at
+T=25s (or timing out at T=30s).
+
+A separate deterministic regression documents elapsed exposure as authored base
+effects and success/failure as ordered outcomes. It requires no engine semantic
+change: an offered climb remains an attempt and produces authored failure after
+long deliberation. Invalid, hidden and stale inputs still fail transactionally.
+See [the authoring convention](../scene-format.md#offer-eligibility-versus-success).
