@@ -1,5 +1,5 @@
 # WHITEOUT rules: renderer-independent M2 DSL. Text is in text.yaml.
-# YAML anchors share expressions only; all state changes remain authored effects.
+# YAML anchors reuse ordinary authored effects; there is no extra scripting layer.
 schema_version: 1
 id: whiteout
 version: 1
@@ -175,7 +175,9 @@ contexts:
     effects:
     - *charge_cold
     - *book_time
-    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.accounted_ms
+      value: {clock: effective_ms}
     - op: set
       var: global.exposure_rate
       value: {var: global.indoor_rate}
@@ -825,7 +827,9 @@ contexts:
     - *charge_cold
     - *book_time
     - {op: set, var: global.engineering_lost, value: true}
-    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.accounted_ms
+      value: {clock: effective_ms}
     - op: set
       var: global.exposure_rate
       value: {var: global.indoor_rate}
@@ -1031,7 +1035,9 @@ contexts:
     - *charge_cold
     - *book_time
     - {op: set, var: global.radio_lost, value: true}
-    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.accounted_ms
+      value: {clock: effective_ms}
     - op: set
       var: global.exposure_rate
       value: {var: global.indoor_rate}
@@ -1232,7 +1238,9 @@ contexts:
     - *jonas_lost
     - *lea_lost
     - {op: set, var: global.ending, value: station_lost}
-    - {op: set, var: global.accounted_ms, value: 0}
+    - op: set
+      var: global.accounted_ms
+      value: {clock: effective_ms}
     - {op: set, var: global.exposure_rate, value: 0}
     cues:
     - {cue_id: timeout, kind: narrative, narrative_id: crisis.timeout}

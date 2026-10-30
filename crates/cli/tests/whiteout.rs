@@ -263,8 +263,8 @@ fn m3_index_and_every_text_binding_are_complete_and_renderer_independent() {
             );
         }
     }
-    // Travel is instantaneous by design: old-scene accounting precedes GOTO;
-    // no rebased incoming duration can be counted again in the new scene.
+    // Normal travel is instantaneous. Interrupted-work timeout transitions
+    // separately reserve effective_ms credit; see the cross-epoch regression.
     let story: SceneStory = serde_yaml_ng::from_str(STORY).unwrap();
     for c in &story.contexts {
         for a in &c.actions {
@@ -500,7 +500,12 @@ fn deadline_cutoff_accounts_only_effective_time_and_does_not_invent_power() {
         assert_eq!(g.flag("generator_done"), success);
         assert!(g.flag("engineering_lost"));
         assert_eq!(g.int("cold_exposure"), 31000);
-        assert_eq!(g.int("accounted_ms"), 0);
+        assert_eq!(g.int("accounted_ms"), if success { 0 } else { 3000 });
+        if !success {
+            g.at(3000);
+            g.settle();
+        }
+        assert!(!g.player.actions().is_empty());
         let record = g
             .engine
             .action_history()
@@ -728,4 +733,35 @@ fn cold_from_slow_engineering_changes_a_later_radio_outcome_and_can_be_recovered
         g.step("coordinate");
         g.ending("full_rescue");
     }
+}
+
+#[test]
+fn interrupted_work_credit_is_not_charged_again_in_the_new_scene() {
+    for new_time in [1000, 5000] {
+        let mut g = Game::prepared(false, true, true);
+        assert_eq!(g.int("cold_exposure"), 10000);
+        g.step("engineering");
+        g.at(29000);
+        g.step("open_generator_latch");
+        assert!(g.flag("engineering_lost"));
+        assert_eq!(g.int("latch_damage"), 0);
+        assert_eq!(g.int("cold_exposure"), 70000); // Old rate 2 through the 30s deadline.
+        assert_eq!(g.int("accounted_ms"), 1000); // Credit only the effective 1s, not old T=30s.
+        assert_eq!(g.now(), 0);
+        assert!(g.player.actions().is_empty());
+        g.at(new_time);
+        g.settle();
+        g.step("communications");
+        assert_eq!(g.int("cold_exposure"), 70000 + (new_time as i64 - 1000));
+        assert_eq!(g.int("accounted_ms"), 0); // Normal departure starts another fresh epoch.
+    }
+    // An idle expiry carries no work credit: all time after its reset is new.
+    let mut idle = Game::prepared(false, true, true);
+    idle.step("engineering");
+    idle.at(30000);
+    idle.settle();
+    assert_eq!(idle.int("accounted_ms"), 0);
+    idle.at(1000);
+    idle.step("communications");
+    assert_eq!(idle.int("cold_exposure"), 71000);
 }
