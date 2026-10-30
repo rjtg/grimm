@@ -2,6 +2,8 @@
 
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
 
+**ID namespace decision:** Default each local cue/action namespace to its authored story-node name, normalize emitted namespace/local keys to `lowercase_ascii_snake_case`, and allow an authored override for stable renderer bindings after story-node refactors. Reject collisions after normalization with source-located diagnostics, not silent suffixing. Qualified IDs remain opaque lookup keys to renderers. Exact grammar/normalization edge cases (e.g. unsupported Unicode names) belong to implementation and must be documented and tested.
+
 ## Shared example game and renderer-owned dialogue (decision)
 
 Both the M4 **text example** and M5 **graphical example** stay in this repository, preferably under `examples/`, and load the **identical authored GRIMM script**. Given the same action IDs and timer observations, they obtain the same Cue Sheets and send the same `game_action` IDs. The M4 renderer owns a lookup from cue IDs to descriptions/dialogue text and from action IDs to displayed option labels. The M5 renderer interprets these IDs as concrete scene animation, audio dialogue, subtitles and visual choices. The core knows *semantic IDs* and their effects but **does not need the literal dialogue lines, descriptions, subtitles or user-visible action wording**. Consistency of each renderer's wording/voice with the action ID's meaning is an example-game authoring responsibility. Preserve legacy M1 text-stories; the new arrangement does not remove their format.
