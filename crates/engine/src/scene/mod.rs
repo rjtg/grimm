@@ -1,4 +1,5 @@
 //! Opt-in M2 scenes. Legacy Engine, stories, timers and saves are unchanged.
+pub mod authoring;
 mod expressions;
 mod validation;
 use expressions::{Times, check, update};

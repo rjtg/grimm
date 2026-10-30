@@ -1,10 +1,31 @@
 use super::{SceneError, SceneResult, expressions::*};
 use crate::expressions::same_type;
+use grimm_semantic::authoring::{Diagnostic, Severity, Source};
 use grimm_semantic::{
     scene::*,
     story::{Value, Variables},
 };
 use std::collections::{BTreeMap, BTreeSet};
+
+#[derive(Default)]
+struct Trace {
+    path: String,
+    related: Vec<Source>,
+    declarations: BTreeMap<String, String>,
+}
+impl Trace {
+    fn at(&mut self, path: impl Into<String>) {
+        self.path = path.into();
+        self.related.clear();
+    }
+    fn declaration(&mut self, key: String) {
+        if let Some(first) = self.declarations.get(&key) {
+            self.related.push(Source::at(first));
+        } else {
+            self.declarations.insert(key, self.path.clone());
+        }
+    }
+}
 
 pub(super) fn normalize(name: &str) -> SceneResult<String> {
     if !name.is_ascii() {
@@ -89,8 +110,11 @@ fn cues(
     globals: &Variables,
     locals: &Variables,
     ids: &mut BTreeSet<String>,
+    trace: &mut Trace,
 ) -> SceneResult<()> {
-    for cue in cues {
+    let base = trace.path.clone();
+    for (index, cue) in cues.iter_mut().enumerate() {
+        trace.at(format!("{base}/{index}"));
         if cue.at_ms.is_some_and(|time| time > i64::MAX as u64) {
             return Err(SceneError("cue time exceeds i64 milliseconds".into()));
         }
@@ -163,6 +187,10 @@ fn cues(
             }
             format!("{ns}.cue_{hash:016x}")
         };
+        if cue.cue_id.is_some() {
+            trace.at(format!("{base}/{index}/cue_id"));
+        }
+        trace.declaration(format!("cue:{id}"));
         if !ids.insert(id.clone()) {
             return Err(SceneError(format!(
                 "duplicate/colliding cue identifier '{id}'; give repeated content distinct cue_id values"
@@ -173,27 +201,72 @@ fn cues(
     Ok(())
 }
 
-pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
+pub(super) fn compile(story: SceneStory) -> SceneResult<SceneStory> {
+    compile_located(story).map_err(|diagnostic| SceneError(diagnostic.message))
+}
+
+pub(super) fn compile_located(story: SceneStory) -> Result<SceneStory, Box<Diagnostic>> {
+    let mut trace = Trace::default();
+    compile_inner(story, &mut trace).map_err(|error| Box::new(Diagnostic {
+        severity: Severity::Error,
+        code: "invalid_scene".into(),
+        suggestion: if error.0.contains("duplicate") || error.0.contains("collid") {
+            "Use distinct normalized IDs; give repeated cue content explicit, distinct cue_id values."
+        } else if error.0.contains("unknown") || error.0.contains("undeclared") {
+            "Declare the referenced name or correct its spelling and scope."
+        } else if error.0.contains("type") || error.0.contains("integer") {
+            "Use operands and effects matching the declared variable type."
+        } else if error.0.contains("unreachable") {
+            "Connect this context from the start graph, or remove the unused declaration."
+        } else {
+            "Correct the declaration at this source path according to the scene-format reference."
+        }.into(),
+        message: error.0,
+        source: Source::at(trace.path),
+        related: trace.related,
+    }))
+}
+
+fn compile_inner(mut story: SceneStory, trace: &mut Trace) -> SceneResult<SceneStory> {
     if story.schema_version != 1 || story.version == 0 || story.title.trim().is_empty() {
         return Err(SceneError(
             "scene DSL requires schema_version 1, positive story version and title".into(),
         ));
     }
+    trace.at("/id");
     story.id = normalize(&story.id)?;
+    trace.at("/start");
     story.start = normalize(&story.start)?;
+    trace.at("/globals");
     declarations(&story.globals)?;
     let mut contexts = BTreeSet::new();
     let mut namespaces = BTreeSet::new();
-    for ctx in &mut story.contexts {
+    for (ci, ctx) in story.contexts.iter_mut().enumerate() {
+        let cp = format!("/contexts/{ci}");
+        trace.at(format!("{cp}/id"));
         ctx.id = normalize(&ctx.id)?;
-        let ns = normalize(ctx.namespace.as_deref().unwrap_or(&ctx.id))?;
-        if !contexts.insert(ctx.id.clone()) || !namespaces.insert(ns.clone()) {
+        trace.declaration(format!("context:{}", ctx.id));
+        if !contexts.insert(ctx.id.clone()) {
             return Err(SceneError(format!(
-                "duplicate normalized context/namespace '{}'",
+                "duplicate normalized context '{}'",
+                ctx.id
+            )));
+        }
+        trace.at(if ctx.namespace.is_some() {
+            format!("{cp}/namespace")
+        } else {
+            format!("{cp}/id")
+        });
+        let ns = normalize(ctx.namespace.as_deref().unwrap_or(&ctx.id))?;
+        trace.declaration(format!("namespace:{ns}"));
+        if !namespaces.insert(ns.clone()) {
+            return Err(SceneError(format!(
+                "duplicate normalized context/namespace '{ns}' (context '{}')",
                 ctx.id
             )));
         }
         ctx.namespace = Some(ns.clone());
+        trace.at(format!("{cp}/locals"));
         declarations(&ctx.locals)?;
         if ctx.terminal && (!ctx.actions.is_empty() || ctx.timeout.is_some()) {
             return Err(SceneError(format!(
@@ -205,8 +278,10 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
             return Err(SceneError(format!("context '{}' has no handlers", ctx.id)));
         }
         let mut action_ids = BTreeSet::new();
-        for action in &mut ctx.actions {
+        for (ai, action) in ctx.actions.iter_mut().enumerate() {
+            trace.at(format!("{cp}/actions/{ai}/id"));
             action.id = qualify(&ns, &action.id)?;
+            trace.declaration(format!("action:{}", action.id));
             if action.id.ends_with(".timeout") || !action_ids.insert(action.id.clone()) {
                 return Err(SceneError(format!(
                     "duplicate or reserved action '{}'",
@@ -216,7 +291,9 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
         }
         let mut cue_ids = BTreeSet::new();
         let verify = (|| -> SceneResult<()> {
-            for action in &mut ctx.actions {
+            for (ai, action) in ctx.actions.iter_mut().enumerate() {
+                let ap = format!("{cp}/actions/{ai}");
+                trace.at(&ap);
                 if action.duration_ms > i64::MAX as u64 {
                     return Err(SceneError(format!(
                         "action '{}' duration exceeds i64 milliseconds",
@@ -224,9 +301,12 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                     )));
                 }
                 if let Some(test) = &action.when {
+                    trace.at(format!("{ap}/when"));
                     validate_test(test, &story.globals, &ctx.locals, 0)?;
                 }
+                trace.at(format!("{ap}/effects"));
                 updates(&action.effects, &story.globals, &ctx.locals)?;
+                trace.at(format!("{ap}/outcomes"));
                 if action.outcomes.is_empty()
                     || action
                         .outcomes
@@ -255,15 +335,24 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                         action.id
                     )));
                 }
-                for branch in action
+                let normal_count = action.outcomes.len();
+                for (bi, branch) in action
                     .outcomes
                     .iter_mut()
                     .chain(&mut action.interrupted_outcomes)
+                    .enumerate()
                 {
+                    let bp = if bi < normal_count {
+                        format!("{ap}/outcomes/{bi}")
+                    } else {
+                        format!("{ap}/interrupted_outcomes/{}", bi - normal_count)
+                    };
+                    trace.at(&bp);
                     if let Some(test) = &branch.when {
                         validate_test(test, &story.globals, &ctx.locals, 0)?;
                     }
                     updates(&branch.outcome.effects, &story.globals, &ctx.locals)?;
+                    trace.at(format!("{bp}/cues"));
                     cues(
                         &mut branch.outcome.cues,
                         &ns,
@@ -271,7 +360,9 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                         &story.globals,
                         &ctx.locals,
                         &mut cue_ids,
+                        trace,
                     )?;
+                    trace.at(&bp);
                     if let Some(target) = &mut branch.outcome.goto {
                         *target = normalize(target)?;
                         if branch.outcome.cues.iter().any(|cue| cue.at_ms.is_some()) {
@@ -296,23 +387,33 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                         }
                     }
                 }
-                for branches in [&action.outcomes, &action.interrupted_outcomes] {
-                    let mut guards = vec![];
-                    for branch in branches {
+                for (kind, branches) in [
+                    ("outcomes", &action.outcomes),
+                    ("interrupted_outcomes", &action.interrupted_outcomes),
+                ] {
+                    let mut guards: Vec<(&Test, String)> = vec![];
+                    for (bi, branch) in branches.iter().enumerate() {
                         if let Some(guard) = &branch.when {
-                            if guards.contains(&guard) {
+                            let path = format!("{ap}/{kind}/{bi}/when");
+                            if let Some((_, first)) =
+                                guards.iter().find(|(previous, _)| *previous == guard)
+                            {
+                                trace.at(&path);
+                                trace.related.push(Source::at(first));
                                 return Err(SceneError(format!(
                                     "action '{}': duplicate IF guard is unreachable",
                                     action.id
                                 )));
                             }
-                            guards.push(guard);
+                            guards.push((guard, path));
                         }
                     }
                 }
             }
             if let Some(outcome) = &mut ctx.timeout {
+                trace.at(format!("{cp}/timeout"));
                 updates(&outcome.effects, &story.globals, &ctx.locals)?;
+                trace.at(format!("{cp}/timeout/cues"));
                 cues(
                     &mut outcome.cues,
                     &ns,
@@ -320,7 +421,9 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                     &story.globals,
                     &ctx.locals,
                     &mut cue_ids,
+                    trace,
                 )?;
+                trace.at(format!("{cp}/timeout"));
                 if let Some(target) = &mut outcome.goto {
                     *target = normalize(target)?;
                     if outcome.cues.iter().any(|cue| cue.at_ms.is_some()) {
@@ -340,6 +443,7 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                     }
                 }
             }
+            trace.at(format!("{cp}/cues"));
             cues(
                 &mut ctx.cues,
                 &ns,
@@ -347,6 +451,7 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                 &story.globals,
                 &ctx.locals,
                 &mut cue_ids,
+                trace,
             )?;
             if let Some(index) = ctx.cues.iter().position(|cue| {
                 matches!(
@@ -357,6 +462,7 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
                     }
                 )
             }) {
+                trace.at(format!("{cp}/cues/{index}"));
                 if ctx.cues[index].at_ms.is_some() || ctx.cues[index].when.is_some() {
                     return Err(SceneError("initial timer start must be unconditional and sequential, not clock-scheduled".into()));
                 }
@@ -408,6 +514,7 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
         })();
         verify.map_err(|error| SceneError(format!("context '{}': {error}", ctx.id)))?;
     }
+    trace.at("/start");
     if !contexts.contains(&story.start) {
         return Err(SceneError(format!(
             "unknown start context '{}'",
@@ -415,21 +522,49 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
         )));
     }
     let mut edges = BTreeMap::new();
-    for ctx in &story.contexts {
-        let targets: Vec<_> = ctx
-            .actions
-            .iter()
-            .flat_map(|a| a.outcomes.iter().chain(&a.interrupted_outcomes))
-            .map(|b| &b.outcome)
-            .chain(ctx.timeout.iter())
-            .filter_map(|outcome| outcome.goto.clone())
-            .collect();
-        for target in &targets {
-            if !contexts.contains(target) {
-                return Err(SceneError(format!(
-                    "context '{}': unknown transition target '{target}'",
-                    ctx.id
-                )));
+    for (ci, ctx) in story.contexts.iter().enumerate() {
+        let mut targets = vec![];
+        let outcomes =
+            ctx.actions
+                .iter()
+                .enumerate()
+                .flat_map(|(ai, action)| {
+                    action
+                        .outcomes
+                        .iter()
+                        .enumerate()
+                        .map(move |(bi, b)| {
+                            (
+                                format!("/contexts/{ci}/actions/{ai}/outcomes/{bi}/goto"),
+                                &b.outcome,
+                            )
+                        })
+                        .chain(action.interrupted_outcomes.iter().enumerate().map(
+                            move |(bi, b)| {
+                                (
+                                    format!(
+                                        "/contexts/{ci}/actions/{ai}/interrupted_outcomes/{bi}/goto"
+                                    ),
+                                    &b.outcome,
+                                )
+                            },
+                        ))
+                })
+                .chain(
+                    ctx.timeout
+                        .iter()
+                        .map(|o| (format!("/contexts/{ci}/timeout/goto"), o)),
+                );
+        for (path, outcome) in outcomes {
+            if let Some(target) = &outcome.goto {
+                trace.at(path);
+                if !contexts.contains(target) {
+                    return Err(SceneError(format!(
+                        "context '{}': unknown transition target '{target}'",
+                        ctx.id
+                    )));
+                }
+                targets.push(target.clone());
             }
         }
         edges.insert(ctx.id.clone(), targets);
@@ -441,7 +576,8 @@ pub(super) fn compile(mut story: SceneStory) -> SceneResult<SceneStory> {
             pending.extend(edges[&id].iter().cloned());
         }
     }
-    for ctx in &story.contexts {
+    for (ci, ctx) in story.contexts.iter().enumerate() {
+        trace.at(format!("/contexts/{ci}/id"));
         if !seen.contains(&ctx.id) {
             return Err(SceneError(format!(
                 "context '{}' is structurally unreachable",
