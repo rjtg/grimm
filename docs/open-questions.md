@@ -2,6 +2,12 @@
 
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
 
+## M2 authoring language — commitment (2026-10-30)
+
+The **small authored story DSL is now a required M2 deliverable** (see `DSL-01..DSL-12` in [requirements](requirements.md#m2-authoring-dsl--required-milestone-deliverable)). It should let an author describe graph structure, local/global visible or private state, `ON`/conditional/`ELSE` behavior, `timeout`, atomic effects, timer/action costs, conditional choices, cue IDs and ordered playback; a complete playable `The Locked Room` must be authored with it. **The implementing agent chooses concrete syntax, file format, parser and Rust internals** and must keep legacy authored YAML working. Do not freeze an ad hoc example grammar as an API before implementation.
+
+The remaining DSL work is technical design and evidence, not another gameplay-model debate: choose the smallest readable syntax; specify reset semantics for context-local variables; give useful invalid-authoring errors; and test actual authored Cue Sheet traces without timing double-counting. Graph/branch checks stay deliberately basic rather than requiring a full state-space solver.
+
 ## M2 Cue Sheet and authoring review — decisions (2026-10-30)
 
 - **Renderer does not see story-graph transitions:** GRIMM alone owns nodes and contextual transitions. Cue Sheets communicate only ordered `play` cues, accepted `actions`, full **renderer-visible** world-state projection, currently relevant `scene_timer` when present, and response `id`. No `node_changed` or `ending_node` protocol field is required by this design. Ending/continuation is reflected in the next playback and accepted inputs.
