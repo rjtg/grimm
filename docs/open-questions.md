@@ -12,6 +12,14 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 | OPEN-SCENE-04 | Open | M2 | How should authored time costs, world-time advances and host-observed real time interact with several actions in one scene? |
 | OPEN-SCENE-05 | Open | M2 | How does bounded checking distinguish intended revisits, meaningful in-scene loops, successful exits, explicit timeouts and accidental deadlocks using node plus relevant state? |
 | OPEN-SCENE-06 | Open | M2 | What is the smallest backward-compatible story/schema and save change needed for local effects and feedback? |
+| OPEN-TIME-01 | Open | M2 | Does an action execution duration use externally observed elapsed real time, authored world-time cost, or explicitly separate both? How does it compose with an already-running situation deadline? |
+| OPEN-TIME-02 | Open | M2 | When are an action's effects applied: at acceptance, at successful completion or at a defined partial-progress checkpoint? What does a deadline interrupt and which costs remain? |
+| OPEN-TIME-03 | Open | M2 | At the exact same observed instant, does a situation timeout outrank action completion? How do revision changes and stale completion inputs enforce one terminal result? |
+| OPEN-TIME-04 | Open | M2 | What gameplay input is blocked while an action executes, and which host/session commands (pause, save, load, quit) remain available? Are queued or repeated choice inputs dropped safely? |
+| OPEN-TIME-05 | Open | M2 | How do pause/resume, save/load, renderer disconnect and restart restore an in-progress action, its elapsed/remaining duration and a separate ongoing deadline? |
+| OPEN-TIME-06 | Open | M2–M5 | What player-visible progress/busy feedback is sufficient in the text CLI and visual renderer without allowing animation timing or host sleeping to decide canonical completion? |
+| OPEN-TIME-07 | Open | M2 | Can overlapping/combinable actions ever exist, or is exactly one player action in progress at a time the minimal initial constraint? |
+| OPEN-DEMO-01 | Open | Every milestone | How do we document and automatically exercise every new gameplay capability in a small *playable* acceptance game, including success, failure, timeout and save/restore? |
 | OPEN-PUZZLE-01 | Open | M3 | Which item/inventory features genuinely require more than typed state variables: unique identity, possession, location, consumption, quantities or visibility? |
 | OPEN-PUZZLE-02 | Open | M3 | How do MacGyver-like item combinations and multi-solution puzzles stay **authored conditional choices**, rather than universal `Inspect/Use/Combine` commands? |
 | OPEN-PUZZLE-03 | Open | M3 | How do inventory changes reproject choices and preserve persistence/replay without combinatorial node proliferation? |
@@ -24,7 +32,7 @@ This is GRIMM's running catalog of **unresolved** questions, not accepted APIs o
 
 ### Guiding boundary
 
-A choice is an **authored, currently executable semantic offer**. It may investigate, reveal, collect, combine, affect character stats, consume time, refresh available options or advance the story. The engine validates effects; renderers only present authorized offers. Neither a fixed LucasArts verb API nor a mandatory RPG ruleset is needed. A narrative scene is not the same as a persistent location.
+A choice is an **authored, currently executable semantic offer**. It may investigate, reveal, collect, combine, affect character stats, consume time, refresh available options or advance the story. An optional execution duration makes the selected action **in progress** and blocks further gameplay choices while a previously running situation timer keeps progressing; the host must not sleep inside the engine. Precise completion, failure and persistence policies are OPEN-TIME questions. The engine validates effects; renderers only present authorized offers. Neither a fixed LucasArts verb API nor a mandatory RPG ruleset is needed. A narrative scene is not the same as a persistent location.
 
 ## Later: open-world / dynamic narrative (deferred)
 
