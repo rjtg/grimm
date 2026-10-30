@@ -22,6 +22,14 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).collect();
+    if args.first().is_some_and(|command| command == "play-scene") {
+        return grimm_cli::scene_runtime::run(&args[1..]);
+    }
+    if let [command, path] = args.as_slice()
+        && command == "check-scene"
+    {
+        return grimm_cli::scene_runtime::check(Path::new(path));
+    }
     if let [command, story, rest @ ..] = args.as_slice()
         && command == "check"
     {

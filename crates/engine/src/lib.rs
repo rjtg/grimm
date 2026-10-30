@@ -3,6 +3,7 @@ mod demo;
 mod expressions;
 mod flow;
 mod playability;
+pub mod scene;
 mod temporal;
 mod validation;
 

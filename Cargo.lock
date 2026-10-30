@@ -83,6 +83,7 @@ dependencies = [
  "grimm-engine",
  "grimm-presentation",
  "grimm-semantic",
+ "serde",
  "serde_json",
  "serde_yaml_ng",
 ]

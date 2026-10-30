@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub(super) struct Terminal {
+pub(crate) struct Terminal {
     command: Option<(u64, String)>,
     menu: bool,
 }
@@ -147,7 +147,7 @@ impl Drop for Terminal {
 }
 
 /// Raw mode disables terminal LF translation; keep ordinary renderer newlines.
-pub(super) struct Output<W> {
+pub(crate) struct Output<W> {
     pub inner: W,
     pub raw: bool,
 }

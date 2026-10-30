@@ -30,6 +30,7 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
                 | "grimm-presentation"
                 | "grimm-semantic"
                 | "serde_json"
+                | "serde"
                 | "serde_yaml_ng"
                 | "crossterm"
         ),
