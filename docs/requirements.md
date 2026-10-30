@@ -133,6 +133,15 @@ M3 is **cancelled**. The earlier `PUZZLE-01..04` and `STAT-01..02` proposals are
 
 </details>
 
+### Cross-renderer story and dialogue contract (M4/M5)
+
+- **EXAMPLE-01** Keep the **M4 text example and its M5 graphical adaptation within the GRIMM repository**, preferably under `examples/`. Both use **the same GRIMM-authored story script**, not copied or translated rule definitions; M5 changes renderer, media and input presentation only.
+- **EXAMPLE-02** For equivalent action sequences and reported timer inputs, both examples must issue the **same GRIMM `game_action` IDs** and receive the **same logical Cue Sheets**, gameplay state transitions and outcomes. Cue Sheet `id`/revision semantics follow the actual session contract; test a representative transcript with a controlled clock.
+- **EXAMPLE-03** M4's text renderer binds `play` IDs to authored prose/dialogue and offered `action` IDs to visible choice labels. M5's graphical renderer binds the **same IDs** to game scenes, animation/camera/audio, voice lines and/or subtitles and visual/menu choices. No prose or label text is required in the core Cue Sheet, and no direct dialogue-content dependency is introduced into GRIMM rules.
+- **EXAMPLE-04** The rule-author must choose semantically stable action/cue IDs (e.g. `tell_truth`, `lie`, `detective_believes_you`). Renderers must preserve those meanings while translating into dialogue wording, voices, captions and interaction choices. GRIMM determines which IDs to offer/emit and what effects they have; renderer bindings determine only how those IDs are presented.
+- **EXAMPLE-05** For M4/M5 example games, all required cue IDs and action labels must be implemented by the concrete renderer; missing bindings should produce actionable game/example diagnostics. A generic asset-mapping subsystem in GRIMM is not required.
+- **EXAMPLE-06** This is an **M4/M5 target architecture** for new DSL-authored example games, not a demand to retroactively delete M1's existing text-based story schema or break older games/CLIs.
+
 ## M4 — Complete Text Adventure
 
 - **ADV-01** Ship an **actual, finished, text-based LucasArts/Telltale hybrid adventure** authored in the M2 story DSL and played through a concrete text renderer. Several narrative contexts/locations are connected **only by authored transitions**, with meaningful optional revisits. Keep the story graph invisible to renderer-facing Cue Sheets.
