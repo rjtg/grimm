@@ -4,7 +4,7 @@
 
 GRIMM supports authored choose-your-own-adventure graphs and, as optional extensions, free-form player actions, dynamic story events, goal-driven NPCs, narrative direction, and multiple presentation frontends.
 
-**M4/M5 delivery direction:** Build the complete M4 adventure as an authored text game first. In M5, adapt that **same narrative/gameplay definition** into a graphical game application that uses GRIMM as a headless Rust library, while the concrete application/renderer provides assets, UI, animation and its own presentation state. Specific repository boundaries and external-host APIs are not fixed in advance. See [roadmap](docs/roadmap.md).
+**M4/M5 delivery direction:** Build the complete M4 adventure as an authored text game first. In M5, adapt that **same narrative/gameplay definition** into a graphical game application that uses GRIMM as a headless Rust library, while the concrete application/renderer provides assets, UI, animation and its own presentation state. Keep both example applications **in this repository** (preferably under `examples/`) and load the **identical GRIMM game script**; only renderer-specific cue/action bindings, text, dialogue, assets and input presentation differ. External-host APIs beyond this example remain open. See [roadmap](docs/roadmap.md).
 
 ## Principles
 - The engine owns canonical game state and rules.
