@@ -56,3 +56,14 @@ jobs:
           cargo run --offline --locked --quiet -p grimm-cli -- check-scene examples/locked-room/story.yaml
           printf '\n:time 2000\n@locked_room.open_drawer\n\n:time 5000\n@locked_room.take_keychain\n\n:time 8000\n@locked_room.unlock_door_key1\n\n:time 12000\n@locked_room.unlock_door_key2\n\n\n' | cargo run --offline --locked --quiet -p grimm-cli -- play-scene examples/locked-room/story.yaml examples/locked-room/text.yaml --manual-clock > locked-room.txt
           grep -Fx 'ESCAPED: You reach the road through the corridor.' locked-room.txt
+      - name: Validate and export M3 semantic indices offline
+        shell: bash
+        run: |
+          cargo run --offline --locked --quiet -p grimm-cli -- check-scene examples/locked-room/detective.yaml --json > detective-report.json
+          cargo run --offline --locked --quiet -p grimm-cli -- index-scene examples/locked-room/story.yaml > locked-room-index.json
+          cargo run --offline --locked --quiet -p grimm-cli -- index-scene examples/locked-room/story.yaml > locked-room-index-again.json
+          cmp locked-room-index.json locked-room-index-again.json
+          if cargo run --offline --locked --quiet -p grimm-cli -- check-scene crates/cli/tests/fixtures/authoring/trapped-region.yaml; then
+            echo 'A structurally trapped region must fail authoring validation'
+            exit 1
+          fi

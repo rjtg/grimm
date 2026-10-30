@@ -40,7 +40,13 @@ pub fn analyze(authored: SceneStory) -> Report {
             transitions: vec![],
         };
         let mut targets = BTreeSet::new();
-        let mut uncertain = false;
+        let mut uncertain = ctx
+            .cues
+            .iter()
+            .any(|cue| truth(cue.when.as_ref()).is_none());
+        if !ctx.terminal && !entry_can_progress(ctx) {
+            diagnostics.push(diagnostic(Severity::Error, "no_entry_progress", format!("context '{}' has neither a possible entry action offer nor an entry timer that can invoke its timeout", ctx.id), &cp, "Offer an action in the entry cue plan, or start an authored timer with a timeout handler."));
+        }
         index_cues(&ctx.cues, &original.cues, &format!("{cp}/cues"), &mut entry);
         for (ai, (action, old)) in ctx.actions.iter().zip(&original.actions).enumerate() {
             let ap = format!("{cp}/actions/{ai}");
@@ -247,6 +253,31 @@ pub fn analyze(authored: SceneStory) -> Report {
         diagnostics,
         index: Some(index),
     }
+}
+
+// A context cannot bootstrap via effects of actions it never offers. This
+// only rejects literal absence/constant-false eligibility, not schedule timing.
+fn entry_can_progress(context: &Context) -> bool {
+    context.cues.iter().any(|cue| {
+        if truth(cue.when.as_ref()) == Some(false) {
+            return false;
+        }
+        match &cue.instruction {
+            AuthoredInstruction::Timer {
+                start_ms: Some(_), ..
+            } => context.timeout.is_some(),
+            AuthoredInstruction::Actions { available_actions } => {
+                context.actions.iter().any(|action| {
+                    truth(action.when.as_ref()) != Some(false)
+                        && match available_actions {
+                            ActionSet::Eligible(_) => true,
+                            ActionSet::Only(ids) => ids.contains(&action.id),
+                        }
+                })
+            }
+            _ => false,
+        }
+    })
 }
 
 fn index_cues(

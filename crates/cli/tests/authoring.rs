@@ -303,3 +303,43 @@ fn namespace_and_context_collisions_report_both_declarations() {
         assert!(d.source.line.is_some() && d.related[0].line.is_some());
     }
 }
+
+#[test]
+fn duplicate_if_guards_retain_both_branch_sources() {
+    let yaml = fixture("valid-endings").replace("outcomes: [{goto: success}]", "outcomes:\n          - when: {op: eq, left: {var: global.ready}, right: true}\n            goto: success\n          - when: {op: eq, left: {var: global.ready}, right: true}\n            goto: success\n          - goto: failure");
+    let report = inspect("branches.yaml", &yaml);
+    let d = &report.diagnostics[0];
+    assert!(d.message.contains("duplicate IF guard"), "{d:?}");
+    assert_eq!(d.related.len(), 1);
+    assert_ne!(d.source.line, d.related[0].line);
+    assert!(d.source.line.is_some() && d.related[0].line.is_some());
+}
+
+#[test]
+fn declared_exits_do_not_hide_a_plan_that_never_offers_an_attempt() {
+    let report = report("no-offers");
+    assert!(report.has_errors());
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "no_entry_progress")
+    );
+    // Scheduled offers remain possible; this does not attempt a timing solver.
+    let timed = fixture("valid-endings").replace(
+        "kind: actions, available_actions",
+        "at_ms: 1000, kind: actions, available_actions",
+    );
+    assert!(!inspect("scheduled.yaml", &timed).has_errors());
+    // An authored timeout is a legitimate way to progress without any offers.
+    let timeout = fixture("no-offers")
+        .replace(
+            "    actions:\n",
+            "    timeout: {goto: failure}\n    actions:\n",
+        )
+        .replace(
+            "      - {cue_id: welcome",
+            "      - {kind: timer, start_ms: 1000}\n      - {cue_id: welcome",
+        );
+    assert!(!inspect("timeout.yaml", &timeout).has_errors());
+}

@@ -98,8 +98,9 @@ Validation checks types, IDs, branch fallback structure, references, timer setup
 and structural reachability. It does not prove state-dependent solvability or
 termination. Conditions are evaluated when a plan is built and actions are
 revalidated at selection; hosts must submit accurate monotonically increasing
-scene times. This release does not implement M3 indexing, lint tooling, dynamic
-node providers or a general scripting language.
+scene times. M3 adds source-aware diagnostics, structural exit checks and a semantic story
+index through the same compiler; see the [M3 guide](milestones/m3.md). Dynamic
+node providers and general scripting remain outside this format.
 
 ## Offer eligibility versus success
 

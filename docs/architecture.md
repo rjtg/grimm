@@ -126,6 +126,10 @@ Authored narrative and semantically described choices remain the primary inputs.
 
 ## Authoring-tool boundaries and exit checks (M3)
 
+The [M3 implementation](milestones/m3.md) extends the existing compiler and exports
+host-only semantic diagnostics/index types. YAML source positioning and JSON/file
+I/O stay in the CLI composition root; renderer-facing protocols are unchanged.
+
 M3's later-game authoring convention recognizes stable namespace-qualified cue/action identifiers (ASCII-only authored names and deterministic lowercase ASCII snake_case IDs). The toolchain indexes source references, flags duplicates/unknown references and performs **basic** structural graph/exit checks. Every nonterminal node should expose at least one explicit outgoing exit, including a losing/failure ending; structural existence does not prove that a conditional exit can be reached in every state. Repeated selectable actions are not imperative `while` loops and full state-dependent termination proof is out of scope.
 
 The GRIMM story-indexer exports the **required** cue/action references. Any renderer, game-tooling or authoring IDE exports and checks the **available** text, option, video or graphic assets in its own format. Comparing the two is **not a responsibility of the GRIMM engine or its core tooling**.
