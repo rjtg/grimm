@@ -55,8 +55,12 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **SCENE-01** Authored choice actions may commit a validated state change **within the current narrative scene**, without a forced graph node transition or a mandatory fixed `Inspect/Use/Take` action taxonomy.
 - **SCENE-02** Current interaction offers are recalculated after an in-scene action from committed state. An authored action can reveal, enable, disable or replace choices and provide fresh narrative feedback; invalid and stale offers remain non-executable.
 - **SCENE-03** A time-critical situation may span multiple in-scene actions. A successful search, failed key attempt, inventory operation or newly exposed offer must not silently reset its shared deadline. Preserve M1.75 timeout precedence and M1.8 presentation/interaction readiness, pause, restore and revision safety.
+- **SCENE-07** An authored choice may declare optional **execution duration**. On accepting an action the engine enters an authoritative action-in-progress state and suppresses conflicting gameplay input until the action resolves. The headless engine never sleeps, waits for the renderer or reads wall time; the host sends elapsed observations. Zero-duration legacy choices retain immediate behavior.
+- **SCENE-08** The ongoing situation deadline continues during action execution unless a separate, explicit authored rule says otherwise. A timeout can occur before execution completes; define and test deterministic precedence at the exact boundary, one-time resolution and whether completion effects are committed only after successful execution. Revisions, stale actions and late completion observations cannot double-commit or bypass expiry.
+- **SCENE-09** Pause/resume and save/load preserve or intentionally reconcile in-progress action state, remaining execution time and the unchanged situation deadline. Presentation progress feedback is distinct from canonical action completion; application/session commands remain operable while gameplay choices are blocked.
+- **SCENE-10** End-to-end CLI demo and deterministic clock tests must show a long key attempt (input unavailable during execution), a successful action finishing before the deadline, an attempted door-forcing action that misses the deadline during execution, interrupted/paused/restored execution, and backward-compatible immediate choices.
 - **SCENE-04** Extend bounded diagnostics to reason about scene+relevant state, reachable options and executable exits/intentional timeouts, not only graph node links. Identify accidental nonterminal deadlocks; retain explicit inconclusive limits.
-- **SCENE-05** Playable text demo `The Locked Room`: search drawers/wardrobe/fireplace, discover a keyring and metal bar, attempt multiple wrong keys, change available choices and resolve an escape under an already-running deadline with distinct outcomes.
+- **SCENE-05** Playable text demo `The Locked Room`: search drawers/wardrobe/fireplace, discover a keyring and metal bar, attempt multiple wrong keys, change available choices and resolve an escape under an already-running deadline with distinct outcomes. Include visible input-locking action durations and timeout during an attempted action.
 - **SCENE-06** Keep ordinary authored CYOA stories and current save formats working; any optional authoring/schema extensions must be minimal, documented, deterministic and regression tested.
 
 ## M3 — Inventory, Puzzles & Character State
@@ -65,19 +69,23 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **PUZZLE-03** Model multi-step puzzles, alternate solutions, failed attempts and optional action costs using the existing state/choice/time model. Collected or consumed items affect future offers and narrative branches.
 - **STAT-01** Optional persistent RPG-style character attributes, skills, relationships and resources are typed game state used in choice eligibility and effects. No mandatory level, class, dice or combat engine.
 - **STAT-02** Define optional attribute thresholds/checks and their deterministic resolution where a game requires them; distinguish player-visible stats from private NPC/world values and preserve replay.
-- **PUZZLE-04** Playable authored puzzle demo with collected and combined items plus at least two attribute-dependent approaches, alternative results, save/load and bounded checker coverage.
+- **PUZZLE-04** Playable authored puzzle demo with collected and combined items plus at least two attribute-dependent approaches, alternative results, **a visible timed assembly/combination action with blocked gameplay input**, save/load and bounded checker coverage.
 
 ## M4 — Narrative Adventure
 - **ADV-01** Support semi-linear exploration across persistent locations with multiple narrative situations per location, revisiting and state-dependent offers. Do not equate location, scene and story progress.
 - **ADV-02** Combine LucasArts-like discovery/inventory puzzles with Telltale-like staged narrative choices, cinematic pacing, timed decisions and persistent consequences.
 - **ADV-03** State and puzzle solutions can enable/disable authored narrative branches without graph variant explosion; different approaches should produce distinct meaningful outcomes.
-- **ADV-04** Deliver a complete short hybrid narrative adventure with multiple locations, linked puzzles, Telltale-style consequential scenes, at least three outcomes and playability tests.
+- **ADV-04** Deliver a complete short hybrid narrative adventure with multiple locations, linked puzzles, Telltale-style consequential scenes, at least three outcomes, **timed multi-step actions** and playability tests.
 
 ## M5 — Graphic Adventure Presentation
 - **VIS-01** Add a graphical adapter/renderer for the existing canonical action and choice semantics, with location imagery and scene-specific clickable hotspots/menus.
 - **VIS-02** Render inventory and optional character stats as views of authorized semantic state, never as a second game rules engine.
 - **VIS-03** Synchronize required dialogue/animation/camera presentation and interaction readiness with M1.8 lifecycle; preserve deadlines and no early activation.
-- **VIS-04** Demonstrate equivalent narrative/puzzle outcomes for the same adventure in text and graphical frontends, without engine-specific UI logic.
+- **VIS-04** Demonstrate equivalent narrative/puzzle outcomes **and authoritative action-in-progress/input-lock behavior** for the same adventure in text and graphical frontends, without engine-specific UI logic.
+
+## Playable demo acceptance rule
+- **DEMO-01** Each new milestone M2–M5 ships a complete, actually playable reference story (or complete playable expansion of the prior game) demonstrating **all** gameplay mechanics introduced by that milestone, not merely synthetic tests. Include clear start/run instructions, reproducible successful and failed paths, relevant state/choice visibility, save/load coverage and an authoring/playtest report.
+- **DEMO-02** Automated unit/integration/CLI (or later visual-host) regressions independently verify the same capabilities; bounded checker results distinguish deadlock, valid ending and inconclusive exploration. Existing demo stories and legacy behavior remain working.
 
 ## Deferred optional extensions — no near-term milestone commitment
 - **ACT-01 (deferred)** Free-text input offers and intent resolver interface.
