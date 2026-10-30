@@ -1,5 +1,37 @@
 # Open design questions
 
+## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
+
+This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.
+
+- **Every response is REPLACE.** GRIMM derives one *complete authoritative remaining presentation plan* for the current narrative context from canonical authored world state, scene time, authored conditions, player-action history, and semantic cue execution history. The renderer replaces the pending schedule on each response; no `ADD`, merge, inherited action-list patches, or cross-revision cue ordering.
+- **One ordered `cues: []` list.** Entries can contain `narrative_id` (semantic content binding), `available_actions` (complete replacement of the offered action list, including `[]` to lock input), timer start/visibility instructions, and optional `at` absolute time on the current scene clock. The illustrative notation is a logical model, not an imposed Rust parser grammar. Within one sheet, untimed entries run in order, including presentation completion barriers; an `at` event is clock-scheduled and may overlap a running narrative cue. An incoming REPLACE sheet's untimed prefix begins at the current paused/resumed clock time, **not** retroactively at T=0.
+- **Timing:** The renderer pauses its scene clock at player selection T while GRIMM resolves `game_action`; resumes from T on the reply. GRIMM resolves authored action duration and deadline at selection once. New `available_actions` instructions are never enabled before that action's computed earliest logical time, even if their preceding narrative finishes sooner. Conversely a sequenced choice update may wait for renderer presentation completion if it is placed *after* that narrative. Timed instructions use absolute scene-clock `at`, so a T=10 radio event can begin during a T=8–11 drawer opening. A new timer starts at its explicit instruction, after any preceding intro presentation; subsequent clock-scheduled items do not block the start.
+- **One cue identity, separate content identity.** Each authored cue instruction has a unique, stable `cue_id` **within its story/scene namespace**, independent of `narrative_id` (the reusable renderer binding). Two distinct cues can reference the same `narrative_id`. Authors may explicitly name `cue_id`; otherwise GRIMM tooling deterministically generates an ASCII-qualified ID from the authored instruction/content and timing, e.g. `locked_room.narrative_radio_johnny_returns_at_10`. Derive from authored definition, **not output list position**; M3 must reject collisions and offer diagnostics. If an author edits content/timing, the generated identity may change; explicitly authored IDs are advised when continuity and save compatibility matter. No second `cue_instance_id` is required in this model.
+- **Renderer feedback:** The renderer reports `cue_started` and `cue_completed` with `cue_id` and sheet correlation/revision, optionally current scene time. GRIMM records enough action/cue history to avoid rerunning started/completed cues while constructing the next REPLACE sheet. The same stable `cue_id` in a replacement sheet denotes **continuation** of presentation already in flight, not replay; renderer owns media-specific fades, duration and detailed resume state. Stale or duplicate events must be idempotently handled, including events from a now-replaced sheet.
+- **State boundaries:** GRIMM records semantic action decisions, cue execution statuses, and canonical game rules/state for deterministic recomputation and snapshot/restore. Cue lifecycle acknowledgements are presentation coordination **not gameplay effects**; they never independently mutate authored world variables or authorize actions. Concrete assets, text, animation/audio, UI geometry and presentation playback positions remain renderer-owned and saved by the host independently.
+- **Availability invariants:** `available_actions` always replaces the full visible/actionable offer; `[]` disables them during a narrative cue. GRIMM alone validates `game_action` input and retains rule authority even if a UI is stale. If a new sheet is issued while old action/media instructions run, only actions from the current sheet may become eligible; stale scheduled `available_actions` instructions are discarded.
+- **Timer UI:** A timer can start hidden, with a later cue entry showing it; visibility does not start/reset the timer or affect game conditions.
+
+Illustrative T=8 drawer action with three seconds of authored cost, where the T=10 radio cue overlaps the drawer presentation:
+
+```text
+game_action { action: open_drawer, scene_timer: [8 of 30]s }
+cue_sheet {
+  cues: [
+    { cue_id: drawer_input_lock, available_actions: [] },
+    { cue_id: drawer_opening, narrative_id: drawer_opened },
+    { cue_id: radio_warning, at: 10, narrative_id: radio_johnny_returns },
+    { cue_id: countdown_reveal, at: 10, timer: { visible: true } },
+    { cue_id: drawer_new_choices, at: 11, available_actions: [take_key, search_desk, hide] },
+    { cue_id: johnny_footsteps, at: 20, narrative_id: footsteps_approaching }
+  ]
+}
+```
+
+The clock resumes from T=8 after GRIMM responds; radio/countdown trigger at T=10 regardless of a concurrent drawer animation. The T=11 choice offer is a *minimum* logical-time release and must not be prematurely unblocked by short media. When choosing an action after T=10, GRIMM uses cue-history acknowledgements to omit already finished events, or preserve an in-flight cue under its same `cue_id`. When entering another authored scene, the next full REPLACE sheet starts the new scene's plan; no explicit graph-node ID leaks to renderers.
+
+
 This is GRIMM's running catalog of **unresolved** questions, not accepted APIs or milestone commitments. Record decisions, rationale, tests and ADR links when the relevant authored demo motivates them. Status: Open, Investigating, Decided (with link), Deferred.
 
 **Milestone placement:** Historical M2 examples may use short action/cue names; later M3 authoring/indexing specifies stable qualified names for M4/M5. M3 adds an author-facing index, basic exit diagnostics, and source-located collision checks. Exact normalization details can be implemented and tested alongside the toolchain.
