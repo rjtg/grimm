@@ -75,6 +75,14 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **SCENE-22** Demonstrate the multi-attempt door sequence in a playable M2 test with simple state variables, different number of attempts, distinct presentation cues, cumulative scene-time consumption, deadline cutoff and save/load persistence. M3 can revisit the same demo with properly typed RPG-style character attributes.
 - **SCENE-19** Do **not** introduce provisional `will_succeed_if_completed` gameplay outcomes for deterministically resolvable M2 actions. At T0, return the already-determined success/failure/timeout branch and presentation appropriate to it. Late or independent changes arising from external physics/host actors are future integration concerns rather than required M2 action-progress simulation.
 
+### M2 scope/design clarifications (proposed details, not yet a schema)
+- **TIME-AUTH-01** For M2 authored conditions, explicit operators (`<`, `<=`, `=`, `>=`, `>`) decide whether a deadline boundary counts as a separate outcome. Define the `time_passed` reference interval and its units; do not hardcode a universal equal-boundary policy.
+- **TIME-AUTH-02** Match authored action duration and required action-presentation duration; treat fictional world chronology independently as author-controlled state. No core wall-clock polling. M2 need not activate choice-selection and scene-completion deadlines concurrently.
+- **TIME-AUTH-03** Host-supplied selection/expiry time is trusted as a runtime input (not independently verified against physical wall time), while revisions and duplicate-input rejection still protect canonical state.
+- **TIME-AUTH-04** M2 does not require a new pause feature; assess save restrictions at active timers/unfinished presentation **without regressing existing M1.75 pause/save semantics**.
+- **TIME-AUTH-05** Favor one fully resolved semantic response with authorized presentation cues, player-visible state and choices; concrete fields/serialization are still open. Renderer owns playback but existing readiness/revision safety protects against premature or stale choice inputs.
+- **AUTH-ELSE-01** Each executable authored choice needs deterministic, unambiguous outcome coverage (an ELSE/fallback or proven exhaustive guards). Do not require a separate ELSE for every tested variable; global puzzle solvability analysis can remain bounded and may be postponed beyond M2.
+
 ## M3 — Inventory, Puzzles & Character State
 - **PUZZLE-01** Optional items, discoveries, ownership and inventory-based conditions/effects; avoid an ECS or obligatory item taxonomy.
 - **PUZZLE-02** Allow authored combinations (including MacGyver-like solutions) through ordinary contextual choices with explicit preconditions and state effects; items are not required to expose universal `Use` or `Combine` commands.
