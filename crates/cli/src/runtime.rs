@@ -1,5 +1,5 @@
 //! Real-time composition root. The sole clock lives here, never in the engine.
-mod terminal;
+pub(crate) mod terminal;
 use crate::{read_save, write_save};
 use grimm_adapters::{InputAdapter, OutputAdapter, TextAdapter, lifecycle_input};
 use grimm_cli_renderer::CliRenderer;

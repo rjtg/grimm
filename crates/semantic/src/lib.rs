@@ -4,6 +4,7 @@
 
 pub mod flow;
 pub mod save;
+pub mod scene;
 pub mod story;
 pub mod time;
 

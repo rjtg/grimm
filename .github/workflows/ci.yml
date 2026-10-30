@@ -50,3 +50,9 @@ jobs:
           grep -Fx 'Ending: An Unanswered Bell' lighthouse-silence.txt
           printf '2\n2\n3\n1\n2\n' | cargo run --offline --locked --quiet -p grimm-cli -- play stories/the-last-lighthouse.yaml > lighthouse-taken.txt
           grep -Fx 'Ending: One More Voice' lighthouse-taken.txt
+      - name: Validate and play M2 Locked Room offline
+        shell: bash
+        run: |
+          cargo run --offline --locked --quiet -p grimm-cli -- check-scene examples/locked-room/story.yaml
+          printf '\n:time 2000\n@locked_room.open_drawer\n\n:time 5000\n@locked_room.take_keychain\n\n:time 8000\n@locked_room.unlock_door_key1\n\n:time 12000\n@locked_room.unlock_door_key2\n\n\n' | cargo run --offline --locked --quiet -p grimm-cli -- play-scene examples/locked-room/story.yaml examples/locked-room/text.yaml --manual-clock > locked-room.txt
+          grep -Fx 'ESCAPED: You reach the road through the corridor.' locked-room.txt

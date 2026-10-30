@@ -1,5 +1,6 @@
 //! Adapter contracts and authored-text presentation.
 //! Adapters have protocol dependencies only, never access to the engine.
+pub mod cues;
 
 use grimm_presentation::{PresentationCommand, RawInput};
 use grimm_presentation::{PresentationEvent, PresentationFeedback};

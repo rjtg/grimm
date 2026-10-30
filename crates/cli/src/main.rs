@@ -22,6 +22,14 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).collect();
+    if args.first().is_some_and(|command| command == "play-scene") {
+        return grimm_cli::scene_runtime::run(&args[1..]);
+    }
+    if let [command, path] = args.as_slice()
+        && command == "check-scene"
+    {
+        return grimm_cli::scene_runtime::check(Path::new(path));
+    }
     if let [command, story, rest @ ..] = args.as_slice()
         && command == "check"
     {
@@ -51,7 +59,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [] => (None, Engine::default()),
         [help] if help == "--help" || help == "-h" => {
             println!(
-                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
+                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\n       grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--load SAVE.json]\n       grimm-cli check-scene STORY.yaml\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
             );
             return Ok(());
         }

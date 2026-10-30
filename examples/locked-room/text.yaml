@@ -1,0 +1,48 @@
+# Concrete text-renderer bindings, not part of GRIMM rules or Cue Sheets.
+narratives:
+  locked_room.locked_in: "You wake in Johnny's locked storeroom. A desk drawer, wardrobe and cold fireplace offer possibilities. Listen first; once you finish this introduction, thirty seconds begin. At ten seconds his radio will warn you. Escape by keys, force, a tool or the window."
+  locked_room.drawer_opened: "The drawer slides open. Two keys hang from a brass ring."
+  locked_room.drawer_closed: "You push the drawer shut."
+  locked_room.keys_taken: "You pocket the keychain. One key is notched, the other round."
+  locked_room.wrong_key_does_not_turn: "The notched key scrapes uselessly in the lock."
+  locked_room.unlock_door_success: "The round key turns. You slip through before Johnny reaches the room."
+  locked_room.caught_while_unlocking: "The key turns too late. Johnny catches your wrist."
+  locked_room.room_surveyed: "The door frame is rotten. There is an iron bar among the fireplace ashes. The wardrobe hides a high window."
+  locked_room.wardrobe_opened: "Behind the wardrobe's coats, a window opens onto a narrow roof."
+  locked_room.iron_bar_found: "You take the fireplace poker: a solid iron lever."
+  locked_room.strength_prepared: "You brace like a trained weightlifter. Stronger blows now, but less balance for a narrow escape."
+  locked_room.break_door_barely_moves: "Your shoulder shakes the door. A thin crack appears."
+  locked_room.break_door_progress: "The crack widens. You might squeeze through it."
+  locked_room.break_door_almost_open: "The door hangs by one stubborn strip of wood."
+  locked_room.break_door_nothing_happens: "The door does not move. You need another approach."
+  locked_room.break_door_success: "The frame gives way. The corridor is clear."
+  locked_room.door_attempt_cut_short: "Your attempt is cut short before the full blow lands. Footsteps stop outside."
+  locked_room.caught_while_escaping: "Johnny opens the outer lock. Your time is up."
+  locked_room.squeeze_through_success: "You turn sideways, find your balance and slide into the corridor."
+  locked_room.squeeze_through_does_not_fit: "You cannot get your shoulder through. The door is still in your way."
+  locked_room.lever_door_open: "The iron bar tears the catch from the frame."
+  locked_room.window_escape: "You climb through the high window and land safely on the roof."
+  locked_room.window_fall: "Your footing slips. You reach the yard with an injured leg, unable to run."
+  locked_room.wardrobe_barricade: "You drag the wardrobe across the outer door. That buys five seconds, not freedom."
+  locked_room.surrendered: "You step back and wait for Johnny."
+  locked_room.radio_johnny_returns: "The radio crackles: 'Johnny is coming back.' You can now see the remaining time."
+  common.corridor_escape: "ESCAPED: You reach the road through the corridor."
+  common.window_escape: "ESCAPED: You cross the roof into the morning light."
+  common.caught: "CAUGHT: Johnny marches you back to the chair."
+  common.injured: "FAILED: The watchman finds you in the yard."
+actions:
+  locked_room.open_drawer: Open the desk drawer.
+  locked_room.close_drawer: Close the drawer.
+  locked_room.take_keychain: Take the keychain.
+  locked_room.unlock_door_key1: Try the notched key.
+  locked_room.unlock_door_key2: Try the round key.
+  locked_room.carefully_look_around: Look carefully around the room.
+  locked_room.open_wardrobe: Open the wardrobe.
+  locked_room.search_fireplace: Take the iron bar from the fireplace.
+  locked_room.brace_for_strength: Brace for strength (less dexterity).
+  locked_room.break_door: Force the weakened door.
+  locked_room.squeeze_through: Try squeezing through the crack.
+  locked_room.use_iron_bar: Lever the door open with the iron bar.
+  locked_room.escape_window: Climb through the wardrobe window.
+  locked_room.buy_time: Barricade with the wardrobe (buy five seconds).
+  locked_room.give_up: Give up and wait for Johnny.
