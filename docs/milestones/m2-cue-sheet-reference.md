@@ -8,8 +8,8 @@ The drawer/keyring/door challenge is a complete **authored stateful mini-game**,
 
 ## Boundary and operating rules
 
-- The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to play, which actions to accept and the currently relevant elapsed/total timer. **GRIMM's canonical `world_state` is not a mandatory Cue Sheet field.**
-- The renderer first executes all `play` cues (in order), updates its own presentation state as needed, then displays/enables `actions` and **starts/resumes its timer at the supplied Cue Sheet baseline**. An authored action's animation duration is *already included* in GRIMM's post-action `scene_timer` value and **must not be counted twice**.
+- The story graph, current narrative context and node changes exist inside GRIMM. **Cue Sheets do not expose graph node IDs, node transitions or ending markers**. They tell the renderer what to present, which actions to accept and the currently relevant elapsed/total timer. **GRIMM's canonical `world_state` is not a mandatory Cue Sheet field.**
+- The renderer first executes all `cue` entries (in order), updates its own presentation state as needed, then displays/enables `actions` and **starts/resumes its timer at the supplied Cue Sheet baseline**. An authored action's animation duration is *already included* in GRIMM's post-action `scene_timer` value and **must not be counted twice**.
 - The renderer reports `game_action { ref, action, scene_timer }` when the user chooses an offered action. The timer value is the **elapsed time at selection**, before GRIMM adds that action's authored cost. `action: timeout` is the ordinary reserved input for expiry without a player choice. GRIMM validates the referenced current offer and resolves all effects, conditions, time and presentation in one transaction.
 - Timers do not automatically reset between Cue Sheets. Explicit authored time changes may increase the total budget, or start a new timer (e.g. `[0 of 12]s`). `time_passed` in a rule reads the renderer-reported elapsed value from the current `game_action`.
 - The demonstration uses simple **GRIMM-owned** authored state (no built-in door mechanics): `drawer_open`, `has_keychain`, `door_damage`, `door_open`, `character_strength`, `character_dex`. Authors choose which are persistent across narrative contexts and which are local. The comments alongside the Cue Sheets annotate GRIMM's internal state for testability; these values do **not** belong to the M2 renderer-facing Cue Sheet.
@@ -24,7 +24,7 @@ For this first trace, each drawer/keychain action costs **1 second** and each ke
 ```text
 cue_sheet {
   id: 1
-  play: [locked_in]
+  cue: [locked_in]
   actions: [open_drawer, open_wardrobe, carefully_look_around]
 
   scene_timer: [0 of 30]s
@@ -37,7 +37,7 @@ game_action { ref: 1, action: open_drawer, scene_timer: [2 of 30]s }
 # GRIMM commits drawer_open=true, adds authored 1s duration.
 cue_sheet {
   id: 2
-  play: [open_drawer]
+  cue: [open_drawer]
   actions: [close_drawer, take_keychain_from_drawer,
             open_wardrobe, carefully_look_around]
 
@@ -52,7 +52,7 @@ game_action { ref: 2, action: take_keychain_from_drawer,
 # GRIMM adds authored 1s and stores has_keychain=true.
 cue_sheet {
   id: 3
-  play: [take_keychain]
+  cue: [take_keychain]
   actions: [close_drawer, open_wardrobe, unlock_door_key1,
             unlock_door_key2, carefully_look_around, break_door]
 
@@ -64,7 +64,7 @@ game_action { ref: 3, action: unlock_door_key1,
               scene_timer: [8 of 30]s }
 cue_sheet {
   id: 4
-  play: [wrong_key_does_not_turn]
+  cue: [wrong_key_does_not_turn]
   actions: [close_drawer, open_wardrobe, unlock_door_key1,
             unlock_door_key2, carefully_look_around, break_door]
 
@@ -76,7 +76,7 @@ game_action { ref: 4, action: unlock_door_key2,
               scene_timer: [12 of 30]s }
 cue_sheet {
   id: 5
-  play: [unlock_door_success, escape_room]
+  cue: [unlock_door_success, escape_room]
   actions: []
 
   scene_timer: [14 of 30]s
@@ -105,28 +105,28 @@ ON break_door:
 
     IF door_damage >= 4:
         SET door_open true
-        PLAY break_door_success
+        CUE break_door_success
         GOTO corridor
     ELSE IF door_damage == 3:
-        PLAY break_door_almost_open
+        CUE break_door_almost_open
         # remain in current narrative context; offer break_door again
     ELSE IF door_damage == 2:
-        PLAY break_door_progress
+        CUE break_door_progress
     ELSE IF door_damage == 1:
-        PLAY break_door_barely_moves
+        CUE break_door_barely_moves
     ELSE:
-        PLAY break_door_nothing_happens
+        CUE break_door_nothing_happens
 
 ON squeeze_through:
     COST 2s
     IF character_dex > door_damage:
-        PLAY squeeze_through_success
+        CUE squeeze_through_success
         GOTO corridor
     ELSE:
-        PLAY squeeze_through_does_not_fit
+        CUE squeeze_through_does_not_fit
 
 ON timeout:
-    PLAY caught_while_escaping
+    CUE caught_while_escaping
     GOTO caught_ending
 ```
 
@@ -141,7 +141,7 @@ This is a **separate run**, with `door_damage=0`, `character_strength=1`, `chara
 ```text
 cue_sheet {
   id: 20
-  play: [door_locked]
+  cue: [door_locked]
   actions: [break_door]
 
   scene_timer: [0 of 30]s
@@ -151,7 +151,7 @@ game_action { ref: 20, action: break_door, scene_timer: [0 of 30]s }
 # door_damage = 0 + strength(1) = 1; +2s
 cue_sheet {
   id: 21
-  play: [break_door_barely_moves]
+  cue: [break_door_barely_moves]
   actions: [break_door, squeeze_through]
 
   scene_timer: [2 of 30]s
@@ -161,7 +161,7 @@ game_action { ref: 21, action: break_door, scene_timer: [2 of 30]s }
 # door_damage = 1 + strength(1) = 2; +2s
 cue_sheet {
   id: 22
-  play: [break_door_progress]
+  cue: [break_door_progress]
   actions: [break_door, squeeze_through]
 
   scene_timer: [4 of 30]s
@@ -172,7 +172,7 @@ game_action { ref: 22, action: squeeze_through, scene_timer: [4 of 30]s }
 # character_dex(3) > door_damage(2) -> success; +2s
 cue_sheet {
   id: 23
-  play: [squeeze_through_success]
+  cue: [squeeze_through_success]
   actions: []
 
   scene_timer: [6 of 30]s
@@ -183,7 +183,7 @@ game_action { ref: 22, action: break_door, scene_timer: [4 of 30]s }
 # door_damage = 3; +2s
 cue_sheet {
   id: 24
-  play: [break_door_almost_open]
+  cue: [break_door_almost_open]
   actions: [break_door, squeeze_through]
 
   scene_timer: [6 of 30]s
@@ -194,7 +194,7 @@ cue_sheet {
 game_action { ref: 24, action: squeeze_through, scene_timer: [6 of 30]s }
 cue_sheet {
   id: 25
-  play: [squeeze_through_does_not_fit]
+  cue: [squeeze_through_does_not_fit]
   actions: [break_door, squeeze_through]
 
   scene_timer: [8 of 30]s
@@ -205,7 +205,7 @@ game_action { ref: 24, action: break_door, scene_timer: [6 of 30]s }
 # door_damage = 4; door_open = true; +2s
 cue_sheet {
   id: 26
-  play: [break_door_success]
+  cue: [break_door_success]
   actions: []
 
   scene_timer: [8 of 30]s
@@ -229,7 +229,7 @@ These numeric examples differ from an earlier informal “1/2/3 attempts” illu
 game_action { ref: 22, action: timeout, scene_timer: [30 of 30]s }
 cue_sheet {
   id: 27
-  play: [caught_while_escaping]
+  cue: [caught_while_escaping]
   actions: []
 
   scene_timer: [30 of 30]s
