@@ -1,6 +1,6 @@
 # WHITEOUT — M4 Adventure Design Brief (proposed)
 
-**Status:** M4/M5 game-design proposal, following the merged M2 implementation. **No code changes.**
+**Status:** M4 implemented in [WHITEOUT](../../examples/whiteout/README.md), following merged M0–M3. The original brief below remains the acceptance reference; concrete rules, playtesting evidence and timing choices are in the [implementation notes](../../examples/whiteout/DESIGN.md). M5 graphical adaptation remains future work.
 **Working title:** WHITEOUT
 **Setting:** Isolated polar research station Aurora during an escalating storm and power failure.
 **Delivery:** A finished M4 text adventure authored in the M2 DSL, later adapted in M5 to a graphical renderer using **the same GRIMM story script and semantic IDs**. Both example applications live in this repository.

@@ -698,3 +698,34 @@ fn safety_line_preparation_can_also_save_everyone_after_radio_first() {
     g.ending("full_rescue");
     assert!(g.flag("jonas_alive") && g.flag("lea_alive"));
 }
+
+#[test]
+fn cold_from_slow_engineering_changes_a_later_radio_outcome_and_can_be_recovered() {
+    for slow in [false, true] {
+        let mut g = Game::prepared(true, true, true);
+        g.step("engineering");
+        g.step("deploy_heat_pack");
+        g.step("open_generator_latch");
+        g.step("open_generator_latch");
+        g.step("isolate_deicer");
+        g.at(if slow { 85000 } else { 9000 });
+        g.step("start_generator");
+        g.step("return");
+        assert_eq!(g.int("accounted_ms"), 0);
+        assert_eq!(g.int("cold_exposure"), if slow { 90000 } else { 14000 });
+        g.step("communications");
+        g.step("make_adapter");
+        g.step("send_signal");
+        assert_eq!(g.flag("radio_done"), !slow);
+        if slow {
+            assert!(g.narratives.contains(&"radio.cold_transmit_failure".into()));
+            g.step("warm_hands");
+            g.step("send_signal");
+            assert!(g.flag("radio_done"));
+        }
+        g.step("return");
+        g.step("ridge");
+        g.step("coordinate");
+        g.ending("full_rescue");
+    }
+}
