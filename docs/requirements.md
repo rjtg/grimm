@@ -86,6 +86,8 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 - **VIS-01** Add a graphical adapter/renderer for the existing canonical action and choice semantics, with location imagery and scene-specific clickable hotspots/menus.
 - **VIS-02** Render inventory and optional character stats as views of authorized semantic state, never as a second game rules engine.
 - **VIS-03** Synchronize required dialogue/animation/camera presentation and interaction readiness with M1.8 lifecycle; preserve deadlines and no early activation.
+- **VIS-05** Introduce game-declared presentation target(s) and required capabilities, with host-side compatibility checks for graphical scene assets, hotspots, inventory/UI and timing. Reject incompatible game/renderer combinations with clear diagnostics instead of assuming automatic text-to-3D conversion.
+- **VIS-06** Keep authored graphical presentation assets and semantic scene/choice-to-hotspot bindings outside canonical engine rules; define game packaging/versioning only as demanded by the M5 playable demo. Multiple compatible renderer targets are optional, not mandatory.
 - **VIS-04** Demonstrate equivalent narrative/puzzle outcomes **and authoritative action-in-progress/input-lock behavior and duration-matched animation** for the same adventure in text and graphical frontends, without engine-specific UI logic.
 
 ## Playable demo acceptance rule
