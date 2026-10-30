@@ -35,7 +35,7 @@ A composition root wires concrete components. Engine modules must never import a
 ## Domain ownership
 - **Engine:** authoritative world/game state; validates actions; commits effects; records events; graph traversal.
 - **Semantic protocol:** typed actions, committed game events, narrative content, currently valid interaction offers, and player-visible projections. These are related but not interchangeable.
-- **Output adapter:** maps semantic output to presentation commands; may hold a scene graph or call an LLM; cannot modify game truth.
+- **Output adapter:** maps already-authorized semantic output to presentation commands; may maintain presentation state, but cannot modify game truth. Optional stylistic text transformation is deferred, not a requirement for dynamic narrative.
 - **Renderer:** displays presentation commands (text, comic, 3D) and reports raw user interactions / presentation completion.
 - **Input adapter:** converts raw UI input or text into proposed semantic actions; engine validates proposals.
 - **Composition root:** chooses engine capabilities, adapters, renderers and transports.
@@ -47,7 +47,7 @@ Narrative scenes are authored or generated situations describing what happens, w
 
 Story progress is likewise separate from a scene or location. The engine may express progress through state variables and committed effects, and later optional narrative milestones; a second parallel progress graph is not mandated. The engine remains authoritative for entity state and transitions. Presentation adapters receive only deliberately revealed context, not private entity state.
 
-Implementation staging: M1.5 first tests these distinctions by writing a second game using existing primitives, then makes minimal format/API additions if evidence requires them. Persistent entity-state mechanisms may arrive in M4; optional NPC agency in M5 and narrative direction in M6. See [ADR-0005](adr/0005-world-entities-scenes-and-progress.md).
+Implementation staging: M1.5 first tests these distinctions by writing a second game using existing primitives, then makes minimal format/API additions if evidence requires them. Minimal persistent entity-state mechanisms may arrive with M2 dynamic proposals when needed; optional generative proposal providers are staged for M4, NPC agency for M5 and narrative direction for M6. See [ADR-0005](adr/0005-world-entities-scenes-and-progress.md).
 
 ## Temporal semantics
 Time is a cross-cutting but opt-in game rule, distinct from narrative progress and presentation animation time. **World time** advances through explicit engine-validated steps; **decision deadlines** express how long a player may act; **narrative progress** reflects consequences rather than a clock tick alone. The host/runtime supplies clock or elapsed-time input, but the engine owns committed temporal state and determines timeout outcomes. No system-clock, timer, sleep, or render-framework dependency enters the headless engine.
@@ -81,7 +81,7 @@ explicit Enter; EOF cannot stand in for completion. ADR-0007 retains Proposed st
 ## Event and presentation semantics
 Committed game events describe what actually happened, including offscreen events. They are not automatically visible to players. Narrative content describes what may be communicated; interaction offers describe currently valid inputs. A filtered projection exposes only player-visible information. A renderer must not receive hidden world state by default.
 
-Authored text and semantically described actions are both valid narrative inputs. An authored text adapter can preserve exact prose; a generative text adapter may produce stylistic presentation without introducing canonical facts. Generated content is non-authoritative.
+Authored text and semantically described actions are both valid narrative inputs. An authored text adapter can preserve exact prose. M2 may introduce externally proposed runtime narrative nodes/events, but the engine validates and commits those proposals before they become canonical semantic output. M4 may optionally source proposals from an LLM; a separate generative *presentation* adapter is not a planned milestone. Whether non-authoritative stylistic rewording is useful and how to prevent misleading text are open questions. See [the open-points catalog](open-questions.md#generative-narrative-and-presentation).
 
 ## State and lifecycle
 - Engine state and presentation state are distinct.
@@ -95,4 +95,4 @@ Authored text and semantically described actions are both valid narrative inputs
 Optional graph dynamics, intent resolution, NPC controllers, and narrative direction integrate through explicit engine interfaces and validated action/event processing. Do not implement a general-purpose plugin framework in M0.
 
 ## Open design questions
-Exact Rust protocol types; async transport conventions; story file schema; versioning and migration policy; persistence format; adapter snapshot granularity; generated-text validation strategy. Resolve incrementally with tests and ADRs.
+The living [open-points catalog](open-questions.md) tracks unresolved API, transport, persistence and generative-narrative questions. In particular, typed dynamic node/event proposals, semantic consistency of prose, allowed new facts, privacy-safe projections, failure fallback and deterministic replay require milestone-specific decisions and tests. These are **not** claims that semantic truth can be automatically verified by a language model. Resolve them incrementally with ADRs; do not invent blanket generation authority in an adapter.
