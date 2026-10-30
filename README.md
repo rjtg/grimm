@@ -12,13 +12,13 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 - Classic games work without AI or graphics.
 - Each roadmap milestone ends with a playable or executable demonstration.
 
-See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), and [M0 brief](docs/milestones/m0.md).
+See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), [open questions](docs/open-questions.md), and [M0 brief](docs/milestones/m0.md).
 
 Status: M0 through M1.8 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
 Four reference adventures exercise persistent state, bounded playability checks,
 optional deterministic time, narrative-only continuation and presentation-gated decisions.
-AI and graphical frontends remain future milestones.
+The next planned milestone is M2 Dynamic Narrative Foundation (typed, validated runtime story proposals without an LLM requirement), followed by M3 Free Input and optional M4 Generative Narrative. The former stand-alone Generative Presentation milestone is retired; its open design questions are tracked in the catalog. AI and graphical frontends remain future capabilities.
 
 ## Build and run
 
