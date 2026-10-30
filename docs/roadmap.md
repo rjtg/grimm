@@ -28,11 +28,15 @@ The **scene** represents an ongoing narrative situation; its **current interacti
 
 Puzzle/story graph validation must handle **node + relevant state**, not merely static edges. Check valid references, reachability of intended interactions, executable exits or intentional endings, and state-dependent deadlocks. Keep explicit bounded/inconclusive analysis; do not claim exhaustive puzzle solvability or globally require that every arbitrary RPG state reaches a fixed ending.
 
-## Game realization and renderer compatibility
+## Games are concrete compositions, not renderer-neutral graphs
 
-**Engine-level renderer independence does not make every game presentation-agnostic.** A text CYOA graph is not automatically a meaningful Bevy 3D game, and spatial puzzles require deliberate graphical authoring and assets. A game must eventually declare its supported **presentation target(s)** and required renderer capabilities; a compatible host/renderer combination must be checked rather than guessed. A game may target a single text, 2D, visual-novel or 3D experience, or explicitly provide several presentation packages sharing canonical rules and choices.
+A **playable game** is a concrete composition of the shared GRIMM engine, its authored narrative/rule definition, a **game-selected concrete renderer implementation and its origin**, required presentation bindings/assets, and any additional game-specific components. The game definition/package is the place that declares **which renderer to instantiate or obtain**, how it is configured, and where its assets/dependencies come from. The exact loading, packaging, discovery and extension contract remains an open design question, not an accepted manifest schema.
 
-Keep the engine independent of renderer implementations: the game or host associates semantic scenes/choices with presentation assets and renderer-specific bindings. Do not require universal cross-renderer playback. M2 remains a text demo; M5 investigates game-level presentation profiles, asset packaging, capability validation and optional dual-target games. The exact format and level of renderer binding are open questions in [the catalog](open-questions.md#game-realization-packaging-and-renderer-compatibility).
+**Do not model game compatibility as merely “this renderer supports 3D, therefore it can play this 3D game.”** Even a capable Bevy renderer lacks the game's particular rooms, cameras, models, character rigs, interaction hotspots and authored choreography unless those are explicitly provided and wired together. Neither a text graph nor a general renderer capability list is a complete game.
+
+The headless **engine** still owns canonical state, temporal semantics, rule validation and committed choices; it does not acquire a Bevy dependency or load game-specific assets. The game-level composition root assembles the concrete renderer, adapters, authored data and resources. Each game can select its **own renderer**; sharing a renderer implementation across games is optional, not a guarantee. Multi-renderer variants, if ever useful, must be **explicit game-authored compositions** rather than automatic playback of an arbitrary graph.
+
+M2–M4 may continue using today's explicit CLI composition as their complete playable text games. M5 should deliver a fully composed graphical game with a game-selected concrete renderer and all required assets and bindings, not merely a renderer that claims generic capabilities. Define the minimum game-definition/package contract from this complete demo; see [open questions](open-questions.md#game-composition-renderer-origin-and-packaging).
 
 ## Milestone sequencing and authoring evidence
 
