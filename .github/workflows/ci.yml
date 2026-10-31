@@ -67,3 +67,15 @@ jobs:
             echo 'A structurally trapped region must fail authoring validation'
             exit 1
           fi
+      - name: Validate WHITEOUT and play its authored endings offline
+        shell: bash
+        run: |
+          cargo run --offline --locked --quiet -p grimm-cli -- check-scene examples/whiteout/story.yaml
+          cargo run --offline --locked --quiet -p grimm-cli -- index-scene examples/whiteout/story.yaml > whiteout-index.json
+          for route in full-rescue lever-rescue partial-survival station-lost; do
+            cargo run --offline --locked --quiet -p grimm-cli -- play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml --manual-clock < "examples/whiteout/playthroughs/$route.input" > "whiteout-$route.txt"
+          done
+          grep -Fx 'ENDING / FOUR NAMES ON THE MANIFEST' whiteout-full-rescue.txt
+          grep -Fx 'ENDING / FOUR NAMES ON THE MANIFEST' whiteout-lever-rescue.txt
+          grep -Fx 'ENDING / THE EMPTY PLACE' whiteout-partial-survival.txt
+          grep -Fx 'ENDING / WHITEOUT' whiteout-station-lost.txt
