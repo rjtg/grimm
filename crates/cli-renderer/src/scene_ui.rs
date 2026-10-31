@@ -123,14 +123,24 @@ impl SceneUi {
         } else {
             "deadline hidden".into()
         };
-        let header = format!(
-            "GRIMM / {} | {} · T={:.1}s | {}\n{}",
-            view.title,
-            view.context,
-            view.clock.elapsed_ms as f64 / 1000.0,
-            deadline,
-            view.status
-        );
+        let header = if area.width < 80 {
+            format!(
+                "{} | {}\nT={:.1}s · {}",
+                view.context,
+                view.status,
+                view.clock.elapsed_ms as f64 / 1000.0,
+                deadline
+            )
+        } else {
+            format!(
+                "GRIMM / {} | {} · T={:.1}s | {}\n{}",
+                view.title,
+                view.context,
+                view.clock.elapsed_ms as f64 / 1000.0,
+                deadline,
+                view.status
+            )
+        };
         frame.render_widget(
             Paragraph::new(header).block(Block::default().borders(Borders::BOTTOM)),
             bands[0],
@@ -496,6 +506,10 @@ mod tests {
         let narrow = render(&mut ui, 70, 24);
         assert!(narrow.contains("CUE INSPECTOR"));
         assert!(!narrow.contains("NARRATIVE"));
+        let compact = render(&mut ui, 32, 24);
+        assert!(compact.contains("T=10.0s"));
+        assert!(compact.contains("deadline 20.0s"));
+        assert!(compact.contains("Playing"));
         assert!(render(&mut ui, 20, 5).contains("GRIMM"));
         ui.next_focus();
         assert_eq!(ui.focus, Focus::Choices);
