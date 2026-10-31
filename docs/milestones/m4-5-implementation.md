@@ -110,4 +110,8 @@ were stale/timeouts. Cargo compilation, tests and clean Clippy provide final
 verification for those files. PTY regressions verify normal and error cleanup;
 the real interactive playthrough/captures provide additional usability evidence.
 The CLI ending regression also requires an exact standalone heading line, matching
-the offline CI walkthrough checks rather than merely a substring.
+the offline CI walkthrough checks rather than merely a substring. The PTY
+test synchronizes resize/F2/Esc input with current rendered frames and passed
+ten consecutive full subprocess runs after that CI synchronization fix. Python
+LSP was unavailable (`pyright-langserver` missing); those actual executions
+provide its repo-native verification.

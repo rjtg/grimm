@@ -82,11 +82,11 @@ actions:
                 x += 2 if unicodedata.east_asian_width(token) in ("W", "F") else 1
         return "\n".join("".join(row) for row in cells)
 
-    def wait_for(text, timeout=8):
+    def wait_for(text, timeout=8, current=False):
         target = text.encode()
         limit = time.monotonic() + timeout
         while time.monotonic() < limit:
-            if target in received or text in screen_text():
+            if (not current and target in received) or text in screen_text():
                 return
             if process.poll() is not None:
                 raise AssertionError(f"exited {process.returncode}: {received!r}")
@@ -102,10 +102,12 @@ actions:
         wait_for("clue")
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 70, 0, 0))
         process.send_signal(signal.SIGWINCH)
+        wait_for("room | Playing", current=True)
         # Input remains usable after narrow/full-width inspector resize.
         os.write(master, b"\x1bOQ")
+        wait_for("NARRATIVE", current=True)
         os.write(master, b"\x1b")
-        wait_for("SESSION")
+        wait_for("SESSION", current=True)
         os.write(master, b"2")
         wait_for("Saved")
         os.write(master, b"3")
