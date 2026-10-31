@@ -40,7 +40,9 @@ values are scoped and read-only, with changes marked. No unsafe state editor/F3
 shortcut is provided; the migration guide documents a replay-safe mutation design.
 
 Esc pauses the renderer clock and opens Continue/Save/Load/Quit. Commands captured
-from an expired revision cannot affect a successor. F4 exports both widget layouts
+from an expired revision cannot affect a successor. Queued terminal keys are
+discarded before a changed revision or scheduled offer set is displayed, so
+old numeric keys and Esc cannot act on the newly shown interaction. F4 exports both widget layouts
 to `.grimm-captures/STORY_ID`. Ctrl-C exits with cleanup. Resize and ordinary error
 unwinding restore raw-mode/alternate-screen state through RAII.
 
@@ -107,3 +109,5 @@ Semantic LSP feedback was requested for touched Rust files; several responses
 were stale/timeouts. Cargo compilation, tests and clean Clippy provide final
 verification for those files. PTY regressions verify normal and error cleanup;
 the real interactive playthrough/captures provide additional usability evidence.
+The CLI ending regression also requires an exact standalone heading line, matching
+the offline CI walkthrough checks rather than merely a substring.

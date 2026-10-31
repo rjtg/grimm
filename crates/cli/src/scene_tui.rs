@@ -99,6 +99,7 @@ pub(crate) fn run(
     let _screen = Screen::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     let mut menu = false;
+    let mut displayed: Option<(u64, Vec<String>)> = None;
     let mut status = String::from("Playing");
     loop {
         if !menu {
@@ -171,6 +172,28 @@ pub(crate) fn run(
                     })
             })
             .collect::<io::Result<_>>()?;
+        let offer_identity = (
+            session.player().revision(),
+            session.player().actions().to_vec(),
+        );
+        if displayed
+            .as_ref()
+            .is_some_and(|previous| previous != &offer_identity)
+        {
+            // Crossterm keys have no input revision/timestamp. Anything already
+            // queued before this replacement is bound to the previous display,
+            // including session commands and same-revision scheduled offer swaps.
+            // Bound draining under an input flood; defer new input until clear.
+            let mut drained = 0;
+            while drained < 256 && event::poll(Duration::ZERO)? {
+                let _ = event::read()?;
+                drained += 1;
+            }
+            if drained == 256 {
+                continue;
+            }
+        }
+        displayed = Some(offer_identity);
         let displayed_revision = session.player().revision();
         let running_text = session.player().running_narratives().first().cloned();
         let view = SceneView {

@@ -620,7 +620,7 @@ fn actual_cli_reaches_all_three_endings_and_the_lever_rescue() {
             String::from_utf8_lossy(&output.stderr)
         );
         let text = String::from_utf8(output.stdout).unwrap();
-        assert!(text.contains(ending), "{text}");
+        assert!(text.lines().any(|line| line == ending), "{text}");
         for unwanted in [
             "Action rejected",
             "Choose an available",

@@ -1,5 +1,6 @@
 """Exercise the real scene TUI through a PTY, including RAII terminal teardown."""
 import fcntl
+import json
 import os
 import pathlib
 import pty
@@ -223,3 +224,60 @@ contexts:
     assert legacy.returncode == 0, legacy.stderr
     assert b"LEGACY_INTRO" in legacy.stdout
     assert b"UNSEEN_WARNING" not in legacy.stdout
+
+    # A replacement must discard keys/lifecycle commands already queued for the
+    # old visible offer, even when the next offer is immediately executable.
+    (root / "story.yaml").write_text("""schema_version: 2
+id: queue_smoke
+version: 1
+title: Queue smoke
+start: room
+globals: {count: 0}
+contexts:
+  - id: room
+    cues: [{kind: actions, available_actions: eligible}]
+    actions:
+      - id: first
+        when: {op: eq, left: {var: global.count}, right: 0}
+        effects: [{op: add, var: global.count, value: 1}]
+        outcomes: [{}]
+      - id: second
+        when: {op: eq, left: {var: global.count}, right: 1}
+        outcomes: [{goto: end}]
+  - id: end
+    terminal: true
+    cues: []
+""")
+    (root / "text.yaml").write_text("narratives: {}\nactions: {room.first: First choice, room.second: New choice}\n")
+    master, slave = pty.openpty()
+    saved = termios.tcgetattr(slave)
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
+    process = subprocess.Popen([binary, "play-scene", "story.yaml", "text.yaml"], cwd=root,
+                               stdin=slave, stdout=slave, stderr=slave)
+    received = bytearray()
+    try:
+        wait_for("First choice")
+        os.write(master, b"11\x1b")
+        wait_for("New choice")
+        os.write(master, b"\x1b")
+        wait_for("SESSION")
+        os.write(master, b"2")
+        checkpoint = root / ".grimm-saves/scene-queue_smoke.json"
+        limit = time.monotonic() + 5
+        while not checkpoint.exists() and time.monotonic() < limit:
+            if select.select([master], [], [], 0.05)[0]:
+                received.extend(os.read(master, 65536))
+        assert checkpoint.exists(), screen_text()
+        actions = [entry["action_id"] for entry in json.loads(checkpoint.read_text())["history"]
+                   if entry["kind"] == "action"]
+        assert actions == ["room.first"], actions
+        os.write(master, b"4")
+        process.wait(timeout=5)
+        assert process.returncode == 0
+        assert termios.tcgetattr(slave) == saved
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        os.close(master)
+        os.close(slave)

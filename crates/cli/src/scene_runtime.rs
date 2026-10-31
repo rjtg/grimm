@@ -171,7 +171,7 @@ pub fn run(args: &[OsString]) -> Result<()> {
                             "missing text binding for narrative '{narrative_id}'"
                         ))
                     })?;
-                    renderer.render(&[PresentationCommand::Text(prose.clone())])?;
+                    renderer.render(&[PresentationCommand::Text(format!("\n{prose}"))])?;
                     if !automatic {
                         renderer.render(&[PresentationCommand::Text("Press Enter after reading. Available numbered actions may still be used.".into())])?;
                     }
