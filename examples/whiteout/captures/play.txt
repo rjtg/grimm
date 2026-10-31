@@ -37,4 +37,3 @@ Playing
 │  [4] Abandon the radio repair and bring Lea inside.                                              │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 1–9 Choose · Tab Focus · ↑↓ Scroll · Esc Pause/Save/Load · F2 Debug · ? Help
-

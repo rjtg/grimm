@@ -1,7 +1,7 @@
 # M4.5 terminal captures
 
 `play.txt` (100×40) and `inspector.txt` (150×40) were exported with F4 from an
-actual interactive WHITEOUT session in the radio cabin. The same widget renderer
+actual interactive WHITEOUT session in the radio cabin. Trailing empty viewport rows are omitted. The same widget renderer
 produces both layouts from one live session snapshot. The live timer shows its
 remaining budget while choices stay below narrative; the inspector adds the
 full issued sheet, execution lifecycle and current read-only world rows. Scroll

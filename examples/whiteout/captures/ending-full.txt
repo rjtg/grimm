@@ -37,4 +37,3 @@ Ending · Esc to quit
 │Presentation in progress…                                                                         │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 1–9 Choose · Tab Focus · ↑↓ Scroll · Esc Pause/Save/Load · F2 Debug · ? Help
-
