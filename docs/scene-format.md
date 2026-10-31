@@ -1,4 +1,9 @@
-# M2 scene DSL and Cue Sheets
+# Scene DSL and Cue Sheets
+
+M4.5 adds scene schema 2 and emitted Cue Sheet protocol 2; see the
+[timing migration](migrations/m4-5-scenes.md) for the running scene clock,
+optional deadlines, narrative durations, explicit dependencies and checkpoint
+compatibility. The schema-1 reference below describes legacy semantics.
 
 The scene DSL is an additive format selected by `play-scene` / `check-scene`.
 Legacy `play` / `check`, story schemas 1–3 and their checkpoint formats are

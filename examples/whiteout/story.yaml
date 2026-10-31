@@ -1,8 +1,8 @@
 # WHITEOUT rules: renderer-independent M2 DSL. Text is in text.yaml.
 # YAML anchors reuse ordinary authored effects; there is no extra scripting layer.
-schema_version: 1
+schema_version: 2
 id: whiteout
-version: 1
+version: 2
 title: WHITEOUT
 start: blackout
 globals: {thermal_liner: false, jonas_treated: false, copper_braid: false, ceramic_mug: false, spanner: false, safety_line: false,
@@ -13,7 +13,7 @@ globals: {thermal_liner: false, jonas_treated: false, copper_braid: false, ceram
 contexts:
 - id: blackout
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: blackout.arrival}
+  - {cue_id: arrival, kind: narrative, narrative_id: blackout.arrival, duration_ms: 12000}
   - {cue_id: choices, kind: actions, available_actions: eligible}
   actions:
   - id: begin
@@ -41,8 +41,8 @@ contexts:
       goto: stores
 - id: stores
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: stores.arrival}
-  - {cue_id: deadline, kind: timer, start_ms: 180000, visible: true}
+  - {cue_id: deadline, at_ms: 0, kind: timer, set_deadline_ms: 180000, visible: true}
+  - {cue_id: arrival, kind: narrative, narrative_id: stores.arrival, duration_ms: 7000}
   - {cue_id: choices, kind: actions, available_actions: eligible}
   actions:
   - id: take_thermal_liner
@@ -55,7 +55,7 @@ contexts:
     - {op: set, var: global.indoor_rate, value: 0}
     outcomes:
     - cues:
-      - {cue_id: thermal_liner, kind: narrative, narrative_id: stores.thermal_liner}
+      - {cue_id: thermal_liner, kind: narrative, narrative_id: stores.thermal_liner, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.thermal_liner}
@@ -68,7 +68,7 @@ contexts:
     - {op: set, var: global.jonas_treated, value: true}
     outcomes:
     - cues:
-      - {cue_id: jonas_treated, kind: narrative, narrative_id: stores.jonas_treated}
+      - {cue_id: jonas_treated, kind: narrative, narrative_id: stores.jonas_treated, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.jonas_treated}
@@ -81,7 +81,7 @@ contexts:
     - {op: set, var: global.copper_braid, value: true}
     outcomes:
     - cues:
-      - {cue_id: copper_braid, kind: narrative, narrative_id: stores.copper_braid}
+      - {cue_id: copper_braid, kind: narrative, narrative_id: stores.copper_braid, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.copper_braid}
@@ -94,7 +94,7 @@ contexts:
     - {op: set, var: global.ceramic_mug, value: true}
     outcomes:
     - cues:
-      - {cue_id: ceramic_mug, kind: narrative, narrative_id: stores.ceramic_mug}
+      - {cue_id: ceramic_mug, kind: narrative, narrative_id: stores.ceramic_mug, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.ceramic_mug}
@@ -107,7 +107,7 @@ contexts:
     - {op: set, var: global.spanner, value: true}
     outcomes:
     - cues:
-      - {cue_id: spanner, kind: narrative, narrative_id: stores.spanner}
+      - {cue_id: spanner, kind: narrative, narrative_id: stores.spanner, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.spanner}
@@ -121,7 +121,7 @@ contexts:
     - {op: set, var: global.flare, value: true}
     outcomes:
     - cues:
-      - {cue_id: safety_line, kind: narrative, narrative_id: stores.safety_line}
+      - {cue_id: safety_line, kind: narrative, narrative_id: stores.safety_line, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.safety_line}
@@ -134,7 +134,7 @@ contexts:
     - {op: set, var: global.heat_pack, value: true}
     outcomes:
     - cues:
-      - {cue_id: heat_pack, kind: narrative, narrative_id: stores.heat_pack}
+      - {cue_id: heat_pack, kind: narrative, narrative_id: stores.heat_pack, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.heat_pack}
@@ -148,7 +148,7 @@ contexts:
     - {op: set, var: global.controls_known, value: true}
     outcomes:
     - cues:
-      - {cue_id: log_read, kind: narrative, narrative_id: stores.log_read}
+      - {cue_id: log_read, kind: narrative, narrative_id: stores.log_read, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.log_read}
@@ -182,13 +182,14 @@ contexts:
       var: global.exposure_rate
       value: {var: global.indoor_rate}
     cues:
-    - {cue_id: timeout, kind: narrative, narrative_id: stores.timeout}
+    - {cue_id: timeout, kind: narrative, narrative_id: stores.timeout, duration_ms: 1800}
     goto: dispatch
 - id: dispatch
   cues:
   - cue_id: heat_returns
     kind: narrative
     narrative_id: dispatch.heat_returns
+    duration_ms: 1800
     when:
       op: eq
       left: {var: global.generator_done}
@@ -196,6 +197,7 @@ contexts:
   - cue_id: radio_first_cost
     kind: narrative
     narrative_id: dispatch.radio_first_cost
+    duration_ms: 1800
     when:
       op: all
       tests:
@@ -208,6 +210,7 @@ contexts:
   - cue_id: arrival
     kind: narrative
     narrative_id: dispatch.arrival
+    duration_ms: 1800
     when:
       op: eq
       left: {var: global.first_task}
@@ -215,6 +218,7 @@ contexts:
   - cue_id: return_brief
     kind: narrative
     narrative_id: dispatch.return_brief
+    duration_ms: 1800
     when:
       op: ne
       left: {var: global.first_task}
@@ -342,11 +346,11 @@ contexts:
       effects:
       - {op: add, var: global.cold_exposure, value: -20000}
       cues:
-      - {cue_id: warm_hands, kind: narrative, narrative_id: dispatch.warm_hands}
+      - {cue_id: warm_hands, kind: narrative, narrative_id: dispatch.warm_hands, duration_ms: 1800}
     - effects:
       - {op: set, var: global.cold_exposure, value: 0}
       cues:
-      - {cue_id: warm_again, kind: narrative, narrative_id: dispatch.warm_again}
+      - {cue_id: warm_again, kind: narrative, narrative_id: dispatch.warm_again, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -395,11 +399,11 @@ contexts:
           right: true
 - id: generator
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: generator.arrival}
-  - {cue_id: deadline, kind: timer, start_ms: 30000, visible: false}
+  - {cue_id: deadline, at_ms: 0, kind: timer, set_deadline_ms: 30000, visible: false}
+  - {cue_id: arrival, kind: narrative, narrative_id: generator.arrival, duration_ms: 4000}
   - {cue_id: choices, kind: actions, available_actions: eligible}
-  - {cue_id: radio_warning, kind: narrative, narrative_id: generator.radio_warning, at_ms: 10000}
-  - {cue_id: reveal_clock, at_ms: 10000, kind: timer, visible: true}
+  - {cue_id: radio_warning, kind: narrative, narrative_id: generator.radio_warning, duration_ms: 2200, at_ms: 10000, when: {op: eq, left: {var: global.generator_done}, right: false}}
+  - {cue_id: reveal_clock, at_ms: 10000, kind: timer, visible: true, when: {op: eq, left: {var: global.generator_done}, right: false}}
   actions:
   - id: deploy_heat_pack
     duration_ms: 1000
@@ -410,7 +414,7 @@ contexts:
     outcomes:
     - cues:
       - {cue_id: extra_minute, kind: timer, extend_ms: 60000}
-      - {cue_id: heat_pack, kind: narrative, narrative_id: generator.heat_pack}
+      - {cue_id: heat_pack, kind: narrative, narrative_id: generator.heat_pack, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.heat_pack}
@@ -426,7 +430,7 @@ contexts:
         left: {var: global.cold_exposure}
         right: 90000
       cues:
-      - {cue_id: open_generator_latch_numb, kind: narrative, narrative_id: generator.open_generator_latch_numb}
+      - {cue_id: open_generator_latch_numb, kind: narrative, narrative_id: generator.open_generator_latch_numb, duration_ms: 1800}
     - when:
         op: all
         tests:
@@ -442,6 +446,7 @@ contexts:
       - cue_id: open_generator_latch_assisted_open
         kind: narrative
         narrative_id: whiteout.latch_open
+        duration_ms: 3500
         when:
           op: ge
           left: {var: global.latch_damage}
@@ -449,6 +454,7 @@ contexts:
       - cue_id: open_generator_latch_assisted_nearly
         kind: narrative
         narrative_id: whiteout.latch_nearly
+        duration_ms: 3500
         when:
           op: all
           tests:
@@ -461,6 +467,7 @@ contexts:
       - cue_id: open_generator_latch_assisted_crack
         kind: narrative
         narrative_id: whiteout.latch_crack
+        duration_ms: 3500
         when:
           op: lt
           left: {var: global.latch_damage}
@@ -476,6 +483,7 @@ contexts:
       - cue_id: open_generator_latch_steady_open
         kind: narrative
         narrative_id: whiteout.latch_open
+        duration_ms: 3500
         when:
           op: ge
           left: {var: global.latch_damage}
@@ -483,6 +491,7 @@ contexts:
       - cue_id: open_generator_latch_steady_nearly
         kind: narrative
         narrative_id: whiteout.latch_nearly
+        duration_ms: 3500
         when:
           op: all
           tests:
@@ -495,6 +504,7 @@ contexts:
       - cue_id: open_generator_latch_steady_crack
         kind: narrative
         narrative_id: whiteout.latch_crack
+        duration_ms: 3500
         when:
           op: lt
           left: {var: global.latch_damage}
@@ -506,6 +516,7 @@ contexts:
       - cue_id: open_generator_latch_slow_open
         kind: narrative
         narrative_id: whiteout.latch_open
+        duration_ms: 3500
         when:
           op: ge
           left: {var: global.latch_damage}
@@ -513,6 +524,7 @@ contexts:
       - cue_id: open_generator_latch_slow_nearly
         kind: narrative
         narrative_id: whiteout.latch_nearly
+        duration_ms: 3500
         when:
           op: all
           tests:
@@ -525,6 +537,7 @@ contexts:
       - cue_id: open_generator_latch_slow_crack
         kind: narrative
         narrative_id: whiteout.latch_crack
+        duration_ms: 3500
         when:
           op: lt
           left: {var: global.latch_damage}
@@ -550,7 +563,7 @@ contexts:
         left: {var: global.cold_exposure}
         right: 90000
       cues:
-      - {cue_id: work_latch_with_numb_hands_numb, kind: narrative, narrative_id: generator.work_latch_with_numb_hands_numb}
+      - {cue_id: work_latch_with_numb_hands_numb, kind: narrative, narrative_id: generator.work_latch_with_numb_hands_numb, duration_ms: 1800}
     - when:
         op: all
         tests:
@@ -566,6 +579,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_assisted_open
         kind: narrative
         narrative_id: whiteout.latch_open
+        duration_ms: 3500
         when:
           op: ge
           left: {var: global.latch_damage}
@@ -573,6 +587,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_assisted_nearly
         kind: narrative
         narrative_id: whiteout.latch_nearly
+        duration_ms: 3500
         when:
           op: all
           tests:
@@ -585,6 +600,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_assisted_crack
         kind: narrative
         narrative_id: whiteout.latch_crack
+        duration_ms: 3500
         when:
           op: lt
           left: {var: global.latch_damage}
@@ -600,6 +616,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_steady_open
         kind: narrative
         narrative_id: whiteout.latch_open
+        duration_ms: 3500
         when:
           op: ge
           left: {var: global.latch_damage}
@@ -607,6 +624,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_steady_nearly
         kind: narrative
         narrative_id: whiteout.latch_nearly
+        duration_ms: 3500
         when:
           op: all
           tests:
@@ -619,6 +637,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_steady_crack
         kind: narrative
         narrative_id: whiteout.latch_crack
+        duration_ms: 3500
         when:
           op: lt
           left: {var: global.latch_damage}
@@ -630,6 +649,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_slow_open
         kind: narrative
         narrative_id: whiteout.latch_open
+        duration_ms: 3500
         when:
           op: ge
           left: {var: global.latch_damage}
@@ -637,6 +657,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_slow_nearly
         kind: narrative
         narrative_id: whiteout.latch_nearly
+        duration_ms: 3500
         when:
           op: all
           tests:
@@ -649,6 +670,7 @@ contexts:
       - cue_id: work_latch_with_numb_hands_slow_crack
         kind: narrative
         narrative_id: whiteout.latch_crack
+        duration_ms: 3500
         when:
           op: lt
           left: {var: global.latch_damage}
@@ -673,7 +695,7 @@ contexts:
     - {op: set, var: global.lever, value: true}
     outcomes:
     - cues:
-      - {cue_id: lever_made, kind: narrative, narrative_id: generator.lever_made}
+      - {cue_id: lever_made, kind: narrative, narrative_id: generator.lever_made, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -700,11 +722,11 @@ contexts:
         left: {var: global.cold_exposure}
         right: 90000
       cues:
-      - {cue_id: lever_failed, kind: narrative, narrative_id: generator.lever_failed}
+      - {cue_id: lever_failed, kind: narrative, narrative_id: generator.lever_failed, duration_ms: 1800}
     - effects:
       - {op: set, var: global.latch_damage, value: 6}
       cues:
-      - {cue_id: lever_open, kind: narrative, narrative_id: generator.lever_open}
+      - {cue_id: lever_open, kind: narrative, narrative_id: generator.lever_open, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -722,7 +744,7 @@ contexts:
     - {op: set, var: global.controls_known, value: true}
     outcomes:
     - cues:
-      - {cue_id: controls, kind: narrative, narrative_id: generator.controls}
+      - {cue_id: controls, kind: narrative, narrative_id: generator.controls, duration_ms: 1800}
     when:
       op: eq
       left: {var: global.controls_known}
@@ -735,7 +757,7 @@ contexts:
     - {op: set, var: global.deicer_isolated, value: true}
     outcomes:
     - cues:
-      - {cue_id: isolated, kind: narrative, narrative_id: generator.isolated}
+      - {cue_id: isolated, kind: narrative, narrative_id: generator.isolated, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -756,24 +778,25 @@ contexts:
         left: {var: global.deicer_isolated}
         right: false
       cues:
-      - {cue_id: overload, kind: narrative, narrative_id: generator.overload}
+      - {cue_id: overload, kind: narrative, narrative_id: generator.overload, duration_ms: 1800}
     - when:
         op: ge
         left: {var: global.cold_exposure}
         right: 110000
       cues:
-      - {cue_id: starter_cold, kind: narrative, narrative_id: generator.starter_cold}
+      - {cue_id: starter_cold, kind: narrative, narrative_id: generator.starter_cold, duration_ms: 1800}
     - effects:
       - {op: set, var: global.generator_done, value: true}
       - {op: set, var: global.exposure_rate, value: 0}
       - {op: set, var: global.indoor_rate, value: 0}
       cues:
+      - {cue_id: generation_deadline_cancelled, kind: timer, unset_deadline: true}
       - cue_id: startup_lock
         kind: actions
         available_actions: []
-      - {cue_id: startup_prime, kind: narrative, narrative_id: generator.startup_prime}
-      - {cue_id: startup_ignition, kind: narrative, narrative_id: generator.startup_ignition}
-      - {cue_id: startup_heat, kind: narrative, narrative_id: generator.startup_heat}
+      - {cue_id: startup_prime, kind: narrative, narrative_id: generator.startup_prime, duration_ms: 1200}
+      - {cue_id: startup_ignition, kind: narrative, narrative_id: generator.startup_ignition, duration_ms: 1500}
+      - {cue_id: startup_heat, kind: narrative, narrative_id: generator.startup_heat, duration_ms: 1800}
       - {cue_id: startup_ready, kind: actions, available_actions: eligible}
     when:
       op: all
@@ -834,16 +857,17 @@ contexts:
       var: global.exposure_rate
       value: {var: global.indoor_rate}
     cues:
-    - {cue_id: timeout, kind: narrative, narrative_id: generator.timeout}
+    - {cue_id: timeout, kind: narrative, narrative_id: generator.timeout, duration_ms: 1800}
     goto: dispatch
 - id: radio
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: radio.arrival}
-  - {cue_id: deadline, kind: timer, start_ms: 60000, visible: true}
+  - {cue_id: deadline, at_ms: 0, kind: timer, set_deadline_ms: 60000, visible: true}
+  - {cue_id: arrival, kind: narrative, narrative_id: radio.arrival, duration_ms: 6000}
   - {cue_id: choices, kind: actions, available_actions: eligible}
   - cue_id: gust_warning
     kind: narrative
     narrative_id: radio.gust_warning
+    duration_ms: 1800
     at_ms: 15000
     when:
       op: eq
@@ -860,7 +884,7 @@ contexts:
     - {op: set, var: global.radio_adapter, value: true}
     outcomes:
     - cues:
-      - {cue_id: adapter, kind: narrative, narrative_id: radio.adapter}
+      - {cue_id: adapter, kind: narrative, narrative_id: radio.adapter, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -884,11 +908,11 @@ contexts:
         left: {var: global.cold_exposure}
         right: 90000
       cues:
-      - {cue_id: alignment_failed, kind: narrative, narrative_id: radio.alignment_failed}
+      - {cue_id: alignment_failed, kind: narrative, narrative_id: radio.alignment_failed, duration_ms: 1800}
     - effects:
       - {op: set, var: global.dish_aligned, value: true}
       cues:
-      - {cue_id: aligned, kind: narrative, narrative_id: radio.aligned}
+      - {cue_id: aligned, kind: narrative, narrative_id: radio.aligned, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -912,7 +936,7 @@ contexts:
         left: {var: global.cold_exposure}
         right: 90000
       cues:
-      - {cue_id: cold_transmit_failure, kind: narrative, narrative_id: radio.cold_transmit_failure}
+      - {cue_id: cold_transmit_failure, kind: narrative, narrative_id: radio.cold_transmit_failure, duration_ms: 1800}
     - when:
         op: eq
         left: {var: global.radio_adapter}
@@ -921,11 +945,13 @@ contexts:
       - {op: set, var: global.radio_done, value: true}
       - {op: set, var: global.radio_auto, value: true}
       cues:
-      - {cue_id: automatic_call, kind: narrative, narrative_id: radio.automatic_call}
+      - {cue_id: automatic_call_deadline_cancelled, kind: timer, unset_deadline: true}
+      - {cue_id: automatic_call, kind: narrative, narrative_id: radio.automatic_call, duration_ms: 1800}
     - effects:
       - {op: set, var: global.radio_done, value: true}
       cues:
-      - {cue_id: manual_call, kind: narrative, narrative_id: radio.manual_call}
+      - {cue_id: manual_call_deadline_cancelled, kind: timer, unset_deadline: true}
+      - {cue_id: manual_call, kind: narrative, narrative_id: radio.manual_call, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -953,11 +979,11 @@ contexts:
       effects:
       - {op: add, var: global.cold_exposure, value: -20000}
       cues:
-      - {cue_id: warmed_hands, kind: narrative, narrative_id: radio.warmed_hands}
+      - {cue_id: warmed_hands, kind: narrative, narrative_id: radio.warmed_hands, duration_ms: 1800}
     - effects:
       - {op: set, var: global.cold_exposure, value: 0}
       cues:
-      - {cue_id: warm_again, kind: narrative, narrative_id: radio.warm_again}
+      - {cue_id: warm_again, kind: narrative, narrative_id: radio.warm_again, duration_ms: 1800}
     when:
       op: all
       tests:
@@ -1042,12 +1068,12 @@ contexts:
       var: global.exposure_rate
       value: {var: global.indoor_rate}
     cues:
-    - {cue_id: timeout, kind: narrative, narrative_id: radio.timeout}
+    - {cue_id: timeout, kind: narrative, narrative_id: radio.timeout, duration_ms: 1800}
     goto: dispatch
 - id: crisis
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: crisis.arrival}
-  - {cue_id: deadline, kind: timer, start_ms: 45000, visible: true}
+  - {cue_id: deadline, at_ms: 0, kind: timer, set_deadline_ms: 45000, visible: true}
+  - {cue_id: arrival, kind: narrative, narrative_id: crisis.arrival, duration_ms: 8000}
   - {cue_id: choices, kind: actions, available_actions: eligible}
   actions:
   - id: coordinate
@@ -1093,7 +1119,7 @@ contexts:
       - {op: set, var: global.exposure_rate, value: 0}
       goto: ending_full
     - cues:
-      - {cue_id: missing_preparation, kind: narrative, narrative_id: crisis.missing_preparation}
+      - {cue_id: missing_preparation, kind: narrative, narrative_id: crisis.missing_preparation, duration_ms: 1800}
   - id: help_lea
     duration_ms: 0
     effects:
@@ -1243,15 +1269,16 @@ contexts:
       value: {clock: effective_ms}
     - {op: set, var: global.exposure_rate, value: 0}
     cues:
-    - {cue_id: timeout, kind: narrative, narrative_id: crisis.timeout}
+    - {cue_id: timeout, kind: narrative, narrative_id: crisis.timeout, duration_ms: 1800}
     goto: ending_lost
 - id: ending_full
   terminal: true
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: ending_full.arrival}
+  - {cue_id: arrival, kind: narrative, narrative_id: ending_full.arrival, duration_ms: 1800}
   - cue_id: truth
     kind: narrative
     narrative_id: ending_full.truth
+    duration_ms: 1800
     when:
       op: eq
       left: {var: global.log_read}
@@ -1259,10 +1286,11 @@ contexts:
 - id: ending_partial
   terminal: true
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: ending_partial.arrival}
+  - {cue_id: arrival, kind: narrative, narrative_id: ending_partial.arrival, duration_ms: 1800}
   - cue_id: jonas
     kind: narrative
     narrative_id: ending_partial.jonas
+    duration_ms: 1800
     when:
       op: eq
       left: {var: global.jonas_alive}
@@ -1270,6 +1298,7 @@ contexts:
   - cue_id: lea
     kind: narrative
     narrative_id: ending_partial.lea
+    duration_ms: 1800
     when:
       op: eq
       left: {var: global.lea_alive}
@@ -1277,6 +1306,7 @@ contexts:
   - cue_id: truth
     kind: narrative
     narrative_id: ending_partial.truth
+    duration_ms: 1800
     when:
       op: eq
       left: {var: global.log_read}
@@ -1284,4 +1314,4 @@ contexts:
 - id: ending_lost
   terminal: true
   cues:
-  - {cue_id: arrival, kind: narrative, narrative_id: ending_lost.arrival}
+  - {cue_id: arrival, kind: narrative, narrative_id: ending_lost.arrival, duration_ms: 1800}

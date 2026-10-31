@@ -12,6 +12,7 @@ struct Trace {
     path: String,
     related: Vec<Source>,
     declarations: BTreeMap<String, String>,
+    schema_version: u32,
 }
 impl Trace {
     fn at(&mut self, path: impl Into<String>) {
@@ -121,8 +122,34 @@ fn cues(
         if let Some(test) = &cue.when {
             validate_test(test, globals, locals, 0)?;
         }
+        if let Some(after) = &mut cue.after_cue {
+            if trace.schema_version < 2 {
+                return Err(SceneError(
+                    "after_cue requires scene schema_version 2".into(),
+                ));
+            }
+            *after = qualify(ns, after)?;
+        }
         match &mut cue.instruction {
-            AuthoredInstruction::Narrative { narrative_id } => {
+            AuthoredInstruction::Narrative {
+                narrative_id,
+                duration_ms,
+            } => {
+                if duration_ms.is_some() && trace.schema_version < 2 {
+                    return Err(SceneError(
+                        "narrative duration_ms requires scene schema_version 2".into(),
+                    ));
+                }
+                if duration_ms.is_some_and(|duration| {
+                    duration > i64::MAX as u64
+                        || cue
+                            .at_ms
+                            .unwrap_or(0)
+                            .checked_add(duration)
+                            .is_none_or(|end| end > i64::MAX as u64)
+                }) {
+                    return Err(SceneError("narrative duration/time overflow".into()));
+                }
                 // Content IDs may be shared between scenes; they are not graph references.
                 *narrative_id = if narrative_id.contains('.') {
                     normalize(narrative_id)?
@@ -152,10 +179,41 @@ fn cues(
             },
             AuthoredInstruction::Timer {
                 start_ms,
+                deadline_at_ms,
+                unset_deadline,
                 extend_ms,
                 visible,
             } => {
-                if start_ms.is_none() && extend_ms.is_none() && visible.is_none() {
+                if trace.schema_version < 2 && (deadline_at_ms.is_some() || *unset_deadline) {
+                    return Err(SceneError(
+                        "deadline lifecycle directives require scene schema_version 2".into(),
+                    ));
+                }
+                let modes = usize::from(start_ms.is_some())
+                    + usize::from(deadline_at_ms.is_some())
+                    + usize::from(*unset_deadline)
+                    + usize::from(extend_ms.is_some());
+                if modes > 1 {
+                    return Err(SceneError(
+                        "timer cannot combine set/absolute/unset/extend deadline operations".into(),
+                    ));
+                }
+                if *unset_deadline && *visible == Some(true) {
+                    return Err(SceneError(
+                        "unset_deadline cannot also show the removed deadline".into(),
+                    ));
+                }
+                if deadline_at_ms.is_some_and(|at| at > i64::MAX as u64) {
+                    return Err(SceneError(
+                        "absolute deadline exceeds i64 milliseconds".into(),
+                    ));
+                }
+                if start_ms.is_none()
+                    && deadline_at_ms.is_none()
+                    && !*unset_deadline
+                    && extend_ms.is_none()
+                    && visible.is_none()
+                {
                     return Err(SceneError("empty timer instruction".into()));
                 }
                 if start_ms.is_some() && extend_ms.is_some() {
@@ -178,10 +236,33 @@ fn cues(
             // Versioned FNV-1a over authored normalized content/timing/guard,
             // never an output index. Identical instructions require explicit IDs.
             let mut hash = 0xcbf29ce484222325u64;
-            let content = format!(
-                "cue-v1:{:?}:{:?}:{:?}",
-                cue.at_ms, cue.when, cue.instruction
-            );
+            // Preserve M2/M4 content-derived identities for legacy definitions.
+            // Only new duration/dependency/directive content uses the v2 seed.
+            let legacy = match &cue.instruction {
+                AuthoredInstruction::Narrative {
+                    narrative_id,
+                    duration_ms: None,
+                } => Some(format!("Narrative {{ narrative_id: {narrative_id:?} }}")),
+                AuthoredInstruction::Actions { .. } => Some(format!("{:?}", cue.instruction)),
+                AuthoredInstruction::Timer {
+                    start_ms,
+                    deadline_at_ms: None,
+                    unset_deadline: false,
+                    extend_ms,
+                    visible,
+                } => Some(format!(
+                    "Timer {{ start_ms: {start_ms:?}, extend_ms: {extend_ms:?}, visible: {visible:?} }}"
+                )),
+                _ => None,
+            };
+            let content = if let Some(legacy) = legacy.filter(|_| cue.after_cue.is_none()) {
+                format!("cue-v1:{:?}:{:?}:{legacy}", cue.at_ms, cue.when)
+            } else {
+                format!(
+                    "cue-v2:{:?}:{:?}:{:?}:{:?}",
+                    cue.at_ms, cue.when, cue.after_cue, cue.instruction
+                )
+            };
             for byte in content.bytes() {
                 hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
             }
@@ -228,9 +309,11 @@ pub(super) fn compile_located(story: SceneStory) -> Result<SceneStory, Box<Diagn
 }
 
 fn compile_inner(mut story: SceneStory, trace: &mut Trace) -> SceneResult<SceneStory> {
-    if story.schema_version != 1 || story.version == 0 || story.title.trim().is_empty() {
+    trace.schema_version = story.schema_version;
+    if !matches!(story.schema_version, 1 | 2) || story.version == 0 || story.title.trim().is_empty()
+    {
         return Err(SceneError(
-            "scene DSL requires schema_version 1, positive story version and title".into(),
+            "scene DSL requires schema_version 1 or 2, positive story version and title".into(),
         ));
     }
     trace.at("/id");
@@ -453,15 +536,17 @@ fn compile_inner(mut story: SceneStory, trace: &mut Trace) -> SceneResult<SceneS
                 &mut cue_ids,
                 trace,
             )?;
-            if let Some(index) = ctx.cues.iter().position(|cue| {
-                matches!(
-                    cue.instruction,
-                    AuthoredInstruction::Timer {
-                        start_ms: Some(_),
-                        ..
-                    }
-                )
-            }) {
+            if story.schema_version == 1
+                && let Some(index) = ctx.cues.iter().position(|cue| {
+                    matches!(
+                        cue.instruction,
+                        AuthoredInstruction::Timer {
+                            start_ms: Some(_),
+                            ..
+                        }
+                    )
+                })
+            {
                 trace.at(format!("{cp}/cues/{index}"));
                 if ctx.cues[index].at_ms.is_some() || ctx.cues[index].when.is_some() {
                     return Err(SceneError("initial timer start must be unconditional and sequential, not clock-scheduled".into()));
@@ -500,9 +585,49 @@ fn compile_inner(mut story: SceneStory, trace: &mut Trace) -> SceneResult<SceneS
                     AuthoredInstruction::Timer {
                         start_ms: Some(_),
                         ..
+                    } | AuthoredInstruction::Timer {
+                        deadline_at_ms: Some(_),
+                        ..
                     }
                 ) {
                     starts += 1;
+                }
+            }
+            let all_cues: Vec<_> = ctx
+                .cues
+                .iter()
+                .chain(ctx.actions.iter().flat_map(|a| {
+                    a.outcomes
+                        .iter()
+                        .chain(&a.interrupted_outcomes)
+                        .flat_map(|b| &b.outcome.cues)
+                }))
+                .chain(ctx.timeout.iter().flat_map(|o| &o.cues))
+                .collect();
+            let dependencies: BTreeMap<_, _> = all_cues
+                .iter()
+                .filter_map(|cue| {
+                    cue.after_cue
+                        .as_ref()
+                        .map(|after| (cue.cue_id.as_ref().expect("compiled cue ID"), after))
+                })
+                .collect();
+            for (id, after) in &dependencies {
+                trace.at(trace.declarations[&format!("cue:{id}")].clone());
+                if !cue_ids.contains(*after) {
+                    return Err(SceneError(format!(
+                        "cue '{id}' has unknown after_cue '{after}'"
+                    )));
+                }
+                let mut path = BTreeSet::new();
+                let mut cursor = *id;
+                while let Some(next) = dependencies.get(cursor) {
+                    if !path.insert(cursor) {
+                        return Err(SceneError(format!(
+                            "cyclic after_cue dependency at '{cursor}'"
+                        )));
+                    }
+                    cursor = next;
                 }
             }
             if starts > 0 && ctx.timeout.is_none() {

@@ -22,8 +22,12 @@ From the repository root:
 cargo run --locked -p grimm-cli -- play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml
 ```
 
-- **Enter:** finish the displayed narrative. Briefings precede the countdown;
-  after their completion, choices and the scene's timer become active.
+- **Automatic text:** authored durations advance narrative playback; previous text
+  remains in scrollback. Scene clocks and any entry deadline run during briefings.
+  Use `--manual-reading` for explicit Enter completion; Esc pauses for more time.
+- **F2:** toggle the read-only Cue Inspector and world state. Tab changes focus;
+  arrows/PageUp/PageDown scroll, `[ / ]` browse previous sheets. Narrow terminals
+  use a full-width inspector. F4 captures both layouts under `.grimm-captures/`.
 - **Number key:** choose an available action immediately. Every game menu fits
   within nine choices. Work costs time; the next choice may wait for that cost
   and any required narrative to finish.
@@ -74,3 +78,8 @@ logic in the CLI and no new engine, crafting, inventory or NPC subsystem.
 The [walkthrough](WALKTHROUGH.md) contains spoilers, exact ending routes and
 reproducible CLI inputs. The [design and timing notes](DESIGN.md) describe state,
 cold accounting, acceptance evidence and limits.
+
+M4.5 uses scene/checkpoint schema 2. Original schema-1 stories and bindings remain
+in `legacy-v1/`; use those files when loading an older checkpoint. See the
+[migration guide](../../docs/migrations/m4-5-scenes.md) and the real-session
+[text captures](captures/README.md).

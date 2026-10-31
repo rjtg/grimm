@@ -2,6 +2,8 @@
 pub mod authoring;
 pub mod runtime;
 pub mod scene_runtime;
+pub mod scene_session;
+mod scene_tui;
 use grimm_engine::Engine;
 use grimm_semantic::{save::SaveGame, story::Story};
 use std::{fmt, fs, path::Path};

@@ -10,10 +10,11 @@ cargo run --locked -p grimm-cli -- check-scene examples/locked-room/story.yaml
 cargo run --locked -p grimm-cli -- play-scene examples/locked-room/story.yaml examples/locked-room/text.yaml
 ```
 
-Enter completes each displayed narrative. Numbered keys choose actions immediately
-in a terminal. Esc opens the paused session menu. Reading the introduction takes
-no time; acknowledging it executes the hidden thirty-second timer instruction.
-Later prose runs against that clock. The radio reveals the remaining budget at
+Narrative playback advances automatically in the structured terminal UI. Numbered
+keys choose immediately; Esc pauses and opens the session menu. F2 toggles the
+read-only inspector, Tab changes focus and arrows scroll. The scene clock and
+hidden thirty-second deadline start on entry, including during the introduction.
+Use `--manual-reading` to finish text explicitly with Enter; Esc pauses reading. The radio reveals the remaining budget at
 ten seconds even if another narrative is still open. Save/load freezes offline
 elapsed time and reconstructs the semantic plan, rather than animation playback.
 
@@ -58,3 +59,6 @@ Writing YAML expressions is verbose; a future authoring tool could offer shortha
 and validate missing renderer bindings. Structural checking is deliberately not a
 proof that every combination of world state has a winning route. Text completion
 is a coarse media acknowledgement; a graphical renderer would supply its own.
+
+Schema-1 checkpoints require the matching files under `legacy-v1/`. See the
+[M4.5 migration guide](../../docs/migrations/m4-5-scenes.md).

@@ -1,5 +1,6 @@
 //! Text I/O only. This crate cannot see game actions or engine state.
 pub mod cues;
+pub mod scene_ui;
 
 use grimm_presentation::{PresentationCommand, PresentationEvent, PresentationFeedback, RawInput};
 use std::io::{self, BufRead, Write};

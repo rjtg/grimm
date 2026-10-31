@@ -1,0 +1,39 @@
+GRIMM / WHITEOUT | radio · T=6.6s | deadline 53.4s
+Playing
+────────────────────────────────────────────────────────────────────────────────────────────────────
+┌NARRATIVE─────────────────────────────────────────────────────────────────────────────────────────┐
+│Lea has sixty seconds of transmitter reserve before this cabin's battery protector trips. The     │
+│powered dish can be bypassed: copper braid through the mug's ceramic handle makes an isolated     │
+│jumper. Without it, someone must hold the antenna by hand. Lea can do that, but cannot leave the  │
+│mast while the line is live. A ridge safety line could replace her grip later. The battery budget │
+│is already running; Esc pauses the scene if you need more reading time.                           │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌CHOICES───────────────────────────────────────────────────────────────────────────────────────────┐
+│  [1] Braid the copper through the ceramic mug handle.                                            │
+│  [2] Help Lea hand-align the dish instead of making a jumper.                                    │
+│  [3] Warm your hands over the restored cabin heater.                                             │
+│  [4] Abandon the radio repair and bring Lea inside.                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+1–9 Choose · Tab Focus · ↑↓ Scroll · Esc Pause/Save/Load · F2 Debug · ? Help

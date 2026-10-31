@@ -1,0 +1,39 @@
+GRIMM / WHITEOUT | radio · T=6.6s | deadline 53.4s
+Playing
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+┌NARRATIVE──────────────────────────────────────────────────────────────────────┐┌CUE INSPECTOR · [ ] history────────────────────────────────────────┐
+│● radio.arrival [epoch 5]                                                      ││context: radio epoch: 5 rev: 21                                    │
+│Lea has sixty seconds of transmitter reserve before this cabin's battery       ││clock: 6567ms deadline: Some(60000) visible: true                  │
+│protector trips. The powered dish can be bypassed: copper braid through the    ││Sheet rev 21 epoch 5 (0 previous)                                  │
+│mug's ceramic handle makes an isolated jumper. Without it, someone must hold   ││radio.__grimm_lock_21 ✓ completed at 0ms                           │
+│the antenna by hand. Lea can do that, but cannot leave the mast while the line ││at_ms: 0 after_cue: —                                              │
+│is live. A ridge safety line could replace her grip later. The battery budget  ││actions: []                                                        │
+│is already running; Esc pauses the scene if you need more reading time.        ││radio.deadline ✓ completed at 0ms                                  │
+│                                                                               ││at_ms: 0 after_cue: —                                              │
+│                                                                               ││timer relative:Some(60000) absolute:None unset:false extend:None   │
+│                                                                               ││visible:Some(true)                                                 │
+│                                                                               ││radio.arrival ✓ completed at 6000ms                                │
+│                                                                               ││at_ms: 0 after_cue: radio.__grimm_lock_21                          │
+│                                                                               ││narrative_id: radio.arrival                                        │
+│                                                                               ││duration_ms: Some(6000)                                            │
+│                                                                               ││radio.choices ✓ completed at 6000ms                                │
+│                                                                               ││at_ms: 0 after_cue: radio.arrival                                  │
+│                                                                               ││actions: ["radio.make_adapter", "radio.hand_align",                │
+│                                                                               ││"radio.warm_hands", "radio.abandon"]                               │
+│                                                                               ││radio.gust_warning ○ pending                                       │
+│                                                                               ││at_ms: 15000 after_cue: —                                          │
+│                                                                               ││narrative_id: radio.gust_warning                                   │
+│                                                                               │└───────────────────────────────────────────────────────────────────┘
+│                                                                               │┌WORLD STATE · READ-ONLY────────────────────────────────────────────┐
+│                                                                               ││  global.accounted_ms: Int(0)                                      │
+│                                                                               ││  global.alex_alive: Bool(true)                                    │
+│                                                                               ││  global.ceramic_mug: Bool(true)                                   │
+│                                                                               ││  global.cold_exposure: Int(65920)                                 │
+└───────────────────────────────────────────────────────────────────────────────┘│  global.controls_known: Bool(true)                                │
+┌CHOICES────────────────────────────────────────────────────────────────────────┐│  global.copper_braid: Bool(true)                                  │
+│  [1] Braid the copper through the ceramic mug handle.                         ││  global.deicer_isolated: Bool(true)                               │
+│  [2] Help Lea hand-align the dish instead of making a jumper.                 ││  global.dish_aligned: Bool(false)                                 │
+│  [3] Warm your hands over the restored cabin heater.                          ││  global.ending: Text("unresolved")                                │
+│  [4] Abandon the radio repair and bring Lea inside.                           ││  global.engineering_lost: Bool(false)                             │
+└───────────────────────────────────────────────────────────────────────────────┘└───────────────────────────────────────────────────────────────────┘
+1–9 Choose · Tab Focus · ↑↓ Scroll · Esc Pause/Save/Load · F2 Debug · ? Help
