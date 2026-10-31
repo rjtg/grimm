@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CueSheet {
+    pub protocol_version: u32,
     pub revision: u64,
     pub clock: Clock,
     pub cues: Vec<Cue>,
@@ -20,7 +21,8 @@ pub struct Clock {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cue {
     pub cue_id: String,
-    pub at_ms: Option<u64>,
+    pub at_ms: u64,
+    pub started_at_ms: Option<u64>,
     pub after_cue: Option<String>,
     #[serde(flatten)]
     pub instruction: Instruction,
@@ -31,12 +33,16 @@ pub struct Cue {
 pub enum Instruction {
     Narrative {
         narrative_id: String,
+        duration_ms: Option<u64>,
     },
     Actions {
         available_actions: Vec<String>,
     },
     Timer {
+        #[serde(rename = "set_deadline_ms", alias = "start_ms")]
         start_ms: Option<u64>,
+        deadline_at_ms: Option<u64>,
+        unset_deadline: bool,
         extend_ms: Option<u64>,
         visible: Option<bool>,
     },

@@ -98,7 +98,9 @@ protocol, engine timing model or world-state ownership changed for WHITEOUT.
 ## Timers and presentation
 
 Stores have 180s, engineering 30s (initially hidden), radio 60s and crisis 45s.
-Briefing completion executes each start instruction. A one-use heat-pack adds
+Each deadline begins at context entry alongside the running scene clock; briefings
+advance automatically with authored durations and consume that scene time. Esc
+pauses for additional reading. A one-use heat-pack adds
 60s to engineering's existing budget; it does not reset elapsed time. At T=10,
 Lea's warning and a visibility cue reveal the running timer (20s remaining when
 unextended). Replacing a plan never restarts that timer or replays the warning.
@@ -118,7 +120,9 @@ retaining the same rules and IDs. Player prose never contains canonical globals.
 An explicit `at_ms` is never authored in a GOTO result; timed cues live in context
 entry plans. A late generator start at T=27 costs only the effective three seconds
 before the T=30 cutoff and does not manufacture power. A start at T=26 completes
-exactly at T=30 and is allowed: power remains on when the shutter then seals.
+exactly at T=30 and is allowed: its authored removal cancels the deadline,
+leaving power and the scene clock running. A successful radio transmission also
+removes its deadline; unrelated actions leave deadlines untouched.
 Ordinary play has no requirement to find either exact boundary.
 
 ## Acceptance evidence
@@ -176,3 +180,27 @@ M0–M3 tests/doctests and 21 WHITEOUT tests), and `cargo clippy --workspace
 real CLI walkthroughs and checkpoint continuation reached their expected endings.
 LSP feedback was requested; its later response was stale (retaining an obsolete
 unused-method warning), so the clean Cargo checks provide final semantic evidence.
+
+
+## M4.5 timing and terminal adaptation
+
+The shipped version now uses schema 2, fixed narrative durations and entry-time
+scene deadlines. There is no per-paragraph Enter requirement in the interactive
+TUI. The original version remains under `legacy-v1` for old saves. Canonical cold
+accounting and all authored routes remain the same: elapsed presentation time
+is included in the next authored booking, never applied by a renderer tick.
+
+A real interactive M4.5 playthrough collected all supplies, treated Jonas,
+extended the engineering reserve, worked the latch through the cold-dependent
+slower attempts, isolated the de-icer and started generation. The authored
+startup sequence completed automatically and the deadline disappeared. After
+saving in dispatch and warming hands, the ceramic jumper and transmitted call
+removed the radio deadline; the prepared coordinated rescue reached FOUR NAMES
+ON THE MANIFEST. No Enter acknowledgements were used. The right-hand inspector
+remained available throughout. Pause froze scene time during inspection.
+
+The playtest exposed stale instructions promising that reading would start a
+countdown; these now state that the clock is already running and Esc pauses.
+UI follow-up also distinguishes a completed ending from ongoing presentation.
+See [captures](captures/README.md), the [migration guide](../../docs/migrations/m4-5-scenes.md)
+and [timing regressions](../../crates/cli/tests/scene_timing.rs).

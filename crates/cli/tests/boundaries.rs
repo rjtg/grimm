@@ -21,7 +21,7 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
         ("grimm-adapters", "normal") => {
             matches!(dependency, "grimm-semantic" | "grimm-presentation")
         }
-        ("grimm-cli-renderer", "normal") => dependency == "grimm-presentation",
+        ("grimm-cli-renderer", "normal") => matches!(dependency, "grimm-presentation" | "ratatui"),
         ("grimm-cli", "normal") => matches!(
             dependency,
             "grimm-engine"
@@ -33,6 +33,7 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
                 | "serde"
                 | "serde_yaml_ng"
                 | "crossterm"
+                | "ratatui"
         ),
         _ => false,
     }

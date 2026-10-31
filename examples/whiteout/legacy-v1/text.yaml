@@ -1,0 +1,211 @@
+# Concrete text-renderer bindings. No gameplay rules live here.
+narratives:
+  blackout.arrival: 'AURORA / 03:17
+
+    The ceiling lights die in a single line, from the laboratory to the sleeping quarters. Beyond the
+    windows, blown snow erases the horizon. You are Alex, the station''s field engineer.
+
+
+    Mara counts four people by torchlight. Jonas is on the floor with a crushed ankle. Lea''s hand-held
+    radio plays the same broken distress call twice, down to the breath between words. Nobody here remembers
+    sending it.
+
+
+    The generator intake is freezing shut. The antenna motors have lost power. A rescue helicopter can
+    reach Aurora only if a signal gets out before the storm closes the ridge. Take what you need, choose
+    which repair comes first, and bring these people home. Enter finishes prose; number keys choose. Esc
+    opens a paused save menu. The dispatch hall is the safest checkpoint.'
+  stores.arrival: 'Mara braces Jonas against the shelves. ''We have three minutes before the storm shutter
+    seals this room. Choose deliberately.'' A thermal liner and medical kit are closest. A copper earthing
+    braid, ceramic mug and adjustable spanner lie in a spilled repair tray. A safety line, spare battery
+    heat pack and flare fill the evacuation rack.
+
+
+    Jonas points at the braid. ''Wrap the spanner with that and you can lever the frozen latch without
+    skin sticking to steel.'' Lea interrupts over the handset: ''Or braid it through a mug handle. Ceramic
+    isolates the antenna jumper from the shorted bracket. We only have one braid.'' A maintenance log
+    blinks on the terminal.'
+  stores.thermal_liner: You pull the liner over your coveralls. Inside the station it holds your remaining
+    warmth; outside it will only slow the cold.
+  stores.jonas_treated: You splint Jonas's ankle and secure the pain medication. 'I can brace the generator
+    frame,' he says. 'And if we restore heat soon, I may be able to walk out.' Mara squeezes your wrist
+    once.
+  stores.copper_braid: The braid is flexible and clean beneath its burned sleeve. Enough metal for one
+    improvised assembly, not two.
+  stores.ceramic_mug: Lea's mug survived the fall. Its ceramic handle can hold a live jumper clear of
+    a metal bracket. She asks you not to lose the painted gull.
+  stores.spanner: The spanner fits the generator's latch. Bare steel will freeze to a glove; a braided
+    grip would make a lever safe to use.
+  stores.safety_line: You coil the safety line and pocket a flare. The line can free the antenna operator
+    or guide an injured crewmate. Without radio, the flare could summon a coastal patrol, but reaching
+    the track without shelter will cost lives.
+  stores.heat_pack: The pack can keep the generator access shutter's emergency coil warm for another minute.
+    It will not repair the generator itself.
+  stores.log_read: 'The repeated distress call is yesterday''s test loop, replayed by a failed relay.
+    The log shows why: an automatic de-icing cycle was left connected during maintenance and overloaded
+    the station feeder. Jonas signed a temporary bypass, not a sabotage order. Isolate that load before
+    starting the generator. You fold the sketch into your pocket.'
+  stores.timeout: The shutter drops. Mara gets Jonas through before it locks. What you left on the shelves
+    will stay there. 'Generator or radio?' she asks. There is no time to force this door too.
+  dispatch.arrival: The dispatch hall connects engineering to the radio cabin. Mara keeps Jonas here until
+    you choose. Power first gives the crew heat but delays the call; radio first gives rescuers a bearing
+    while Jonas waits in an unheated hall. Treatment and a safety line can make that delay survivable.
+    Once a repair cabin is abandoned or sealed, you cannot reopen it. This hall has no decision deadline;
+    Esc is always available for a safe pause/save.
+  dispatch.heat_returns: Warm air reaches the hall. Jonas can finally stop fighting his own shivering.
+  dispatch.radio_first_cost: Jonas is quieter now. The early signal bought a rescue approach, but the
+    unheated wait has taken his remaining strength. Mara checks whether you brought a line.
+  dispatch.warm_hands: You hold your fingers in the duct until feeling returns. The heat cannot undo Jonas's
+    earlier unheated wait, but it may let you finish a delicate repair.
+  dispatch.warm_again: Warmth returns to your fingertips. For a moment you can hear the crew breathing
+    instead of the wind.
+  generator.arrival: The generator annex trembles under ice. A pressure gauge over the access shutter
+    marks THIRTY SECONDS until its coil cuts out. The countdown display is dark; the backup radio should
+    announce the remaining time. A spare heat-pack battery can buy one extra minute. Jonas says the latch
+    will take repeated work, or a spanner wrapped in copper braid. Read now; the countdown starts after
+    this briefing.
+  generator.radio_warning: 'Lea on the backup set: ''Engineering, ten seconds elapsed on your coil. I''m
+    putting the remaining budget on your handset.'' The display wakes without restarting the circuit.'
+  generator.heat_pack: You plug the spare battery into the shutter coil. Another minute. Mara tells you
+    not to mistake that borrowed time for a repaired station.
+  generator.open_generator_latch_numb: Your fingers close but do not hold. The latch has not moved. Restored
+    heating could recover your grip; otherwise abandon this annex before its shutter traps you.
+  whiteout.latch_open: The last ice bridge breaks. The access cover swings free; the starter and de-icing
+    isolator are within reach.
+  whiteout.latch_nearly: A thin line of blue ice still binds the hinge. It is close; another well-placed
+    attempt should free it.
+  whiteout.latch_crack: The latch moves a fraction. Ice cracks along the upper pin. Work the same joint
+    again, or use an insulated lever to avoid more effort.
+  generator.work_latch_with_numb_hands_numb: Your fingers close but do not hold. The latch has not moved.
+    Restored heating could recover your grip; otherwise abandon this annex before its shutter traps you.
+  generator.lever_made: The braid makes a flexible grip around the spanner. You have leverage without
+    bare metal against skin. Lea acknowledges that she will need the manual antenna solution now.
+  generator.lever_failed: You cannot keep the lever seated. This is a failure of cold fingers, not the
+    tool. The hall's heating could help if power were already restored.
+  generator.lever_open: With the insulated spanner you lift the pin instead of hammering it. The latch
+    opens cleanly. You saved effort, at the cost of the radio jumper's copper.
+  generator.controls: The red overload flag points to the automatic de-icer, not the engine. Isolate that
+    branch before touching the starter. Jonas recognizes his temporary maintenance bypass in the diagram.
+  generator.isolated: You pull the tagged de-icer fuse. The generator will have to warm its own intake,
+    but it will no longer feed the short. Jonas lets out a breath he has been holding since the blackout.
+  generator.overload: The starter relay kicks out. The de-icer is still shorted. The red diagram identifies
+    its isolator; do not keep wasting starter current.
+  generator.starter_cold: You miss the primer detent with a numb thumb. The engine stays silent. You can
+    still leave; pretending this worked would strand everyone.
+  generator.startup_prime: You hold the primer until fuel reaches the clear tube.
+  generator.startup_ignition: The starter turns once, twice. Then the cylinders catch in a low, uneven
+    roar.
+  generator.startup_heat: Warm air pushes the snow away from the duct mouth. 'Power is stable,' Mara says.
+    'Come back. Lea still needs us.'
+  generator.timeout: The shutter coil dies and the storm door locks you out of the annex. Mara hauls you
+    into the hall. Any generator you started is still running, but this access route is gone. Unfinished
+    work will remain unfinished.
+  radio.arrival: 'Lea has sixty seconds of transmitter reserve before this cabin''s battery protector
+    trips. The powered dish can be bypassed: copper braid through the mug''s ceramic handle makes an isolated
+    jumper. Without it, someone must hold the antenna by hand. Lea can do that, but cannot leave the mast
+    while the line is live. A ridge safety line could replace her grip later. Read now; the battery budget
+    starts when you finish.'
+  radio.gust_warning: A gust hits the mast. Lea catches its handwheel with both arms. 'If we do this manually,
+    remember that I'm still out here.'
+  radio.adapter: You thread the copper through the ceramic handle and clamp it clear of the shorted bracket.
+    Lea's painted gull faces the snow. The jumper will keep the antenna live without a person at the mast.
+  radio.alignment_failed: Your hands slip from the wheel. Lea arrests its swing before it breaks her wrist.
+    Too much cold for the fine adjustment; you have not earned a signal yet.
+  radio.aligned: The receiver locks onto the coastal beacon. Lea braces the wheel with her shoulder. 'I
+    can hold it, but you'll have to come back for me.'
+  radio.cold_transmit_failure: You key the wrong relay bank. The carrier falls silent before the position
+    goes out. Lea keeps the antenna aligned. Restored heating may recover your hands; otherwise the reserve
+    is slipping away.
+  radio.automatic_call: The coast answers with a real voice. Your recorded call cycles automatically through
+    the isolated jumper. Lea releases the wheel and shows you both shaking hands. 'Now we can both leave
+    it.'
+  radio.manual_call: A helicopter answers your bearing. Lea must keep the handwheel braced until it clears
+    the ridge. 'Don't leave me here thinking the radio works by itself,' she says.
+  radio.timeout: The full-power reserve protector trips and the cabin locks. An acknowledged rescue call
+    has already provided a bearing; its low-power beacon still needs the jumper or Lea at the mast. Without
+    a completed call, Lea comes inside with you. No finished signal can be invented after the main transmitter
+    dies.
+  radio.warmed_hands: Lea holds the controls while you warm your hands. Feeling returns; the fine relay
+    adjustment may work now.
+  radio.warm_again: The cabin heater restores your grip. Lea nods toward the transmitter.
+  crisis.arrival: 'Mara meets you at the ridge door. The exhaust stack has broken a guy wire. Jonas is
+    down by the heater manifold; Lea is beside the antenna shelter. Forty-five seconds until drifting
+    snow buries the marked crossing. The intake vents are next; staying inside will not preserve air or
+    heat.
+
+
+    ''We can carry one person quickly,'' Mara says. ''Two need preparation.'' Stable power, a completed
+    call, treatment and either a hands-free antenna or your safety line make a coordinated rescue possible.
+    If you chose radio first, Jonas cannot walk the crossing without that line. Choosing one person may
+    mean abandoning the other. A flare offers a desperate coastal fallback if the call never got out.'
+  crisis.missing_preparation: Mara stops you from running into the drift with an imaginary plan. You need
+    stable power, a call, Jonas's treatment and a free antenna or safety line. After a radio-first delay,
+    the line is essential. Choose whom you can actually reach, or use the flare fallback.
+  crisis.timeout: The marked crossing disappears under moving snow. You can no longer tell the ridge from
+    open air. Mara calls each name, waiting for replies that the wind carries away.
+  ending_full.arrival: 'ENDING / FOUR NAMES ON THE MANIFEST
+
+    Mara reads every name into the helicopter microphone: Alex, Mara, Jonas, Lea. Four answers. You bring
+    the injured man across between you while the antenna holds its final bearing through the jumper, safety
+    line or your hand-guided support. The station shrinks to a warm square behind the snow. This time
+    there is no empty seat.'
+  ending_full.truth: In daylight, the maintenance log clears Jonas of sabotage. An automatic de-icer and
+    a test-call relay failed together. His temporary bypass was a mistake you could understand, isolate
+    and repair. Aurora's report will record people, not just a failed machine.
+  ending_partial.arrival: 'ENDING / THE EMPTY PLACE
+
+    A helicopter follows your signal, or a coastal patrol follows the flare. You get survivors off the
+    ridge, but the rescue manifest has an empty place. Aurora''s light vanishes behind the storm. No neat
+    equipment report can make this a complete rescue.'
+  ending_partial.jonas: Jonas never reaches the crossing. Mara keeps his medical tag in her glove. Lea
+    stops asking whether another minute would have changed your choice.
+  ending_partial.lea: Lea's final transmission is your bearing. By the time you return for her, the antenna
+    shelter is gone. Jonas survives because you carried him; he will have to learn to live with the rest
+    of that sentence.
+  ending_partial.truth: The log survives in your pocket. Jonas's bypass was not sabotage. Knowing what
+    failed may save the next station; it cannot bring back the person you left here.
+  ending_lost.arrival: 'ENDING / WHITEOUT
+
+    The exhaust chokes under drifting snow. Even a repaired generator cannot keep the last room warm now.
+    Without a viable crossing, shelter or a signal to guide help to you, Aurora becomes another white
+    shape under the storm. The test-call relay repeats its broken message until even its battery is quiet.
+    In the spring, searchers find four names written beside the ridge door.'
+  dispatch.return_brief: Mara checks the doors you have marked repaired or abandoned. 'Finish the other
+    job if we can. Then the ridge. We cannot reopen a sealed cabin.' The hall is a good place to save,
+    recover warm hands if the generator is running, and decide what the crew can still carry.
+actions:
+  blackout.begin: Help Mara carry Jonas into the emergency stores.
+  stores.take_thermal_liner: Put on the thermal liner (reduces subsequent exposure).
+  stores.jonas_treated: Splint Jonas and give him the medical kit.
+  stores.take_copper_braid: Recover the single copper earthing braid.
+  stores.take_ceramic_mug: Take the ceramic mug with its intact handle.
+  stores.take_spanner: Take the adjustable spanner.
+  stores.take_safety_line: Pack the ridge line and emergency flare.
+  stores.take_heat_pack: Take the spare heat-pack battery (+60s at engineering).
+  stores.log_read: Read the shutdown log and its wiring sketch.
+  stores.leave: Leave the stores and commit to a repair order.
+  dispatch.engineering: 'Commit to engineering: frozen latch, de-icer and generator.'
+  dispatch.communications: 'Commit to communications: restore Lea''s rescue signal.'
+  dispatch.warm_hands: Warm your hands at the restored duct.
+  dispatch.ridge: Gather the crew for the extraction crisis.
+  generator.deploy_heat_pack: 'Use the heat-pack battery: buy 60 seconds.'
+  generator.open_generator_latch: Work the frozen latch (3s; Jonas can help).
+  generator.work_latch_with_numb_hands: Work the latch with numb hands (5s; less progress).
+  generator.make_lever: 'Wrap the spanner with copper braid: insulated lever.'
+  generator.use_lever: Lever the frozen latch open.
+  generator.inspect_controls: Read the generator diagram and overload flag.
+  generator.isolate_deicer: Isolate the overloaded automatic de-icer.
+  generator.start_generator: Prime and start the generator.
+  generator.return: Return to Mara in the dispatch hall.
+  generator.abandon: Seal engineering and give up this repair.
+  radio.make_adapter: Braid the copper through the ceramic mug handle.
+  radio.hand_align: Help Lea hand-align the dish instead of making a jumper.
+  radio.send_signal: Transmit Aurora's position and the crew manifest.
+  radio.return: Return to dispatch with the rescue bearing.
+  radio.abandon: Abandon the radio repair and bring Lea inside.
+  radio.warm_hands: Warm your hands over the restored cabin heater.
+  crisis.coordinate: Coordinate both rescues with Mara and the prepared equipment.
+  crisis.help_lea: Go to Lea; Jonas must make the crossing without you.
+  crisis.help_jonas: Carry Jonas; leave Lea to release the antenna.
+  crisis.flare_retreat: Fire the flare and retreat toward the coastal track.
+  crisis.stay: Stay inside despite the intake warning and wait out the storm.

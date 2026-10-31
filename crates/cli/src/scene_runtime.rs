@@ -1,8 +1,7 @@
-//! Concrete text game composition for M2. Rules remain in SceneEngine; this
-//! host owns a renderer clock, bindings, input, media acknowledgements and files.
-use crate::{FileError, runtime::terminal};
-use grimm_adapters::cues as adapter;
-use grimm_cli_renderer::{CliRenderer, cues::CuePlayer};
+//! Concrete text game composition. The synchronous coordinator is shared by the
+//! interactive TUI and deterministic/noninteractive line transport.
+use crate::{FileError, scene_session::SceneSession};
+use grimm_cli_renderer::CliRenderer;
 use grimm_engine::scene::SceneEngine;
 use grimm_presentation::{PresentationCommand, RawInput, cues::Instruction};
 use grimm_semantic::scene::{SceneSave, SceneStory};
@@ -11,35 +10,31 @@ use std::{
     collections::BTreeMap,
     ffi::OsString,
     fs,
-    io::{self, IsTerminal, Write},
+    io::{self, IsTerminal},
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, RecvTimeoutError, Sender},
     thread,
     time::{Duration, Instant},
 };
-
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct TextBindings {
-    narratives: BTreeMap<String, String>,
-    actions: BTreeMap<String, String>,
+pub(crate) struct TextBindings {
+    pub(crate) narratives: BTreeMap<String, String>,
+    pub(crate) actions: BTreeMap<String, String>,
 }
-
 pub fn parse(source: &str, yaml: &str) -> std::result::Result<SceneEngine, FileError> {
     let story: SceneStory = serde_yaml_ng::from_str(yaml)
         .map_err(|error| FileError(format!("{source}: invalid scene DSL: {error}")))?;
     SceneEngine::new(story).map_err(|error| FileError(format!("{source}: invalid scene: {error}")))
 }
-
 pub fn check(path: &Path) -> Result<()> {
     crate::authoring::run(false, &[path.as_os_str().to_owned()])
 }
-
 struct DriverClock {
     base: u64,
     origin: Instant,
+    epoch: u64,
     running: bool,
     paused: bool,
     manual: bool,
@@ -50,29 +45,47 @@ impl DriverClock {
             self.base
         } else {
             self.base.saturating_add(
-                u64::try_from(self.origin.elapsed().as_millis()).unwrap_or(u64::MAX),
+                self.origin
+                    .elapsed()
+                    .as_millis()
+                    .try_into()
+                    .unwrap_or(u64::MAX),
             )
         }
     }
-    fn reset(&mut self, player: &CuePlayer) {
-        let clock = player.clock().expect("applied sheet");
+    fn reset(&mut self, session: &SceneSession) {
+        let clock = session.player().clock().expect("sheet");
         self.base = clock.elapsed_ms;
+        self.epoch = clock.epoch;
         self.running = clock.running;
         self.origin = Instant::now();
     }
+    fn observe(&mut self, session: &mut SceneSession) -> Result<()> {
+        session.advance_to(self.now())?;
+        let clock = session.player().clock().expect("sheet");
+        if clock.epoch != self.epoch || clock.running != self.running {
+            self.reset(session);
+        }
+        Ok(())
+    }
 }
-
-struct Line {
+#[derive(Clone)]
+struct Prompt {
     revision: u64,
+    actions: Vec<String>,
+    reading: Option<String>,
+}
+struct Line {
+    prompt: Prompt,
     input: Option<RawInput>,
 }
-fn lines() -> (Sender<u64>, Receiver<io::Result<Line>>) {
-    let (request, requests) = mpsc::channel();
+fn lines() -> (Sender<Prompt>, Receiver<io::Result<Line>>) {
+    let (request, requests) = mpsc::channel::<Prompt>();
     let (send, receive) = mpsc::sync_channel(1);
     thread::spawn(move || {
         let mut reader = CliRenderer::new(io::stdin().lock(), io::sink());
-        for revision in requests {
-            let result = reader.read_input().map(|input| Line { revision, input });
+        for prompt in requests {
+            let result = reader.read_input().map(|input| Line { prompt, input });
             let done = result.as_ref().is_ok_and(|line| line.input.is_none());
             if send.send(result).is_err() || done {
                 return;
@@ -82,89 +95,9 @@ fn lines() -> (Sender<u64>, Receiver<io::Result<Line>>) {
     (request, receive)
 }
 
-fn replace(engine: &SceneEngine, player: &mut CuePlayer, clock: &mut DriverClock) {
-    player.replace(adapter::present(&engine.output()));
-    clock.reset(player);
-}
-
-fn observe(
-    engine: &mut SceneEngine,
-    player: &mut CuePlayer,
-    clock: &mut DriverClock,
-) -> Result<()> {
-    let at = clock.now();
-    let sheet = engine.observe(player.revision(), at)?;
-    if sheet.revision != player.revision() {
-        replace(engine, player, clock);
-    } else {
-        player.set_time(at).map_err(io::Error::other)?;
-    }
-    Ok(())
-}
-
-/// Execute only presentation. Controls finish immediately; prose is started but
-/// waits for a reader acknowledgement. Scheduled events never wait on prose.
-fn pump<W: Write>(
-    engine: &mut SceneEngine,
-    player: &mut CuePlayer,
-    clock: &mut DriverClock,
-    text: &TextBindings,
-    renderer: &mut CliRenderer<io::Empty, W>,
-) -> Result<()> {
-    for _ in 0..1024 {
-        let Some(cue) = player.due().into_iter().next() else {
-            return Ok(());
-        };
-        let was_running = player.clock().expect("clock").running;
-        let mut candidate = player.clone();
-        let feedback = candidate.started(&cue.cue_id).map_err(io::Error::other)?;
-        let sheet = engine.cue_input(&adapter::feedback(feedback))?;
-        if sheet.revision != player.revision() {
-            replace(engine, player, clock);
-            continue;
-        }
-        *player = candidate;
-        if !was_running && player.clock().expect("clock").running {
-            clock.reset(player);
-        }
-        match &cue.instruction {
-            Instruction::Narrative { narrative_id } => {
-                let prose = text.narratives.get(narrative_id).ok_or_else(|| {
-                    io::Error::other(format!(
-                        "missing text binding for narrative '{narrative_id}'"
-                    ))
-                })?;
-                renderer.render(&[
-                    PresentationCommand::Text(prose.clone()),
-                    PresentationCommand::Text(
-                        "Press Enter after reading. Available numbered actions may still be used."
-                            .into(),
-                    ),
-                ])?;
-            }
-            _ => {
-                let feedback = player.completed(&cue.cue_id).map_err(io::Error::other)?;
-                engine.cue_input(&adapter::feedback(feedback))?;
-            }
-        }
-    }
-    Err("presentation execution budget exceeded".into())
-}
-
-fn show_menu<W: Write>(renderer: &mut CliRenderer<io::Empty, W>, path: &Path) -> Result<()> {
-    renderer.render(&[PresentationCommand::Text(format!(
-        "\nScene session menu — paused\n[1] Continue  [2] Save  [3] Load  [4] Quit\nCheckpoint: {}",
-        path.display()
-    ))])?;
-    Ok(())
-}
-
 pub fn run(args: &[OsString]) -> Result<()> {
     if args.len() < 2 {
-        return Err(
-            "Usage: grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--load SAVE.json]"
-                .into(),
-        );
+        return Err("Usage: grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--manual-reading|--auto-reading] [--debug] [--load SAVE.json]".into());
     }
     let story_path = Path::new(&args[0]);
     let mut engine = parse(
@@ -173,11 +106,22 @@ pub fn run(args: &[OsString]) -> Result<()> {
     )?;
     let text: TextBindings = serde_yaml_ng::from_str(&fs::read_to_string(&args[1])?)?;
     let mut manual = false;
+    let mut reading = None;
+    let mut debug = false;
     let mut load = None;
     let mut index = 2;
     while index < args.len() {
         if args[index] == "--manual-clock" {
             manual = true;
+            index += 1;
+        } else if args[index] == "--manual-reading" {
+            reading = Some(false);
+            index += 1;
+        } else if args[index] == "--auto-reading" {
+            reading = Some(true);
+            index += 1;
+        } else if args[index] == "--debug" {
+            debug = true;
             index += 1;
         } else if args[index] == "--load" && index + 1 < args.len() {
             load = Some(PathBuf::from(&args[index + 1]));
@@ -191,67 +135,69 @@ pub fn run(args: &[OsString]) -> Result<()> {
             path,
         )?)?)?;
     }
-    let mut terminal = if io::stdin().is_terminal() && io::stdout().is_terminal() {
-        Some(terminal::Terminal::enter()?)
-    } else {
-        None
-    };
-    let line_input = terminal.is_none().then(lines);
-    let mut pending = false;
-    let mut eof = false;
-    let mut player = CuePlayer::default();
-    player.replace(adapter::present(&engine.output()));
+    let interactive = !manual && io::stdin().is_terminal() && io::stdout().is_terminal();
+    let automatic = reading.unwrap_or(interactive);
+    if interactive {
+        return crate::scene_tui::run(engine, text, automatic, debug);
+    }
+    let mut session = SceneSession::new(engine, automatic)?;
     let mut clock = DriverClock {
         base: 0,
         origin: Instant::now(),
+        epoch: 0,
         running: false,
         paused: false,
         manual,
     };
-    clock.reset(&player);
-    let mut renderer = CliRenderer::new(
-        io::empty(),
-        terminal::Output {
-            inner: io::stdout().lock(),
-            raw: terminal.is_some(),
-        },
-    );
-    renderer.render(&[PresentationCommand::Text(engine.title().into()), PresentationCommand::Text("Number keys choose; Enter completes text; Esc opens the session menu. Piped commands: :save PATH, :load PATH, :quit. Manual clock: :time MS or :advance MS; @qualified.action selects an exact offered ID.".into())])?;
-    let save_path =
-        PathBuf::from(".grimm-saves").join(format!("scene-{}.json", engine.save().story_id));
+    clock.reset(&session);
+    let mut renderer = CliRenderer::new(io::empty(), io::stdout().lock());
+    renderer.render(&[PresentationCommand::Text(session.engine().title().into()),PresentationCommand::Text("Numbered actions; Enter finishes text in manual reading mode. Commands: :menu, :save PATH, :load PATH, :quit. Manual clock: :time MS or :advance MS; @qualified.action selects an exact offered ID.".into())])?;
+    let save_path = PathBuf::from(".grimm-saves")
+        .join(format!("scene-{}.json", session.engine().save().story_id));
+    let (request, receive) = lines();
+    let mut pending = false;
+    let mut eof = false;
     let mut menu = false;
     let mut shown_actions = vec![];
     let mut shown_seconds = None;
     let mut shown_revision = None;
     loop {
         if !menu {
-            observe(&mut engine, &mut player, &mut clock)?;
-            if shown_revision != Some(player.revision()) {
-                if let Some(terminal) = &mut terminal {
-                    terminal.begin_prompt()?;
+            clock.observe(&mut session)?;
+            for started in session.take_started_text() {
+                if let Instruction::Narrative { narrative_id, .. } = started.cue.instruction {
+                    let prose = text.narratives.get(&narrative_id).ok_or_else(|| {
+                        io::Error::other(format!(
+                            "missing text binding for narrative '{narrative_id}'"
+                        ))
+                    })?;
+                    renderer.render(&[PresentationCommand::Text(prose.clone())])?;
+                    if !automatic {
+                        renderer.render(&[PresentationCommand::Text("Press Enter after reading. Available numbered actions may still be used.".into())])?;
+                    }
                 }
-                shown_revision = Some(player.revision());
+            }
+            if shown_revision != Some(session.player().revision()) {
+                shown_revision = Some(session.player().revision());
                 shown_actions.clear();
             }
-            pump(&mut engine, &mut player, &mut clock, &text, &mut renderer)?;
-            if player.actions() != shown_actions {
-                let mut labels = vec![];
-                for id in player.actions() {
-                    labels.push(
-                        text.actions
-                            .get(id)
-                            .ok_or_else(|| {
-                                io::Error::other(format!("missing text binding for action '{id}'"))
-                            })?
-                            .clone(),
-                    );
-                }
+            if session.player().actions() != shown_actions {
+                let labels = session
+                    .player()
+                    .actions()
+                    .iter()
+                    .map(|id| {
+                        text.actions.get(id).cloned().ok_or_else(|| {
+                            io::Error::other(format!("missing text binding for action '{id}'"))
+                        })
+                    })
+                    .collect::<io::Result<Vec<_>>>()?;
                 if !labels.is_empty() {
                     renderer.render(&[PresentationCommand::Choices(labels)])?;
                 }
-                shown_actions = player.actions().to_vec();
+                shown_actions = session.player().actions().to_vec();
             }
-            let view = player.clock().expect("clock");
+            let view = session.player().clock().expect("sheet");
             if view.visible
                 && let Some(deadline) = view.deadline_ms
             {
@@ -263,103 +209,81 @@ pub fn run(args: &[OsString]) -> Result<()> {
                     }])?;
                     shown_seconds = Some(remaining.div_ceil(1000));
                 }
+            } else {
+                shown_seconds = None;
             }
-            if engine.is_terminal() && !player.pending() {
+            if session.engine().is_terminal() && !session.player().pending() {
                 return Ok(());
             }
         }
-        if let Some((request, _)) = &line_input
-            && !eof
-            && !pending
-        {
-            request.send(player.revision())?;
+        if !eof && !pending {
+            request.send(Prompt {
+                revision: session.player().revision(),
+                actions: session.player().actions().to_vec(),
+                reading: session.player().running_narratives().first().cloned(),
+            })?;
             pending = true;
         }
-        let incoming = if let Some(terminal) = &mut terminal {
-            let mut echo = terminal::Output {
-                inner: io::stdout(),
-                raw: true,
+        if eof {
+            // EOF is never a text acknowledgement. Authored deadlines and
+            // automatic scheduled media still run while there is no input.
+            let future = if automatic {
+                session.player().next_event_ms()
+            } else {
+                session.player().next_start_ms()
             };
-            terminal
-                .poll(
-                    player.revision(),
-                    Duration::from_millis(50),
-                    player.actions().len() <= 9,
-                    &mut echo,
-                )?
-                .map(|(revision, input)| Line {
-                    revision,
-                    input: Some(input),
-                })
-        } else if eof {
-            if menu
-                || !player.running_narratives().is_empty()
-                || manual
-                || player
+            if manual
+                || menu
+                || !session.player().clock().expect("sheet").running
+                || (session
+                    .player()
                     .clock()
-                    .is_none_or(|clock| clock.deadline_ms.is_none())
+                    .expect("sheet")
+                    .deadline_ms
+                    .is_none()
+                    && future.is_none())
             {
                 return Ok(());
             }
-            thread::sleep(Duration::from_millis(50));
-            None
-        } else {
-            match line_input
-                .as_ref()
-                .expect("line transport")
-                .1
-                .recv_timeout(Duration::from_millis(50))
-            {
-                Ok(result) => {
-                    pending = false;
-                    Some(result?)
-                }
-                Err(RecvTimeoutError::Timeout) => None,
-                Err(RecvTimeoutError::Disconnected) => {
-                    pending = false;
-                    Some(Line {
-                        revision: player.revision(),
-                        input: None,
-                    })
-                }
-            }
-        };
-        let Some(line) = incoming else {
+            thread::sleep(Duration::from_millis(25));
             continue;
+        }
+        let line = match receive.recv_timeout(Duration::from_millis(25)) {
+            Ok(result) => {
+                pending = false;
+                result?
+            }
+            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Disconnected) => {
+                pending = false;
+                eof = true;
+                continue;
+            }
         };
         let Some(raw) = line.input else {
             eof = true;
             continue;
         };
         if !menu {
-            observe(&mut engine, &mut player, &mut clock)?;
+            clock.observe(&mut session)?;
         }
-        if line.revision != player.revision() {
+        if line.prompt.revision != session.player().revision() {
             renderer.render(&[PresentationCommand::Text(
                 "Stale input ignored; follow the current prompt.".into(),
             )])?;
             continue;
         }
         let command = raw.line.trim();
-        if command == ":quit" {
+        if command == ":quit" || (menu && command == ":menu-quit") {
             return Ok(());
         }
         if command == ":menu" || (menu && command == ":menu-continue") {
-            if !menu {
-                clock.base = player.clock().expect("clock").elapsed_ms;
-                clock.paused = true;
-                menu = true;
-                if let Some(terminal) = &mut terminal {
-                    terminal.set_menu(true)?;
-                }
-                show_menu(&mut renderer, &save_path)?;
+            menu = !menu;
+            clock.reset(&session);
+            clock.paused = menu;
+            if menu {
+                renderer.render(&[PresentationCommand::Text(format!("Scene session menu — paused\n[1] Continue  [2] Save  [3] Load  [4] Quit\nCheckpoint: {}",save_path.display()))])?;
             } else {
-                menu = false;
-                clock.paused = false;
-                clock.reset(&player);
-                if let Some(terminal) = &mut terminal {
-                    terminal.set_menu(false)?;
-                }
                 shown_actions.clear();
             }
             continue;
@@ -383,13 +307,15 @@ pub fn run(args: &[OsString]) -> Result<()> {
                     {
                         fs::create_dir_all(parent)?;
                     }
-                    fs::write(&path, serde_json::to_string_pretty(&engine.save())?)?;
+                    fs::write(
+                        &path,
+                        serde_json::to_string_pretty(&session.engine().save())?,
+                    )?;
                 } else {
-                    engine.restore(serde_json::from_str(&fs::read_to_string(&path)?)?)?;
-                    player = CuePlayer::default();
-                    replace(&engine, &mut player, &mut clock);
-                    shown_revision = None;
+                    session.restore(serde_json::from_str(&fs::read_to_string(&path)?)?)?;
+                    clock.reset(&session);
                     shown_actions.clear();
+                    shown_revision = None;
                 }
                 Ok(())
             })();
@@ -401,9 +327,6 @@ pub fn run(args: &[OsString]) -> Result<()> {
                 ),
                 Err(error) => format!("Session file error: {error}"),
             })])?;
-            if menu {
-                show_menu(&mut renderer, &save_path)?;
-            }
             continue;
         }
         if menu {
@@ -428,43 +351,48 @@ pub fn run(args: &[OsString]) -> Result<()> {
                 continue;
             }
         }
-        if raw.line.ends_with('\n') && command.is_empty() {
-            if let Some(id) = player.running_narratives().first() {
-                let mut candidate = player.clone();
-                let feedback = candidate.completed(id).map_err(io::Error::other)?;
-                let sheet = engine.cue_input(&adapter::feedback(feedback))?;
-                if sheet.revision == player.revision() {
-                    player = candidate;
-                } else {
-                    replace(&engine, &mut player, &mut clock);
-                }
-            }
-            continue;
-        }
-        let choice = if let Some(id) = command.strip_prefix('@') {
-            player
-                .actions()
-                .iter()
-                .position(|action| action == id.trim())
+        let at = clock.now();
+        let blank = raw.line.ends_with('\n') && command.is_empty();
+        let result = if blank {
+            line.prompt
+                .reading
+                .as_deref()
+                .map(|id| session.complete_text(id, line.prompt.revision, at))
         } else {
-            command
-                .parse::<usize>()
-                .ok()
-                .and_then(|number| number.checked_sub(1))
+            let id = if let Some(id) = command.strip_prefix('@') {
+                line.prompt
+                    .actions
+                    .iter()
+                    .find(|offered| offered.as_str() == id.trim())
+            } else {
+                command
+                    .parse::<usize>()
+                    .ok()
+                    .and_then(|number| number.checked_sub(1))
+                    .and_then(|index| line.prompt.actions.get(index))
+            };
+            id.map(|id| session.choose(id, line.prompt.revision, at))
         };
-        let Some(action) = choice.and_then(|index| player.select(index)) else {
-            renderer.render(&[PresentationCommand::Text(
-                "Choose an available number, or Enter to finish text.".into(),
-            )])?;
-            continue;
-        };
-        match engine.apply(&adapter::action(action)) {
-            Ok(_) => {
-                replace(&engine, &mut player, &mut clock);
+        match result {
+            Some(Ok(())) => clock.reset(&session),
+            Some(Err(error)) => {
+                clock.synchronize_after_rejection(&session);
+                renderer.render(&[PresentationCommand::Text(format!(
+                    "Action rejected: {error}"
+                ))])?;
             }
-            Err(error) => renderer.render(&[PresentationCommand::Text(format!(
-                "Action rejected: {error}"
-            ))])?,
+            None if blank => {}
+            None => renderer.render(&[PresentationCommand::Text(
+                "Choose an available number, or Enter to finish text.".into(),
+            )])?,
+        }
+    }
+}
+impl DriverClock {
+    fn synchronize_after_rejection(&mut self, session: &SceneSession) {
+        let current = session.player().clock().expect("sheet");
+        if current.epoch != self.epoch || current.running != self.running {
+            self.reset(session);
         }
     }
 }

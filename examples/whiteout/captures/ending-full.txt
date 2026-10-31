@@ -1,0 +1,40 @@
+GRIMM / WHITEOUT | ending_full · T=4.6s | deadline hidden / inactive
+Ending · Esc to quit
+────────────────────────────────────────────────────────────────────────────────────────────────────
+┌NARRATIVE─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                                  │
+│The coast answers with a real voice. Your recorded call cycles automatically through the isolated │
+│jumper. Lea releases the wheel and shows you both shaking hands. 'Now we can both leave it.'      │
+│                                                                                                  │
+│Warm air reaches the hall. Jonas can finally stop fighting his own shivering.                     │
+│                                                                                                  │
+│Mara checks the doors you have marked repaired or abandoned. 'Finish the other job if we can. Then│
+│the ridge. We cannot reopen a sealed cabin.' The hall is a good place to save, recover warm hands │
+│if the generator is running, and decide what the crew can still carry.                            │
+│                                                                                                  │
+│Mara meets you at the ridge door. The exhaust stack has broken a guy wire. Jonas is down by the   │
+│heater manifold; Lea is beside the antenna shelter. Forty-five seconds until drifting snow buries │
+│the marked crossing. The intake vents are next; staying inside will not preserve air or heat.     │
+│                                                                                                  │
+│'We can carry one person quickly,' Mara says. 'Two need preparation.' Stable power, a completed   │
+│call, treatment and either a hands-free antenna or your safety line make a coordinated rescue     │
+│possible. If you chose radio first, Jonas cannot walk the crossing without that line. Choosing one│
+│person may mean abandoning the other. A flare offers a desperate coastal fallback if the call     │
+│never got out.                                                                                    │
+│                                                                                                  │
+│ENDING / FOUR NAMES ON THE MANIFEST                                                               │
+│Mara reads every name into the helicopter microphone: Alex, Mara, Jonas, Lea. Four answers. You   │
+│bring the injured man across between you while the antenna holds its final bearing through the    │
+│jumper, safety line or your hand-guided support. The station shrinks to a warm square behind the  │
+│snow. This time there is no empty seat.                                                           │
+│                                                                                                  │
+│In daylight, the maintenance log clears Jonas of sabotage. An automatic de-icer and a test-call   │
+│relay failed together. His temporary bypass was a mistake you could understand, isolate and       │
+│repair. Aurora's report will record people, not just a failed machine.                            │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌CHOICES───────────────────────────────────────────────────────────────────────────────────────────┐
+│Presentation in progress…                                                                         │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+1–9 Choose · Tab Focus · ↑↓ Scroll · Esc Pause/Save/Load · F2 Debug · ? Help
+

@@ -1,5 +1,12 @@
 # Roadmap
 
+M4.5 implements Cue Sheet protocol 2 and scene schema 2: a running scene clock,
+optional authored deadline lifecycle, explicit emitted cue times and automatic
+narrative durations. This supersedes older timing examples below for schema-2
+content; schema 1 retains its compatibility semantics. See the
+[migration contract](migrations/m4-5-scenes.md) and
+[implementation evidence](milestones/m4-5-implementation.md).
+
 M2 implementation: the additive scene DSL, replacement Cue Sheets and playable
 Locked Room are described in [implementation evidence](milestones/m2-implementation.md)
 and the [concrete format](scene-format.md). Historical planning sections below
