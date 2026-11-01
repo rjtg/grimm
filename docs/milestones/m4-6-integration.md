@@ -128,3 +128,18 @@ cache before Ready; failed preparation retains the old cache. Three real-WHITEOU
 resource/export tests pass, including the actual CLI exporter and unavailable
 resource failure/retry. Physical sprite/mesh/audio import remains outside this
 text backend. Interactive/pipe lifecycle flag wiring is the next pending step.
+
+The CLI/TUI now opts in through `--lifecycle SCENES.yaml` (optionally
+`--catalog CATALOG.yaml`). Preparation resolves actual text resources before Ready
+and Begin. The terminal presents a persistent boundary menu; redirected execution
+uses `:continue`. Saves use a separate `scene-<story>-boundary.json` default;
+legacy mode and its mid-scene saves are unchanged. Manual-clock outgoing media
+uses `:present MS` without advancing frozen canonical scene time.
+
+Two real CLI regressions verify active-save rejection, boundary save/load without
+replayed outgoing text and scene reentry. A real PTY regression covers boundary
+menu, save/load, preparation, inspector, resize and terminal restoration. It also
+found and fixed a load-status overwrite in the boundary menu. Workspace tests
+passed before adding the PTY regression; targeted CLI/PTY checks passed afterward.
+Further WHITEOUT lifecycle parity/timing evidence and final documentation/checks
+remain before marking M4.6 complete or starting M5a.

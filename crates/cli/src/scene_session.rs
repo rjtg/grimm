@@ -330,6 +330,21 @@ impl SceneSession {
     }
     /// Renderer-only elapsed media time while Ending freezes gameplay time.
     /// Pause callers simply do not submit elapsed presentation time.
+    pub fn presentation_pending(&self) -> bool {
+        self.ending()
+            && self.automatic
+            && self.player.sheet().is_some_and(|sheet| {
+                sheet.cues.iter().any(|cue| {
+                    matches!(
+                        cue.instruction,
+                        Instruction::Narrative {
+                            duration_ms: Some(_),
+                            ..
+                        }
+                    ) && self.player.running_narratives().contains(&cue.cue_id)
+                })
+            })
+    }
     pub fn advance_presentation_by(&mut self, elapsed: u64) -> SceneResult<()> {
         if !self.ending() {
             return Ok(());

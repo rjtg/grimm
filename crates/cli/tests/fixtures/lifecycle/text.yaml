@@ -1,0 +1,10 @@
+narratives:
+  room.intro: A familiar room.
+  room.warning: The radio crackles.
+  room.farewell: Leaving the room behind.
+  room.timeout: Too late to leave safely.
+  hall.arrival: The hall is quiet.
+actions:
+  room.travel: Enter the hall
+  hall.return: Return to the room
+  hall.finish: Finish

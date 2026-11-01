@@ -1,0 +1,41 @@
+
+schema_version: 2
+id: lifecycle_demo
+version: 1
+title: Lifecycle demo
+start: room
+globals: {count: 0}
+contexts:
+  - id: room
+    locals: {marker: 1}
+    cues:
+      - {cue_id: intro, kind: narrative, narrative_id: intro, duration_ms: 10}
+      - {cue_id: clock, kind: timer, set_deadline_ms: 1000, visible: false}
+      - {cue_id: choices, kind: actions, available_actions: eligible}
+      - {cue_id: warning, at_ms: 100, kind: narrative, narrative_id: warning, duration_ms: 20}
+    actions:
+      - id: travel
+        duration_ms: 30
+        effects: [{op: add, var: global.count, value: 1}]
+        outcomes:
+          - goto: hall
+            cues: [{cue_id: farewell, kind: narrative, narrative_id: farewell, duration_ms: 5000}]
+    timeout:
+      effects: [{op: set, var: global.count, value: -1}]
+      cues: [{cue_id: timeout, kind: narrative, narrative_id: timeout, duration_ms: 50}]
+      goto: end
+  - id: hall
+    locals: {marker: 7}
+    cues:
+      - {cue_id: clock, at_ms: 0, kind: timer, set_deadline_ms: 500, visible: true}
+      - {cue_id: arrival, kind: narrative, narrative_id: arrival, duration_ms: 100}
+      - {cue_id: choices, kind: actions, available_actions: eligible}
+    actions:
+      - id: return
+        outcomes: [{goto: room}]
+      - id: finish
+        outcomes: [{goto: end}]
+    timeout: {goto: end}
+  - id: end
+    terminal: true
+    cues: []

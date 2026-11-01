@@ -1,0 +1,7 @@
+
+schema_version: 1
+id: lifecycle_test
+version: 1
+story_id: lifecycle_demo
+story_version: 1
+scenes: {room: demo.room, hall: demo.hall, end: demo.end}
