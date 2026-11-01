@@ -52,3 +52,12 @@ opaque to GRIMM: this tool does **not** prove files exist or that an animation
 can load. Actual renderer exporters, format/import validation and production
 assets remain required by M4.6/M5d integration. The fixture uses `fixture://`
 resources and is not a production renderer or a playable M4.6 demo.
+
+## Actual text exporter and preparation
+
+`export-text-catalog STORY SCENES TEXT` exports the real `grimm.text` binding
+registry with explicit presentation scopes. `play-scene ... --lifecycle SCENES
+--catalog CATALOG` resolves each `text://scene_id` scope before Ready/Begin. See
+the [migration guide](../migrations/m4-6-scenes.md). Missing/empty actual text or
+action labels, incompatible completion/duration and unsupported URI fail without
+a global fallback. Graphical resource import remains renderer-specific M5 work.

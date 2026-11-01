@@ -417,3 +417,125 @@ fn automatic_terminal_text_finishes_before_scene_closure_and_does_not_replay_on_
     assert!(host.is_complete());
     assert!(host.take_started_text().is_empty());
 }
+
+#[test]
+fn reveal_extend_and_unset_preserve_absolute_and_relative_deadlines() {
+    let source = STORY.replace(
+        "      - {cue_id: warning, at_ms: 100, kind: narrative, narrative_id: warning, duration_ms: 20}",
+        "      - {cue_id: reveal, at_ms: 100, kind: timer, visible: true}\n      - {cue_id: extend, at_ms: 200, kind: timer, extend_ms: 500}\n      - {cue_id: stop, at_ms: 300, kind: timer, unset_deadline: true}",
+    );
+    for absolute in [false, true] {
+        let source = if absolute {
+            source.replace("set_deadline_ms: 1000", "deadline_at_ms: 1000")
+        } else {
+            source.clone()
+        };
+        let mut e = LifecycleEngine::new(
+            serde_yaml_ng::from_str(&source).unwrap(),
+            serde_yaml_ng::from_str(CONFIG).unwrap(),
+        )
+        .unwrap();
+        room(&mut e, 50);
+        let end = if absolute { 1000 } else { 1050 };
+        assert_eq!(e.output().plan.clock.deadline_ms, Some(end));
+        cue(&mut e, "room.reveal", CueEvent::Started, 100);
+        assert!(e.output().plan.clock.visible);
+        assert_eq!(e.output().plan.clock.deadline_ms, Some(end));
+        cue(&mut e, "room.extend", CueEvent::Started, 200);
+        assert_eq!(e.output().plan.clock.deadline_ms, Some(end + 500));
+        cue(&mut e, "room.stop", CueEvent::Started, 300);
+        e.observe(e.output().plan.revision, 5000).unwrap();
+        assert_eq!(e.phase(), ScenePhase::Active);
+        assert!(e.output().plan.clock.running);
+        assert_eq!(e.output().plan.clock.deadline_ms, None);
+        assert_eq!(e.world_snapshot().globals["count"], Value::Int(0));
+    }
+}
+
+#[test]
+fn revisiting_same_scene_rejects_prior_epoch_cue_and_lifecycle_acknowledgements() {
+    let mut e = new();
+    room(&mut e, 10);
+    let old = e.output();
+    let old_cue = CueInput {
+        revision: old.plan.revision,
+        cue_id: "room.warning".into(),
+        event: CueEvent::Started,
+        scene_time_ms: 100,
+    };
+    travel(&mut e, 10);
+    finish_outgoing(&mut e);
+    signal(&mut e, SceneEvent::Prepare);
+    begin(&mut e);
+    cue(&mut e, "hall.clock", CueEvent::Started, 0);
+    cue(&mut e, "hall.arrival", CueEvent::Started, 0);
+    cue(&mut e, "hall.arrival", CueEvent::Completed, 100);
+    cue(&mut e, "hall.choices", CueEvent::Started, 100);
+    e.apply(&SceneAction {
+        revision: e.output().plan.revision,
+        action_id: "hall.return".into(),
+        scene_time_ms: 100,
+    })
+    .unwrap();
+    finish_outgoing(&mut e);
+    signal(&mut e, SceneEvent::Prepare);
+    room(&mut e, 10);
+    let current = e.output();
+    assert_eq!(current.scene.scene_id, old.scene.scene_id);
+    assert_eq!(current.scene.epoch, old.scene.epoch + 2);
+    assert!(e.cue_input(&old_cue).is_err());
+    assert!(
+        e.scene_input(&SceneFeedback {
+            revision: old.plan.revision,
+            scene_id: old.scene.scene_id,
+            epoch: old.scene.epoch,
+            event: SceneEvent::End
+        })
+        .is_err()
+    );
+    assert_eq!(e.output(), current);
+    assert_eq!(e.world_snapshot().locals["marker"], Value::Int(1));
+    assert_eq!(e.world_snapshot().globals["count"], Value::Int(1));
+}
+
+#[test]
+fn legacy_and_boundary_save_formats_are_rejected_cross_mode_without_mutation() {
+    use grimm_cli::scene_session::SceneSession;
+    use grimm_engine::scene::SceneEngine;
+    let mut boundary = new();
+    room(&mut boundary, 10);
+    travel(&mut boundary, 10);
+    finish_outgoing(&mut boundary);
+    let saved = boundary.checkpoint().unwrap();
+    let json = serde_json::to_string(&saved).unwrap();
+    let schema1 = "schema_version: 1\nid: old_game\nversion: 1\ntitle: Old game\nstart: end\ncontexts: [{id: end, terminal: true, cues: []}]\n";
+    for source in [schema1, STORY] {
+        let mut legacy = SceneSession::new(
+            SceneEngine::new(serde_yaml_ng::from_str(source).unwrap()).unwrap(),
+            false,
+        )
+        .unwrap();
+        let old = legacy.save_json().unwrap();
+        assert!(legacy.restore_json(&json).is_err());
+        assert_eq!(legacy.save_json().unwrap(), old);
+        let mut host = SceneSession::new_lifecycle(new(), false).unwrap();
+        let before = host.engine().save();
+        assert!(host.restore_json(&old).is_err());
+        assert_eq!(host.engine().save(), before);
+        assert_eq!(
+            host.scene().unwrap().phase,
+            grimm_presentation::lifecycle::ScenePhase::Prepare
+        );
+        legacy.restore_json(&old).unwrap();
+    }
+    for field in ["schema_version", "story_version", "configuration_version"] {
+        let mut corrupt = serde_json::to_value(&saved).unwrap();
+        corrupt[field] = serde_json::json!(999);
+        assert!(
+            boundary
+                .restore(serde_json::from_value(corrupt).unwrap())
+                .is_err()
+        );
+        assert_eq!(boundary.checkpoint().unwrap(), saved);
+    }
+}

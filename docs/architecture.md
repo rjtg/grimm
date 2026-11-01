@@ -252,16 +252,18 @@ Every milestone must ship a small playable game that demonstrates each new gamep
 The living [open-points catalog](open-questions.md) tracks in-scene choice lifecycle, non-resetting timers, puzzle/state graph checking, inventory and character stats. Runtime node providers and generative models are deferred to a later open-world phase; resolve no proposed APIs for those yet.
 
 
-## M4.6 integration status
+## M4.6 opt-in integration
 
-The [existing M4.6 design](milestones/m4-6-scene-state-renderer-contract.md) has
-been integrated into the feature branch as design material. It is not an
-accepted replacement for M4.5 or ADR-0004. The [acceptance ledger](milestones/m4-6-integration.md)
-distinguishes the actual document merge from missing runtime implementation.
+The M4.6 design was merged into the feature integration branch at `c117675`.
+The implementation adds explicit prepare/begin/end/stable coordination, atomic
+replaceable backing storage, boundary checkpoints, renderer catalogs and actual
+text preparation. See the [verified integration ledger](milestones/m4-6-integration.md)
+and [concrete version/migration contract](migrations/m4-6-scenes.md).
 
-The first independent implementation is the [offline renderer catalog checker](milestones/m4-6-catalog-format.md).
-It belongs to host/tooling composition and compares supplied renderer metadata
-with the M3 story index. The engine does not load asset manifests or resource
-paths; player Cue Sheets are unchanged. Scene lifecycle/provider/checkpoint
-contracts require explicit versioning and architectural documentation before
-implementation. Existing schema-1/2 games and mid-scene saves remain supported.
+The opt-in protocol-3 envelope wraps one existing protocol-2 Cue Sheet; legacy
+story schemas and saves remain unchanged. Canonical rule authority stays in the
+engine; backing storage is supplied by an atomic provider. Configuration,
+checkpoint and inspection data are host-only. Scene metadata exposes deliberate
+semantic presentation scope, never world variables, graph structure or paths.
+[ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) records the proposed
+implementation choices for review without modifying accepted ADRs.

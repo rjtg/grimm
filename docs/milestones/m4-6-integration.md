@@ -1,145 +1,134 @@
-# M4.6 integration evidence and remaining implementation
+# M4.6 integration evidence
 
-Audit date: 2026-11-01. Target: `feat/whiteout-production-roadmap`, based on
-`origin/main` at `065d207` (merged M4.5 PR #20).
+Verified 2026-11-01 on `feat/whiteout-production-roadmap`, based on main
+`065d20787a2e61eb126ed81e63415f89b2430cdf` (merged M4.5 PR #20).
 
-## What was actually merged
+## Actual integration and scope
 
-PR #21 (`docs/m46-scene-state-and-m5-production-plan`) contains only:
+Repository/remote/PR inspection found no M4.6 runtime implementation branch.
+Open PR #21 (`docs/m46-scene-state-and-m5-production-plan`) contained only:
 
 - `455cb081037f29cdc7fb2930c896a6c3634cc207`: M4.6 architecture proposal.
 - `10ba7a7e4c5b464054dd6eaec04a6e077b698595`: M5a–M5g production proposal.
 
-These commits were merged into the target branch with **merge commit `c117675`**.
-There were no merge conflicts: the branch adds two documents and changes no Rust
-code, existing story data or accepted ADR. `main` and GitHub PR #21 were not
-merged by this operation. No separate M4.6 implementation branch was found in
-remote heads or the repository's PR inventory.
+These were **actually merged into the feature target at `c117675`**, without
+conflicts or discarded functionality. The proposal changed no Rust or story data.
+Main and PR #21 were not merged by this operation. Missing blocking M4.6 runtime
+work was then implemented on this feature branch, rather than recreating an
+existing implementation. The original M5 experiment was isolated locally at
+`323379b` until the M4.6 verification below passed.
 
-The initial M5 screenplay/roadmap experiment is isolated at local
-`wip/whiteout-screenplay-contract` (`323379b`), outside this integration branch.
-It is not a completed milestone and must not be silently included before M4.6.
+M4.5 was already complete: the initial workspace run passed 178 tests. Its
+engine, timing, TUI, inspection and legacy checkpoint behavior were preserved.
+Accepted ADRs and crate dependency directions were not changed. Concrete opt-in
+implementation choices are proposed for review in [ADR-0008](../adr/0008-m46-versioned-lifecycle-and-storage.md).
 
-## Verified baseline
+## Verified acceptance ledger
 
-M4.5 is **complete**: `SceneEngine` schema 2 and protocol 2, semantic feedback,
-`CuePlayer`, shared `SceneSession`, TUI, pure `inspect_world`, schema-1 archives,
-WHITEOUT's three endings, automatic narrative playback and deadline cancellation
-are implemented and tested. The baseline workspace run passed **178 tests**.
-The source review included engine output/inspection, session coordination,
-renderer cue lifecycle and dependency-boundary tests. LSP diagnostics were
-requested for representative Rust files; one response timed out and CuePlayer
-reported no diagnostics. Tests provide the additional semantic evidence.
+| Gate | Status / evidence |
+| --- | --- |
+| Prepare/ready/begin/end/stable | Complete: LifecycleEngine, typed correlated feedback and persistent boundary; duplicate/stale feedback, readiness failure, reentry/epoch and terminal closure regressions in lifecycle.rs. |
+| Scene/preloading | Complete for text: explicit scenes.yaml, actual TextResources scope cache before Ready, failed preparation retains old cache; no filename-derived scene IDs or engine asset loading. |
+| Provider | Complete: typed atomic WorldStateProvider, offline InMemoryWorldState, ProvidedSceneEngine candidate/CAS; rollback, overflow/type/scope/revision/local-reset and replay tests in world_provider.rs. |
+| Boundary checkpoints | Complete opt-in: coherent semantic history/world/config validation, atomic restore, fresh revision, no old graphics replay, persistent window, initial load and completed-game saves. Actual lifecycle_cli and PTY round-trips; legacy schemas/saves unchanged. |
+| Catalog | Complete neutral contract/text exporter: actual bindings, all-path M3 comparison, explicit scopes, exact/estimate and completion diagnostics, duplicate/missing/unused IDs and resource URI failure; catalog.rs and text_resources.rs tests. Physical graphics exporter/import is M5 work. |
+| Time | Complete: relative actual-start, absolute/reveal/extend/unset and cutoff tests; 5,000ms outgoing media with frozen gameplay; existing overlap/interruption/credit tests; all three WHITEOUT endings preserve canonical world and action-cost history after every decision. |
+| CLI/TUI/debug | Complete: opt-in flag, real scoped preparation, persistent checkpoint menu, phase/scene/epoch/readiness/next-scene/provider revision inspector, manual-clock pipe path, outgoing renderer-only media, actual PTY cleanup/resize/one-key/menu test. |
+| Demo/migration | Complete: README exact WHITEOUT command; concrete configuration/protocol/checkpoint migration, resource exporter/checker and manual commands in the migration guide; actual CLI runs reach all three authored endings. |
 
-## M4.6 acceptance ledger
+## Incremental delivery
 
-The following are **missing M4.6 work**, not reasons to reopen M4.5:
+- `59476c4`: catalog validation and integration-gap ledger.
+- `c2dcfa6`: headless lifecycle and transactional backing storage.
+- `fc675c7`: presentation envelope/adapter and fresh initial boundary restore.
+- `b3602c5`: shared host and renderer-only outgoing media clock; retained completed
+  control ACK correlation fix.
+- `7aaaf0b`: actual text registry exporter/preparation and WHITEOUT scene scopes.
+- `d761553`: real CLI/TUI lifecycle and boundary-save integration; fixes boundary
+  load-status overwrite found by the PTY regression.
 
-| Area | Current evidence / status | Required completion evidence |
-| --- | --- | --- |
-| Explicit prepare/begin/end/stable boundary | **Partially implemented, headless tests pass**; host/renderer integration missing. Baseline: current CueSheet has revision/clock/cues only; GOTO immediately enters a new epoch | Typed lifecycle, idempotent and stale ACK tests, reentry/endings, resource readiness/failure, executable host demo |
-| Scene ID/preloading | **Missing** at runtime; namespaces are not a preload API | Stable semantic scene/scope metadata, readiness before T=0, missing-resource diagnostic without changed story outcomes |
-| World-state provider | **Partially implemented**: injected provider and atomic engine wrapper tested; new lifecycle host integration pending. Baseline: engine stores globals/locals internally and clones candidate state transactionally | Replaceable typed storage, InMemory implementation, atomic effects/local lifecycle, stale revision, rollback/replay and inspection tests |
-| Stable-boundary checkpoints | **Partially implemented, headless replay/rollback tests pass**; CLI/UI and migration/demo pending. Baseline: M4.5 supports paused mid-scene saves | Explicit persistent boundary, versioned opt-in policy, next-scene deterministic restore, original schema-1/2 saves remain executable |
-| Renderer catalog | **Partially implemented**: strict portable comparison CLI and all-path/scope/duration tests; actual renderer exporter/resource loading missing | Strict versioned catalog, all-path ID/scope/completion/duration diagnostics, real supplied resource validation at renderer production gate |
-| Existing timing rules | **Complete M4.5 foundation**, M4.6 lifecycle interaction unimplemented | Preserve relative actual-start deadlines, absolute deadlines, unset/reveal/extend, interruption and cold accounting across lifecycle boundaries |
-| Debug/CLI integration | **Partially implemented**: M4.5 inspector exists | Show prepare/end/stable states and provider snapshots; preserve noninteractive/manual-clock execution |
-| Migration/demo/docs/checks | **Missing for M4.6** | Explicit versioning, end-to-end lifecycle demo, migration instructions, full fmt/build/test/Clippy verification |
+These increments were pushed for inspection in draft PR #22. Reviews, general
+comments and inline comments were checked before pushes. PR #21 received an
+actionable architecture review; the per-item responses appear below. PR #22
+had no additional feedback at the latest check. Review remains required; implementation status is not
+an assertion that main already contains these changes.
 
-M4.6 must not be marked complete until every remaining row has implementation
-and test evidence. A document merge or catalog fixture alone is insufficient.
+## Exact verification before M5a
 
-## Preservation and implementation order
+All passed on the integrated implementation:
 
-Preserve schemas 1/2 and their M4.5 behavior. New lifecycle/boundary-save semantics
-must be explicitly versioned rather than silently disabling working mid-scene
-saves. Keep engine authority over validated rule transactions (ADR-0004); a
-provider may own storage, never independently decide narrative consequences.
-Do not move renderer catalogs, asset paths, world values or graph data into
-player Cue Sheets. Propose/document the concrete lifecycle/storage decisions
-before changing public contracts.
+```text
+cargo fmt --all --check
+cargo build --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+```
 
-Implement the independent catalog validation first, then atomic provider and
-versioned lifecycle/checkpoint coordination, and integrate the host/inspector.
-Only after those blocking M4.6 gates pass, restore the small M5a screenplay
-increment and continue the existing M5a–M5g production sequence. These named
-phases correspond to the requested M5–M11 production work without renumbering
-M5's existing graphical-adaptation commitment or M6's statistics proposal.
+**205 tests passed; 0 failed.** Includes all existing games, M4.5 regressions,
+three real PTY tests, real lifecycle boundary/reentry CLI runs, actual WHITEOUT
+lifecycle CLI playthroughs to every ending, catalog export and deterministic
+legacy-versus-lifecycle world/action-history parity. LSP diagnostics were
+requested for changed Rust files: some were current/clean, others timed out with
+stale data. Cargo verification supplies the semantic fallback; timeout responses
+are not counted as clean diagnostics.
 
-## Catalog increment
+## Limits and review points
 
-`crates/cli/src/catalog.rs` and `check-catalog` implement strict manifest parsing
-and source-index comparison. Three regression tests cover hidden branches,
-unknown/mismatched scopes, exact versus estimated duration/completion, duplicate
-IDs, unused declarations and actual CLI execution. See the
-[concrete catalog format](m4-6-catalog-format.md). This is one verified increment,
-not completion of M4.6 or of renderer asset validation.
+See the [concrete contract](../migrations/m4-6-scenes.md). Configuration 1 opts
+into envelope 3 / boundary checkpoint 1 while stories stay schema 1/2. Destination
+locals commit with transition effects at selection; destination execution waits
+for Begin. Atomicity is a provider implementation contract; GRIMM cannot undo a
+malicious provider that violates it. No independent external world writes, debug
+mutation, database or graphics importer is introduced.
 
-Verification after the actual document merge and catalog increment:
-`cargo fmt --all --check`, `cargo build --workspace --locked`,
-`cargo clippy --workspace --all-targets --locked -- -D warnings` and
-`cargo test --workspace --locked` passed (**181 tests, 0 failures**).
-This proves the existing M4.5 functionality still passes on the merged target;
-it does not substitute for the missing M4.6 lifecycle/provider/checkpoint gates.
+Text catalogs prove real text resources only. Graphical catalogs must later come
+from the selected renderer's real assets. No graphics engine or asset production
+is claimed. ADR-0008 remains proposed; reviewers should assess versioning,
+commit ordering and storage contract. Existing accepted architecture remains the
+baseline. M5a can now proceed as an offline representative contract increment;
+the complete graphical milestone remains unfinished.
 
-## Intermediate lifecycle/storage increment (not milestone completion)
+## PR #21 architecture-review checklist
 
-The reviewable implementation now includes `WorldStateProvider`, offline
-`InMemoryWorldState`, `ProvidedSceneEngine` transactional composition and an
-opt-in `LifecycleEngine`. Existing SceneEngine/story/checkpoint APIs remain
-unchanged. Lifecycle configuration maps the same schema-2 story to stable
-presentation scene IDs; its protocol-3 envelope wraps one existing replacement
-cue plan. Boundary checkpoints have their own versioned format.
+A COMMENT review on PR #21 (2026-11-01) is design feedback, not approval. PR #21
+stays design-only; implementation and evidence belong to PR #22. Responses:
 
-Targeted verification: five deterministic lifecycle tests and three injected
-storage tests pass. These exercise readiness/duplicate/stale feedback, frozen
-outgoing time, actual-start relative deadlines, atomic effects/scope changes,
-backend rejection, overflow, checkpoint replay/corruption and terminal closure.
-The existing 181-test full-workspace result above predates this increment; full
-verification will be rerun as integration proceeds.
-
-Still required: presentation adapter/envelope types, real host/TUI lifecycle,
-media scheduling while gameplay time is frozen, actual resource validation and
-preloading, reentry and extended timing/parity regressions, executable M4.6 demo,
-complete migration instructions, full workspace checks and review of ADR-0008.
-The M5 draft remains isolated. No milestone completion is claimed.
-
-The next intermediate increment adds the presentation-only lifecycle envelope and
-adapter, strict duplicate configuration mapping checks, and fresh-start boundary
-restore. Seven lifecycle tests and three provider tests pass. The first pushed
-headless increment's full workspace run passed **189 tests**; both GitHub CI
-runs passed. PR #22 had no reviews, general comments or inline comments when
-checked before this increment. Runtime/TUI resource coordination remains pending.
-
-The shared `SceneSession` now supports an explicitly opted-in lifecycle backend
-without replacing the legacy backend. A fake-clock host test runs 5,000ms of
-outgoing presentation while canonical gameplay time remains frozen, restores a
-stable checkpoint, and begins the next deadline with its full budget. A second
-test completes terminal text automatically before closing and verifies no replay
-after load. The integration exposed and fixed loss of issued-ID correlation for
-already completed controls. Nine lifecycle and three provider tests pass, along
-with all 16 M4.5 timing and 23 scene regressions. CLI flags/resource preparation
-and the actual TUI path are not connected yet.
-
-The actual text-renderer resource increment exports `grimm.text` catalogs from
-the existing story index, explicit `scenes.yaml` and real text/action bindings.
-`TextResources::prepare` resolves all possible scoped resources into a replacement
-cache before Ready; failed preparation retains the old cache. Three real-WHITEOUT
-resource/export tests pass, including the actual CLI exporter and unavailable
-resource failure/retry. Physical sprite/mesh/audio import remains outside this
-text backend. Interactive/pipe lifecycle flag wiring is the next pending step.
-
-The CLI/TUI now opts in through `--lifecycle SCENES.yaml` (optionally
-`--catalog CATALOG.yaml`). Preparation resolves actual text resources before Ready
-and Begin. The terminal presents a persistent boundary menu; redirected execution
-uses `:continue`. Saves use a separate `scene-<story>-boundary.json` default;
-legacy mode and its mid-scene saves are unchanged. Manual-clock outgoing media
-uses `:present MS` without advancing frozen canonical scene time.
-
-Two real CLI regressions verify active-save rejection, boundary save/load without
-replayed outgoing text and scene reentry. A real PTY regression covers boundary
-menu, save/load, preparation, inspector, resize and terminal restoration. It also
-found and fixed a load-status overwrite in the boundary menu. Workspace tests
-passed before adding the PTY regression; targeted CLI/PTY checks passed afterward.
-Further WHITEOUT lifecycle parity/timing evidence and final documentation/checks
-remain before marking M4.6 complete or starting M5a.
+1. **Real host/readiness:** scene_runtime.rs `prepare_renderer`, TextResources,
+   scene_tui.rs and SceneSession; tests
+   `missing_actual_resources_and_failed_preparation_never_silently_fall_back`,
+   `real_cli_reentry_prepares_the_original_scene_again`,
+   `lifecycle_tui_boundary_menu_save_load_and_cleanup`,
+   `preparation_readiness_and_duplicate_lifecycle_feedback_cannot_start_early`,
+   `revisiting_same_scene_rejects_prior_epoch_cue_and_lifecycle_acknowledgements`,
+   `automatic_terminal_text_finishes_before_scene_closure_and_does_not_replay_on_load`.
+2. **Authority/atomicity:** engine/scene/state.rs and lifecycle.rs; tests
+   `engine_and_storage_commit_effects_and_scope_atomically_and_restore_by_replay`,
+   `backend_failure_and_stale_revision_leave_engine_history_and_state_unchanged`,
+   `typed_storage_rejects_partial_effects_overflow_unknown_variables_and_bad_scope`.
+   Revision/epoch ownership is explicit in the migration guide.
+3. **Save compatibility:** distinct APIs/formats/default filenames; tests
+   `legacy_and_boundary_save_formats_are_rejected_cross_mode_without_mutation`,
+   `boundary_restore_replays_no_outgoing_graphics_and_rejects_inconsistent_world`,
+   `real_cli_only_saves_at_boundary_and_loads_without_replaying_outgoing_media`.
+4. **Actual catalog:** catalog.rs / text_resources.rs, all-path M3 comparison and
+   real text exporter; all catalog/resource tests, including
+   `actual_export_command_produces_a_usable_catalog`. Physical graphics readiness
+   remains an explicit M5 gate, not a claim inferred from a mock catalog.
+5. **REPLACE/time:** test
+   `lifecycle_replacement_retains_running_warning_once_and_cancels_obsolete_schedule`
+   uses WHITEOUT T=8 latch, T=10 radio/reveal, later REPLACE and cancellation.
+   Existing scene_timing tests remain; lifecycle.rs verifies actual-start deadlines,
+   cutoff, terminal closure and 5,000ms frozen outgoing media. All-ending parity
+   checks action histories/cold accounting at every decision.
+6. **Verification:** the 205-test full run above follows CLI/TUI integration; it
+   is not the old 181-test catalog baseline. Both review-specific regressions
+   passed in the final 205-test full workspace run with all four checks.
+7. **One game:** story.yaml/text.yaml remain unchanged. M5a checks original text
+   and graph/cue/action references before broader conversion.
+8. **Staging ownership:** descriptive production data only; no core camera/motion
+   DSL or new per-track protocol.
+9. **Renderer decision:** canonical roadmap M5c requires the same 30–60s scene,
+   actual assets/preload/radio overlap/choices/deadline and a reviewed ADR before
+   bulk sprites, final models or migration. No renderer selected here.
+10. **Tooling scope:** CLI/catalog/screenplay validators first; stable identity
+    specifications separate from generated artifacts. No authoring IDE.

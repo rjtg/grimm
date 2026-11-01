@@ -1,6 +1,6 @@
 # M4.6 — Scene Lifecycle, World State Boundary and Renderer Asset Contract
 
-**Status:** Proposed architecture; not implemented. **Prerequisite:** M4.5 merged. **Scope:** architecture needed before WHITEOUT's graphical adaptation. See [M5 production plan](m5-whiteout-production-plan.md).
+**Status:** Original proposal, integrated on the feature branch; see the [implementation ledger](m4-6-integration.md) and [concrete migration contract](../migrations/m4-6-scenes.md). Illustrative syntax below is historical, not the serialized API. **Prerequisite:** M4.5 merged. **Scope:** architecture needed before WHITEOUT's graphical adaptation. See [M5 production plan](m5-whiteout-production-plan.md).
 
 ## Goals
 
