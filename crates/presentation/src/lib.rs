@@ -1,5 +1,6 @@
 //! Text presentation and raw interaction, with no engine or semantic dependency.
 pub mod cues;
+pub mod lifecycle;
 
 use serde::{Deserialize, Serialize};
 

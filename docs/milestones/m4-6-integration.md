@@ -103,3 +103,10 @@ media scheduling while gameplay time is frozen, actual resource validation and
 preloading, reentry and extended timing/parity regressions, executable M4.6 demo,
 complete migration instructions, full workspace checks and review of ADR-0008.
 The M5 draft remains isolated. No milestone completion is claimed.
+
+The next intermediate increment adds the presentation-only lifecycle envelope and
+adapter, strict duplicate configuration mapping checks, and fresh-start boundary
+restore. Seven lifecycle tests and three provider tests pass. The first pushed
+headless increment's full workspace run passed **189 tests**; both GitHub CI
+runs passed. PR #22 had no reviews, general comments or inline comments when
+checked before this increment. Runtime/TUI resource coordination remains pending.

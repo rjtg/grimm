@@ -16,6 +16,7 @@ pub struct SceneConfiguration {
     pub story_id: String,
     pub story_version: u32,
     /// Explicit context -> presentation scene mapping. Host-only configuration.
+    #[serde(deserialize_with = "unique_scenes")]
     pub scenes: BTreeMap<String, String>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,4 +87,31 @@ pub struct BoundaryCheckpoint {
     pub revision: u64,
     pub history: Vec<LifecycleInput>,
     pub world: WorldSnapshot,
+}
+
+fn unique_scenes<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<BTreeMap<String, String>, D::Error> {
+    struct Unique;
+    impl<'de> serde::de::Visitor<'de> for Unique {
+        type Value = BTreeMap<String, String>;
+        fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("unique explicit context-to-scene mappings")
+        }
+        fn visit_map<M: serde::de::MapAccess<'de>>(
+            self,
+            mut map: M,
+        ) -> Result<Self::Value, M::Error> {
+            let mut scenes = BTreeMap::new();
+            while let Some((key, value)) = map.next_entry::<String, String>()? {
+                if scenes.insert(key.clone(), value).is_some() {
+                    return Err(serde::de::Error::custom(format!(
+                        "duplicate scene mapping '{key}'"
+                    )));
+                }
+            }
+            Ok(scenes)
+        }
+    }
+    deserializer.deserialize_map(Unique)
 }

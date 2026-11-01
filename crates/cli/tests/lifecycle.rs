@@ -278,3 +278,55 @@ fn bad_configuration_never_silently_infers_scenes_from_filenames() {
         );
     }
 }
+
+#[test]
+fn presentation_adapter_keeps_scope_and_feedback_out_of_world_state() {
+    use grimm_presentation::lifecycle as p;
+    let mut engine = new();
+    let initial = engine.output();
+    let shown = grimm_adapters::lifecycle::present(&initial);
+    assert_eq!(shown.protocol_version, 3);
+    assert_eq!(shown.scene.phase, p::ScenePhase::Prepare);
+    assert_eq!(
+        serde_json::to_value(&shown).unwrap(),
+        serde_json::to_value(&initial).unwrap()
+    );
+    let ready = p::SceneFeedback {
+        revision: shown.plan.revision,
+        scene_id: shown.scene.scene_id,
+        epoch: shown.scene.epoch,
+        event: p::SceneEvent::Ready,
+    };
+    engine
+        .scene_input(&grimm_adapters::lifecycle::feedback(ready))
+        .unwrap();
+    signal(&mut engine, SceneEvent::Begin);
+    let shown = grimm_adapters::lifecycle::present(&engine.output());
+    assert_eq!(shown.scene.phase, p::ScenePhase::Active);
+    assert_eq!(shown.plan.clock.epoch, 0);
+    assert!(
+        serde_yaml_ng::from_str::<SceneConfiguration>(&CONFIG.replace(
+            "room: demo.room, hall: demo.hall",
+            "room: demo.room, room: demo.hall"
+        ))
+        .is_err()
+    );
+}
+
+#[test]
+fn fresh_start_can_restore_a_verified_boundary_before_any_scene_begins() {
+    let mut original = new();
+    room(&mut original, 10);
+    travel(&mut original, 10);
+    finish_outgoing(&mut original);
+    let saved = original.checkpoint().unwrap();
+    let mut fresh = new();
+    fresh.restore(saved).unwrap();
+    assert_eq!(fresh.phase(), ScenePhase::Stable);
+    assert!(fresh.output().plan.cues.is_empty());
+    assert_eq!(fresh.world_snapshot().globals["count"], Value::Int(1));
+    signal(&mut fresh, SceneEvent::Prepare);
+    begin(&mut fresh);
+    assert_eq!(fresh.output().scene.scene_id, "demo.hall");
+    assert_eq!(fresh.output().plan.clock.elapsed_ms, 0);
+}

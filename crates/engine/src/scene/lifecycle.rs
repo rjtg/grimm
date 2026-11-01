@@ -426,9 +426,11 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
         })
     }
     pub fn restore(&mut self, save: BoundaryCheckpoint) -> SceneResult<SceneCueSheet> {
-        if self.phase != ScenePhase::Stable {
+        if self.phase != ScenePhase::Stable
+            && !(self.phase == ScenePhase::Prepare && self.history.is_empty())
+        {
             return Err(SceneError(
-                "M4.6 restore requires a stable scene boundary".into(),
+                "M4.6 restore requires a stable scene boundary or fresh preparation".into(),
             ));
         }
         if save.schema_version != 1
