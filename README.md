@@ -304,3 +304,23 @@ for coverage, compatibility notes and open questions, and the historical
 ## Game composition direction (planned M5)
 
 A story graph is not a complete visual game. A standalone game's composition may explicitly select **where its concrete renderer comes from**, along with game-specific assets, scene/hotspot mappings and other required modules. An externally hosted game may already own its renderer and invoke GRIMM only for narrative decisions. A Bevy-capable renderer is not automatically capable of playing arbitrary authored 3D adventures. The headless engine remains reusable; the surrounding composition root assembles the actual product. Whether GRIMM is the application entry point or an embedded narrative subsystem is still under investigation. See [architecture](docs/architecture.md#game-composition-and-renderer-ownership-future-m5) and [open questions](docs/open-questions.md#game-composition-renderer-origin-and-packaging). The exact packaging and loading API will be designed from a complete M5 demonstration, not imposed on existing CLI games now. See [embedded-host questions](docs/open-questions.md#host-integration-standalone-game-versus-embedded-narrative-engine).
+
+M4.6 lifecycle preview (opt-in; existing commands and saves remain supported):
+
+```bash
+cargo run -p grimm-cli -- play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml --lifecycle examples/whiteout/scenes.yaml --debug
+cargo run -p grimm-cli -- export-text-catalog examples/whiteout/story.yaml examples/whiteout/scenes.yaml examples/whiteout/text.yaml
+```
+
+The renderer prepares each scene before its clock starts. At a scene boundary,
+the session menu stays open for save/load; Continue starts the next scene.
+Boundary checkpoints have a separate format and filename from legacy saves.
+For redirected/manual-clock play, use `:continue` at boundaries and `:present MS`
+for outgoing presentation time; `:time MS` controls active scene time only.
+
+The [WHITEOUT blackout screenplay sample](examples/whiteout/production/blackout.screenplay.md)
+is a writer-friendly alternative presentation text, with dialogue, action, camera,
+lighting and sound notes for later production. It is reviewed editorially; no
+screenplay-specific CLI, schema or text-equality requirement applies. See the
+[writing scope](examples/whiteout/production/README.md). Only this scene is adapted;
+existing gameplay/prose assets and M4.6 runtime behavior are unchanged.

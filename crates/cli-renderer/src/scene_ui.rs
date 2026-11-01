@@ -1,7 +1,10 @@
 //! Renderer-only structured scene view. The host supplies labels and read-only
 //! debug rows; no engine or canonical-state type crosses this module boundary.
 use crate::cues::{CuePlayer, Lifecycle};
-use grimm_presentation::cues::{Clock, Instruction};
+use grimm_presentation::{
+    cues::{Clock, Instruction},
+    lifecycle::ScenePresentation,
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -47,6 +50,8 @@ pub struct SceneView<'a> {
     pub title: &'a str,
     pub context: &'a str,
     pub clock: &'a Clock,
+    pub scene: Option<&'a ScenePresentation>,
+    pub provider_revision: Option<u64>,
     pub status: &'a str,
     pub narrative: &'a [NarrativeEntry],
     pub choices: &'a [(String, String)],
@@ -123,10 +128,13 @@ impl SceneUi {
         } else {
             "deadline hidden".into()
         };
+        let header_context = view
+            .scene
+            .map_or(view.context, |scene| scene.scene_id.as_str());
         let header = if area.width < 80 {
             format!(
                 "{} | {}\nT={:.1}s · {}",
-                view.context,
+                header_context,
                 view.status,
                 view.clock.elapsed_ms as f64 / 1000.0,
                 deadline
@@ -135,7 +143,7 @@ impl SceneUi {
             format!(
                 "GRIMM / {} | {} · T={:.1}s | {}\n{}",
                 view.title,
-                view.context,
+                header_context,
                 view.clock.elapsed_ms as f64 / 1000.0,
                 deadline,
                 view.status
@@ -289,6 +297,20 @@ impl SceneUi {
                 view.clock.elapsed_ms, view.clock.deadline_ms, view.clock.visible
             )),
         ];
+        if let Some(scene) = view.scene {
+            lines.push(Line::raw(format!(
+                "scene_id: {} · {:?} · epoch {}",
+                scene.scene_id, scene.phase, scene.epoch
+            )));
+            lines.push(Line::raw(format!(
+                "ready: {} next_scene_id: {}",
+                scene.ready,
+                scene.next_scene_id.as_deref().unwrap_or("—")
+            )));
+        }
+        if let Some(revision) = view.provider_revision {
+            lines.push(Line::raw(format!("provider revision: {revision}")));
+        }
         if let Some(trace) = view.player.history().iter().rev().nth(self.history_back) {
             lines.push(Line::raw(format!(
                 "Sheet rev {} epoch {} ({} previous)",
@@ -445,6 +467,8 @@ mod tests {
             title: "WHITEOUT",
             context: "generator",
             clock: player.clock().unwrap(),
+            scene: None,
+            provider_revision: None,
             status: "Playing",
             narrative: &narrative,
             choices: &choices,

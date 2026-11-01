@@ -1,0 +1,16 @@
+# Opt-in M4.6 presentation scopes. Canonical story rules stay in story.yaml.
+schema_version: 1
+id: whiteout.text_scenes
+version: 1
+story_id: whiteout
+story_version: 2
+scenes:
+  blackout: whiteout.blackout
+  stores: whiteout.emergency_stores
+  dispatch: whiteout.dispatch_hall
+  generator: whiteout.generator_annex
+  radio: whiteout.radio_cabin
+  crisis: whiteout.ridge
+  ending_full: whiteout.full_rescue
+  ending_partial: whiteout.partial_survival
+  ending_lost: whiteout.station_lost

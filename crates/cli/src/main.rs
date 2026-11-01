@@ -22,6 +22,18 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).collect();
+    if args
+        .first()
+        .is_some_and(|command| command == "export-text-catalog")
+    {
+        return grimm_cli::text_resources::export(&args[1..]);
+    }
+    if args
+        .first()
+        .is_some_and(|command| command == "check-catalog")
+    {
+        return grimm_cli::catalog::run(&args[1..]);
+    }
     if args.first().is_some_and(|command| command == "play-scene") {
         return grimm_cli::scene_runtime::run(&args[1..]);
     }
@@ -59,7 +71,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [] => (None, Engine::default()),
         [help] if help == "--help" || help == "-h" => {
             println!(
-                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\n       grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--load SAVE.json]\n       grimm-cli check-scene STORY.yaml [--json]\n       grimm-cli index-scene STORY.yaml\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
+                "Usage: grimm-cli [play STORY.yaml [--load SAVE.json]]\n       grimm-cli check STORY.yaml [--max-states N] [--max-transitions N]\n       grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--load SAVE.json]\n       grimm-cli check-scene STORY.yaml [--json]\n       grimm-cli index-scene STORY.yaml\n       grimm-cli check-catalog STORY.yaml CATALOG.yaml\n       grimm-cli export-text-catalog STORY.yaml SCENES.yaml TEXT.yaml\nTerminal: Esc opens the session menu (1 Continue, 2 Save, 3 Load, 4 Quit).\nPiped session commands: :save PATH, :load PATH, :quit"
             );
             return Ok(());
         }

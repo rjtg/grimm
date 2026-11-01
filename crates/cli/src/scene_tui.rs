@@ -1,13 +1,17 @@
 //! Interactive composition root: time and files stay outside the renderer/core.
-use crate::{scene_runtime::TextBindings, scene_session::SceneSession};
+use crate::{
+    scene_runtime::{TextBindings, action_text, checkpoint_path, narrative_text, prepare_renderer},
+    scene_session::SceneSession,
+    text_resources::TextResources,
+};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use grimm_cli_renderer::scene_ui::{Focus, NarrativeEntry, SceneUi, SceneView, WorldRow};
-use grimm_engine::scene::SceneEngine;
 use grimm_presentation::cues::Instruction;
+use grimm_presentation::lifecycle::ScenePhase;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -73,12 +77,11 @@ impl Clock {
 }
 
 pub(crate) fn run(
-    engine: SceneEngine,
+    mut session: SceneSession,
     text: TextBindings,
-    automatic: bool,
+    mut resources: Option<TextResources>,
     debug: bool,
 ) -> Result<()> {
-    let mut session = SceneSession::new(engine, automatic)?;
     let mut ui = SceneUi {
         inspector: debug,
         ..SceneUi::default()
@@ -94,32 +97,54 @@ pub(crate) fn run(
         origin: Instant::now(),
     };
     clock.anchor(&session);
-    let save_path = PathBuf::from(".grimm-saves")
-        .join(format!("scene-{}.json", session.engine().save().story_id));
+    let save_path = checkpoint_path(&session);
     let _screen = Screen::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     let mut menu = false;
     let mut displayed: Option<(u64, Vec<String>)> = None;
     let mut status = String::from("Playing");
+    let mut last_frame = Instant::now();
+    let mut boundary_shown = None;
     loop {
+        let elapsed = last_frame
+            .elapsed()
+            .as_millis()
+            .try_into()
+            .unwrap_or(u64::MAX);
+        last_frame = Instant::now();
         if !menu {
+            session.advance_presentation_by(elapsed)?;
+            clock.synchronize(&session);
             session.advance_to(clock.now())?;
             clock.synchronize(&session);
+        }
+        if session
+            .scene()
+            .is_some_and(|scene| scene.phase == ScenePhase::Stable && scene.next_scene_id.is_some())
+            && boundary_shown != Some(session.player().revision())
+        {
+            boundary_shown = Some(session.player().revision());
+            if !menu {
+                menu = true;
+                clock.anchor(&session);
+                status = "Scene ended — checkpoint available".into();
+            }
         }
         for started in session.take_started_text() {
             if !seen.insert((started.epoch, started.cue.cue_id.clone())) {
                 continue;
             }
             if let Instruction::Narrative { narrative_id, .. } = started.cue.instruction {
-                let prose = text.narratives.get(&narrative_id).ok_or_else(|| {
-                    io::Error::other(format!(
-                        "missing text binding for narrative '{narrative_id}'"
-                    ))
-                })?;
+                let prose =
+                    narrative_text(&text, resources.as_ref(), &narrative_id).ok_or_else(|| {
+                        io::Error::other(format!(
+                            "missing text binding for narrative '{narrative_id}'"
+                        ))
+                    })?;
                 entries.push(NarrativeEntry {
                     epoch: started.epoch,
                     cue_id: started.cue.cue_id,
-                    text: prose.clone(),
+                    text: prose.to_owned(),
                 });
                 // Bound renderer-owned scrollback independently of semantic history.
                 if entries.len() > 512 {
@@ -164,9 +189,8 @@ pub(crate) fn run(
             .actions()
             .iter()
             .map(|id| {
-                text.actions
-                    .get(id)
-                    .map(|label| (id.clone(), label.clone()))
+                action_text(&text, resources.as_ref(), id)
+                    .map(|label| (id.clone(), label.to_owned()))
                     .ok_or_else(|| {
                         io::Error::other(format!("missing text binding for action '{id}'"))
                     })
@@ -196,14 +220,28 @@ pub(crate) fn run(
         displayed = Some(offer_identity);
         let displayed_revision = session.player().revision();
         let running_text = session.player().running_narratives().first().cloned();
+        let scene = session.scene();
+        let provider_revision = session.provider_revision();
         let view = SceneView {
             title: session.engine().title(),
             context: &snapshot.context_id,
             clock: session.player().clock().expect("sheet"),
+            scene: scene.as_ref(),
+            provider_revision,
             status: if menu {
                 "Paused"
-            } else if session.engine().is_terminal() {
+            } else if session.is_complete() {
                 "Ending · Esc to quit"
+            } else if scene
+                .as_ref()
+                .is_some_and(|scene| scene.phase == ScenePhase::Ending)
+            {
+                "Finishing scene"
+            } else if scene
+                .as_ref()
+                .is_some_and(|scene| scene.phase == ScenePhase::Prepare)
+            {
+                "Preparing scene"
             } else {
                 &status
             },
@@ -330,17 +368,19 @@ pub(crate) fn run(
         if menu {
             match key.code {
                 KeyCode::Esc | KeyCode::Char('1') => {
+                    if let Err(error) = prepare_renderer(&mut session, &mut resources) {
+                        status = format!("Preparation failed: {error}");
+                        continue;
+                    }
                     menu = false;
                     clock.anchor(&session);
                     status = "Playing".into();
                 }
                 KeyCode::Char('2') => {
                     let result: Result<()> = (|| {
+                        let payload = session.save_json()?;
                         fs::create_dir_all(save_path.parent().expect("save directory"))?;
-                        fs::write(
-                            &save_path,
-                            serde_json::to_string_pretty(&session.engine().save())?,
-                        )?;
+                        fs::write(&save_path, payload)?;
                         Ok(())
                     })();
                     status = match result {
@@ -350,7 +390,7 @@ pub(crate) fn run(
                 }
                 KeyCode::Char('3') => {
                     let result: Result<()> = (|| {
-                        session.restore(serde_json::from_str(&fs::read_to_string(&save_path)?)?)?;
+                        session.restore_json(&fs::read_to_string(&save_path)?)?;
                         Ok(())
                     })();
                     status = match result {

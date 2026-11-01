@@ -1,10 +1,13 @@
 //! Concrete text game composition. The synchronous coordinator is shared by the
 //! interactive TUI and deterministic/noninteractive line transport.
+use crate::text_resources::TextResources;
 use crate::{FileError, scene_session::SceneSession};
 use grimm_cli_renderer::CliRenderer;
 use grimm_engine::scene::SceneEngine;
+use grimm_engine::scene::lifecycle::LifecycleEngine;
+use grimm_presentation::lifecycle::ScenePhase;
 use grimm_presentation::{PresentationCommand, RawInput, cues::Instruction};
-use grimm_semantic::scene::{SceneSave, SceneStory};
+use grimm_semantic::{lifecycle::SceneConfiguration, scene::SceneStory};
 use serde::Deserialize;
 use std::{
     collections::BTreeMap,
@@ -20,7 +23,9 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct TextBindings {
+    #[serde(deserialize_with = "crate::catalog::unique_map")]
     pub(crate) narratives: BTreeMap<String, String>,
+    #[serde(deserialize_with = "crate::catalog::unique_map")]
     pub(crate) actions: BTreeMap<String, String>,
 }
 pub fn parse(source: &str, yaml: &str) -> std::result::Result<SceneEngine, FileError> {
@@ -97,18 +102,18 @@ fn lines() -> (Sender<Prompt>, Receiver<io::Result<Line>>) {
 
 pub fn run(args: &[OsString]) -> Result<()> {
     if args.len() < 2 {
-        return Err("Usage: grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--manual-reading|--auto-reading] [--debug] [--load SAVE.json]".into());
+        return Err("Usage: grimm-cli play-scene STORY.yaml TEXT.yaml [--manual-clock] [--manual-reading|--auto-reading] [--debug] [--load SAVE.json] [--lifecycle SCENES.yaml [--catalog CATALOG.yaml]]".into());
     }
     let story_path = Path::new(&args[0]);
-    let mut engine = parse(
-        &story_path.display().to_string(),
-        &fs::read_to_string(story_path)?,
-    )?;
-    let text: TextBindings = serde_yaml_ng::from_str(&fs::read_to_string(&args[1])?)?;
+    let story_source = fs::read_to_string(story_path)?;
+    let text_source = fs::read_to_string(&args[1])?;
+    let text: TextBindings = serde_yaml_ng::from_str(&text_source)?;
     let mut manual = false;
     let mut reading = None;
     let mut debug = false;
     let mut load = None;
+    let mut lifecycle = None;
+    let mut catalog_path = None;
     let mut index = 2;
     while index < args.len() {
         if args[index] == "--manual-clock" {
@@ -123,6 +128,12 @@ pub fn run(args: &[OsString]) -> Result<()> {
         } else if args[index] == "--debug" {
             debug = true;
             index += 1;
+        } else if args[index] == "--lifecycle" && index + 1 < args.len() {
+            lifecycle = Some(PathBuf::from(&args[index + 1]));
+            index += 2;
+        } else if args[index] == "--catalog" && index + 1 < args.len() {
+            catalog_path = Some(PathBuf::from(&args[index + 1]));
+            index += 2;
         } else if args[index] == "--load" && index + 1 < args.len() {
             load = Some(PathBuf::from(&args[index + 1]));
             index += 2;
@@ -130,17 +141,47 @@ pub fn run(args: &[OsString]) -> Result<()> {
             return Err("unknown/missing play-scene option".into());
         }
     }
-    if let Some(path) = load {
-        engine.restore(serde_json::from_str::<SceneSave>(&fs::read_to_string(
-            path,
-        )?)?)?;
-    }
     let interactive = !manual && io::stdin().is_terminal() && io::stdout().is_terminal();
     let automatic = reading.unwrap_or(interactive);
-    if interactive {
-        return crate::scene_tui::run(engine, text, automatic, debug);
+    let mut resources = None;
+    let mut session = if let Some(path) = lifecycle {
+        let configuration: SceneConfiguration =
+            serde_yaml_ng::from_str(&fs::read_to_string(path)?)?;
+        let catalog = catalog_path
+            .as_ref()
+            .map(|path| -> Result<crate::catalog::Catalog> {
+                Ok(serde_yaml_ng::from_str(&fs::read_to_string(path)?)?)
+            })
+            .transpose()?;
+        resources = Some(TextResources::from_sources(
+            &story_source,
+            &configuration,
+            &text_source,
+            catalog,
+        )?);
+        let engine = LifecycleEngine::new(serde_yaml_ng::from_str(&story_source)?, configuration)?;
+        SceneSession::new_lifecycle(engine, automatic)?
+    } else {
+        if catalog_path.is_some() {
+            return Err("--catalog requires --lifecycle".into());
+        }
+        SceneSession::new(
+            parse(&story_path.display().to_string(), &story_source)?,
+            automatic,
+        )?
+    };
+    if let Some(path) = load {
+        session.restore_json(&fs::read_to_string(path)?)?;
     }
-    let mut session = SceneSession::new(engine, automatic)?;
+    if session
+        .scene()
+        .is_some_and(|scene| scene.phase == ScenePhase::Prepare)
+    {
+        prepare_renderer(&mut session, &mut resources)?;
+    }
+    if interactive {
+        return crate::scene_tui::run(session, text, resources, debug);
+    }
     let mut clock = DriverClock {
         base: 0,
         origin: Instant::now(),
@@ -151,9 +192,8 @@ pub fn run(args: &[OsString]) -> Result<()> {
     };
     clock.reset(&session);
     let mut renderer = CliRenderer::new(io::empty(), io::stdout().lock());
-    renderer.render(&[PresentationCommand::Text(session.engine().title().into()),PresentationCommand::Text("Numbered actions; Enter finishes text in manual reading mode. Commands: :menu, :save PATH, :load PATH, :quit. Manual clock: :time MS or :advance MS; @qualified.action selects an exact offered ID.".into())])?;
-    let save_path = PathBuf::from(".grimm-saves")
-        .join(format!("scene-{}.json", session.engine().save().story_id));
+    renderer.render(&[PresentationCommand::Text(session.engine().title().into()),PresentationCommand::Text("Numbered actions; Enter finishes text in manual reading mode. Commands: :menu, :save PATH, :load PATH, :quit. Lifecycle boundaries: :continue; manual outgoing media: :present MS. Manual clock: :time MS or :advance MS; @qualified.action selects an exact offered ID.".into())])?;
+    let save_path = checkpoint_path(&session);
     let (request, receive) = lines();
     let mut pending = false;
     let mut eof = false;
@@ -161,16 +201,28 @@ pub fn run(args: &[OsString]) -> Result<()> {
     let mut shown_actions = vec![];
     let mut shown_seconds = None;
     let mut shown_revision = None;
+    let mut last_frame = Instant::now();
     loop {
+        let elapsed = last_frame
+            .elapsed()
+            .as_millis()
+            .try_into()
+            .unwrap_or(u64::MAX);
+        last_frame = Instant::now();
         if !menu {
+            if !manual {
+                session.advance_presentation_by(elapsed)?;
+            }
+            clock.synchronize_after_rejection(&session);
             clock.observe(&mut session)?;
             for started in session.take_started_text() {
                 if let Instruction::Narrative { narrative_id, .. } = started.cue.instruction {
-                    let prose = text.narratives.get(&narrative_id).ok_or_else(|| {
-                        io::Error::other(format!(
-                            "missing text binding for narrative '{narrative_id}'"
-                        ))
-                    })?;
+                    let prose = narrative_text(&text, resources.as_ref(), &narrative_id)
+                        .ok_or_else(|| {
+                            io::Error::other(format!(
+                                "missing text binding for narrative '{narrative_id}'"
+                            ))
+                        })?;
                     renderer.render(&[PresentationCommand::Text(format!("\n{prose}"))])?;
                     if !automatic {
                         renderer.render(&[PresentationCommand::Text("Press Enter after reading. Available numbered actions may still be used.".into())])?;
@@ -180,6 +232,11 @@ pub fn run(args: &[OsString]) -> Result<()> {
             if shown_revision != Some(session.player().revision()) {
                 shown_revision = Some(session.player().revision());
                 shown_actions.clear();
+                if session.scene().is_some_and(|scene| {
+                    scene.phase == ScenePhase::Stable && scene.next_scene_id.is_some()
+                }) {
+                    renderer.render(&[PresentationCommand::Text("Scene ended — checkpoint available. Use :save PATH, :load PATH, or :continue for the next scene.".into())])?;
+                }
             }
             if session.player().actions() != shown_actions {
                 let labels = session
@@ -187,9 +244,11 @@ pub fn run(args: &[OsString]) -> Result<()> {
                     .actions()
                     .iter()
                     .map(|id| {
-                        text.actions.get(id).cloned().ok_or_else(|| {
-                            io::Error::other(format!("missing text binding for action '{id}'"))
-                        })
+                        action_text(&text, resources.as_ref(), id)
+                            .map(str::to_owned)
+                            .ok_or_else(|| {
+                                io::Error::other(format!("missing text binding for action '{id}'"))
+                            })
                     })
                     .collect::<io::Result<Vec<_>>>()?;
                 if !labels.is_empty() {
@@ -212,7 +271,7 @@ pub fn run(args: &[OsString]) -> Result<()> {
             } else {
                 shown_seconds = None;
             }
-            if session.engine().is_terminal() && !session.player().pending() {
+            if session.is_complete() && !session.player().pending() {
                 return Ok(());
             }
         }
@@ -234,14 +293,16 @@ pub fn run(args: &[OsString]) -> Result<()> {
             };
             if manual
                 || menu
-                || !session.player().clock().expect("sheet").running
+                || (!session.player().clock().expect("sheet").running
+                    && !session.presentation_pending())
                 || (session
                     .player()
                     .clock()
                     .expect("sheet")
                     .deadline_ms
                     .is_none()
-                    && future.is_none())
+                    && future.is_none()
+                    && !session.presentation_pending())
             {
                 return Ok(());
             }
@@ -277,6 +338,12 @@ pub fn run(args: &[OsString]) -> Result<()> {
         if command == ":quit" || (menu && command == ":menu-quit") {
             return Ok(());
         }
+        if command == ":continue" && !menu && session.scene().is_some() {
+            prepare_renderer(&mut session, &mut resources)?;
+            clock.reset(&session);
+            shown_actions.clear();
+            continue;
+        }
         if command == ":menu" || (menu && command == ":menu-continue") {
             menu = !menu;
             clock.reset(&session);
@@ -284,6 +351,8 @@ pub fn run(args: &[OsString]) -> Result<()> {
             if menu {
                 renderer.render(&[PresentationCommand::Text(format!("Scene session menu — paused\n[1] Continue  [2] Save  [3] Load  [4] Quit\nCheckpoint: {}",save_path.display()))])?;
             } else {
+                prepare_renderer(&mut session, &mut resources)?;
+                clock.reset(&session);
                 shown_actions.clear();
             }
             continue;
@@ -302,17 +371,15 @@ pub fn run(args: &[OsString]) -> Result<()> {
         if let Some((save, path)) = path_command {
             let result: Result<()> = (|| {
                 if save {
+                    let payload = session.save_json()?;
                     if let Some(parent) = path.parent()
                         && !parent.as_os_str().is_empty()
                     {
                         fs::create_dir_all(parent)?;
                     }
-                    fs::write(
-                        &path,
-                        serde_json::to_string_pretty(&session.engine().save())?,
-                    )?;
+                    fs::write(&path, payload)?;
                 } else {
-                    session.restore(serde_json::from_str(&fs::read_to_string(&path)?)?)?;
+                    session.restore_json(&fs::read_to_string(&path)?)?;
                     clock.reset(&session);
                     shown_actions.clear();
                     shown_revision = None;
@@ -334,9 +401,24 @@ pub fn run(args: &[OsString]) -> Result<()> {
         }
         if manual {
             if let Some(value) = command
+                .strip_prefix(":present ")
+                .and_then(|value| value.parse::<u64>().ok())
+            {
+                session.advance_presentation_by(value)?;
+                clock.reset(&session);
+                continue;
+            }
+            if let Some(value) = command
                 .strip_prefix(":time ")
                 .and_then(|value| value.parse::<u64>().ok())
             {
+                if session
+                    .scene()
+                    .is_some_and(|scene| scene.phase != ScenePhase::Active)
+                {
+                    renderer.render(&[PresentationCommand::Text("Scene time is frozen; use :present MS for outgoing media or :continue at a checkpoint.".into())])?;
+                    continue;
+                }
                 clock.base = value;
                 continue;
             }
@@ -344,6 +426,15 @@ pub fn run(args: &[OsString]) -> Result<()> {
                 .strip_prefix(":advance ")
                 .and_then(|value| value.parse::<u64>().ok())
             {
+                if session
+                    .scene()
+                    .is_some_and(|scene| scene.phase != ScenePhase::Active)
+                {
+                    renderer.render(&[PresentationCommand::Text(
+                        "Scene time is frozen; use :present MS or :continue.".into(),
+                    )])?;
+                    continue;
+                }
                 clock.base = clock
                     .base
                     .checked_add(value)
@@ -395,4 +486,57 @@ impl DriverClock {
             self.reset(session);
         }
     }
+}
+
+pub(crate) fn narrative_text<'a>(
+    text: &'a TextBindings,
+    resources: Option<&'a TextResources>,
+    id: &str,
+) -> Option<&'a str> {
+    match resources {
+        Some(resources) => resources.narrative(id),
+        None => text.narratives.get(id).map(String::as_str),
+    }
+}
+pub(crate) fn action_text<'a>(
+    text: &'a TextBindings,
+    resources: Option<&'a TextResources>,
+    id: &str,
+) -> Option<&'a str> {
+    match resources {
+        Some(resources) => resources.action(id),
+        None => text.actions.get(id).map(String::as_str),
+    }
+}
+pub(crate) fn checkpoint_path(session: &SceneSession) -> PathBuf {
+    PathBuf::from(".grimm-saves").join(format!(
+        "scene-{}{}.json",
+        session.engine().save().story_id,
+        if session.scene().is_some() {
+            "-boundary"
+        } else {
+            ""
+        }
+    ))
+}
+pub(crate) fn prepare_renderer(
+    session: &mut SceneSession,
+    resources: &mut Option<TextResources>,
+) -> Result<()> {
+    if !session.scene().is_some_and(|scene| {
+        scene.phase == ScenePhase::Prepare
+            || (scene.phase == ScenePhase::Stable && scene.next_scene_id.is_some())
+    }) {
+        return Ok(());
+    }
+    let scene = session.preparation_scene()?;
+    let resources = resources
+        .as_mut()
+        .ok_or("lifecycle scene has no concrete resource registry")?;
+    if let Err(error) = resources.prepare(&scene) {
+        session.preparation_failed()?;
+        return Err(error);
+    }
+    session.begin_prepared_scene()?;
+    Ok(())
 }

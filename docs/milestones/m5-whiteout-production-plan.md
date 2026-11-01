@@ -1,6 +1,6 @@
 # M5 — WHITEOUT Graphical Adaptation: Production Pipeline and Gates
 
-**Status:** Proposed sequence of **intermediate goals**, not an authorization to implement the entire graphic adaptation at once. **Prerequisite:** [M4.6 architecture contract](m4-6-scene-state-renderer-contract.md). **Product constraint:** preserve WHITEOUT's canonical authored game rules/decisions/endings as a single source; adapt and enrich presentation rather than fork into a separately scripted game.
+**Status:** Supporting production gates; current ordering/status is maintained in the [canonical roadmap](../roadmap.md). M5a.1 adds a writer-friendly [blackout screenplay sample](../../examples/whiteout/production/README.md); the complete M5 remains unfinished. Proposed sequence of **intermediate goals**, not an authorization to implement the entire graphic adaptation at once. **Prerequisite:** [M4.6 architecture contract](m4-6-scene-state-renderer-contract.md). **Product constraint:** preserve WHITEOUT's canonical authored game rules/decisions/endings as a single source; adapt and enrich presentation rather than fork into a separately scripted game.
 
 M5 should be delivered in **reviewable increments** with explicit go/no-go gates. The story-engine, narrative writing and rendering pipelines have different owners and artifact formats; do not combine them into one oversized PR.
 
@@ -8,7 +8,7 @@ M5 should be delivered in **reviewable increments** with explicit go/no-go gates
 
 | Gate | Deliverable | Acceptance / decision |
 | --- | --- | --- |
-| **M5a — Screenplay adaptation** | WHITEOUT screenplay in scenes, dialogue and stage directions | All narrative beats, meaningful choices and endings covered; stable semantic cue mapping; no gameplay change |
+| **M5a — Screenplay adaptation** | WHITEOUT screenplay in scenes, dialogue and stage directions | Current increment: readable scene sample and human editorial review; later content increments extend writing. Optional existing semantic-ID notes; no gameplay change or screenplay-specific validation subsystem |
 | **M5b — Character bible and concept art** | Consistent virtual actors, environments, visual rules | Approved visual references for Alex, Mara, Jonas, Lea; controlled character continuity across shots |
 | **M5c — Rendering engine decision** | Honest 2D/sprite versus Bevy evaluation with vertical slices | Documented scored decision on art quality, asset pipeline, runtime/input, CI and team feasibility |
 | **M5d — Required base assets** | Reusable actor/location/environment bases for chosen engine | All critical locations/actors available and loadable; right scale/material/style; license/provenance tracked |
@@ -20,20 +20,30 @@ Each gate ends with concrete artifacts and a short review. Do not force expensiv
 
 ## M5a — Screenplay rewrite of the *presentation*, not the rules
 
-Rewrite the current WHITEOUT text binding into a **screenplay/staging format** while preserving the narrative facts, characters, narrative IDs, action IDs, character outcomes, puzzle clues and timing contracts. The screenplay may have sluglines, shots, camera language, blocking, actors' gestures, sound design and dialogue. Example:
+Adapt WHITEOUT's prose presentation into writer-friendly screenplay text,
+analogous to the existing prose assets. Freely turn exposition into dialogue,
+acting, blocking, visible movement, shots, camera direction, lighting and sound.
+Preserve narrative facts and branch/outcome meaning through **human editorial
+review**, not exact prose reproduction or a screenplay-specific schema gate.
 
-```text
-INT. AURORA — GENERATOR ANNEX — NIGHT
-WIDE: Rime-coated machinery trembles as the intake duct buckles.
-CLOSE ON: Alex's gloves closing around a frozen latch.
-JONAS (O.S.): "Try the upper hinge, not the handle."
-SFX: A sharp crack; the turbine settles into an uneasy hum.
-[GRIMM presentation: generator.latch_crack]
-```
+Use an author-friendly format such as Markdown. Optional notes with the existing
+semantic presentation IDs help associate text with the same authored situation;
+they are not a compiler contract, execution/specification layer or second story
+graph. Stage directions guide creative production, not GRIMM runtime commands.
+Keep `story.yaml` rules and current CLI prose behavior intact.
 
-**Important:** stage directions are instructions for the production team/renderer assets, **not** new generic `camera_move` or `actor_move` commands in the GRIMM DSL. Preserve semantically equivalent text binding for CLI and accessibility; do not replace canonical player-visible narration with only shot directions. Avoid adding a new gameplay variable just to trigger a shot.
+Acceptance for the current increment is one readable, useful scene sample with
+clear staging and creative requirements. See the
+[blackout sample](../../examples/whiteout/production/blackout.screenplay.md).
+Continue actual screenplay writing in subsequent content increments. No
+`check-screenplay`, structural validation, automatic story-coverage gate or
+text-equality rule is required. Technical validation of actual renderer-exported
+resources and cue bindings remains a separate, later production gate.
 
-Deliver scene-by-scene screenplay files with a machine-checkable mapping `cue_id -> narrative_id/presentation_id -> screenplay beat`, all choice labels, branching alternatives, a spoiler walkthrough and editorial change notes. Specify optional timing: target shot duration, whether playback is fixed/timed versus callback-completed, and `after_cue` barriers. The screenplay can be written before choosing a rendering engine.
+Descriptions, screenplay, dummy/previsualization renders and polished graphics
+may eventually form a creative workflow. That vision is **not** authorization to
+build asset tiers, versioned presentation layers, fallback selection, a new
+runtime or an authoring studio in this PR.
 
 ## M5b — Virtual actors and visual bible
 
@@ -106,8 +116,10 @@ Acceptance:
 7. Usable choice presentation, accessibility, controls, stable performance and documented setup.
 8. Gameplay rules and ending facts remain authored by GRIMM; renderer is not a competing gameplay source.
 
-## After M5: renderer-aware Authoring Studio
+## Possible later authoring support
 
-A future authoring UI may combine story graph, scene timeline, screenplay, and renderer-exported catalogs. It should offer available-ID selection, missing/unused asset checks, optional duration/completion mismatches, scene preload validation and preview. **Do not create a new proprietary third source of truth.** The GRIMM story and the renderer's actual assets remain canonical; the IDE edits/validates their exported representations.
-
-M5 does **not** need a full IDE. It needs a reliable renderer catalog exporter and GRIMM validator first.
+Any authoring UI or preview must be justified by later concrete production
+needs. Screenplay writing does not require a new compiler, validation subsystem,
+asset-tier architecture or editor. Current graph checks and M4.6 catalog tooling
+remain available; technical resource validation is applied separately when actual
+renderer assets/cue bindings exist. No authoring studio is committed by M5a.

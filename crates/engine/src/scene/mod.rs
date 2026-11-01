@@ -1,6 +1,8 @@
 //! Opt-in M2 scenes. Legacy Engine, stories, timers and saves are unchanged.
 pub mod authoring;
 mod expressions;
+pub mod lifecycle;
+pub mod state;
 mod validation;
 use expressions::{Times, check, update};
 use grimm_semantic::{scene::*, story::Variables};

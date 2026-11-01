@@ -4,10 +4,12 @@
 
 pub mod authoring;
 pub mod flow;
+pub mod lifecycle;
 pub mod save;
 pub mod scene;
 pub mod story;
 pub mod time;
+pub mod world;
 
 use serde::{Deserialize, Serialize};
 

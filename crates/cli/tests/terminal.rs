@@ -40,3 +40,22 @@ fn scene_tui_automatic_text_inspector_resize_menu_and_cleanup() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn lifecycle_tui_boundary_menu_save_load_and_cleanup() {
+    let output = std::process::Command::new("python3")
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/lifecycle_tui_test.py"
+        ))
+        .arg(env!("CARGO_BIN_EXE_grimm-cli"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}

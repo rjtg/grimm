@@ -1,5 +1,39 @@
 # Open design questions
 
+## M4.6 integration and M5 production review (2026-11-01)
+
+The [canonical roadmap](roadmap.md) preserves M5 as graphical WHITEOUT and uses
+named M5a–M5g phases for screenplay through integration. M4.6 now has an opt-in
+[text lifecycle/storage/catalog implementation](migrations/m4-6-scenes.md) on the
+feature branch; this does not decide graphical packaging or alter legacy saves.
+[ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) is accepted for
+architectural lifecycle/state/timing semantics, including transition effects and
+pending destination locals committing before presentation Begin. Its explicit
+API-stability reservation permits deliberate versioned API/format changes until
+graphical WHITEOUT integration, preserving compatibility and migration guarantees.
+
+M5a.1 provides a writer-friendly blackout screenplay sample, analogous to prose
+presentation assets. Prose may be freely adapted into dialogue and visual action;
+review of story/branch consistency is editorial, not a screenplay schema or
+coverage gate. Later content increments continue that writing. A future creative
+workflow through previsualization and polished graphics is not a requirement for
+asset tiers, interchangeable runtime layers, fallback selection or an IDE now.
+M5c still requires a measured same-scene sprite/2D versus Bevy comparison and ADR;
+no rendering engine or asset import pipeline is selected. Text resource validation
+is not evidence of graphical asset availability.
+
+## M4.6 review follow-ups
+
+- **ADR-0008 acceptance — Decided:** maintainer `rjtg` accepted the architectural
+  semantics on 2026-11-01 (`d54f44c`, migration clarification `50e8eb0`). Concrete
+  public APIs/formats remain deliberately versionable under the explicit stability
+  reservation; existing schema/save compatibility still applies. This does not
+  certify graphical readiness or complete M5.
+- **OPEN-M46-HISTORY-01 — Deferred:** benchmark long checkpoint histories and
+  consider versioned snapshot/continuation compaction with bounded replay,
+  deterministic validation and preserved cue/revision deduplication. Current
+  restore has a 65,536-entry limit and no compaction; see the migration guide.
+
 ## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
 
 This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.

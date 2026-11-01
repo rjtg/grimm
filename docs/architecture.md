@@ -250,3 +250,23 @@ Every milestone must ship a small playable game that demonstrates each new gamep
 
 ## Open design questions
 The living [open-points catalog](open-questions.md) tracks in-scene choice lifecycle, non-resetting timers, puzzle/state graph checking, inventory and character stats. Runtime node providers and generative models are deferred to a later open-world phase; resolve no proposed APIs for those yet.
+
+
+## M4.6 opt-in integration
+
+The M4.6 design was merged into the feature integration branch at `c117675`.
+The implementation adds explicit prepare/begin/end/stable coordination, atomic
+replaceable backing storage, boundary checkpoints, renderer catalogs and actual
+text preparation. See the [verified integration ledger](milestones/m4-6-integration.md)
+and [concrete version/migration contract](migrations/m4-6-scenes.md).
+
+The opt-in protocol-3 envelope wraps one existing protocol-2 Cue Sheet; legacy
+story schemas and saves remain unchanged. Canonical rule authority stays in the
+engine; backing storage is supplied by an atomic provider. Configuration,
+checkpoint and inspection data are host-only. Scene metadata exposes deliberate
+semantic presentation scope, never world variables, graph structure or paths.
+[ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) is accepted for
+architectural semantics with an explicit API-stability reservation. Concrete Rust
+APIs and serialized contracts remain deliberately versionable until graphical
+WHITEOUT integration, with explicit migration/compatibility tests and review.
+Earlier accepted ADRs and dependency directions remain unchanged.

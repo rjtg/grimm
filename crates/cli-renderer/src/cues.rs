@@ -199,7 +199,6 @@ impl CuePlayer {
                         .as_ref()
                         .is_none_or(|id| self.completed.contains(id))
                     && sheet.clock.elapsed_ms >= cue.at_ms
-                    && (sheet.clock.running || cue.at_ms == 0)
             })
             .cloned()
             .collect()
