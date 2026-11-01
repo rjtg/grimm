@@ -23,8 +23,10 @@ existing implementation. The original M5 experiment was isolated locally at
 
 M4.5 was already complete: the initial workspace run passed 178 tests. Its
 engine, timing, TUI, inspection and legacy checkpoint behavior were preserved.
-Accepted ADRs and crate dependency directions were not changed. Concrete opt-in
-implementation choices are proposed for review in [ADR-0008](../adr/0008-m46-versioned-lifecycle-and-storage.md).
+Accepted ADRs and crate dependency directions were not changed. The concrete opt-in
+architectural semantics are accepted with an explicit API-stability reservation
+in [ADR-0008](../adr/0008-m46-versioned-lifecycle-and-storage.md). Earlier ADRs
+and dependency directions remain unchanged.
 
 ## Verified acceptance ledger
 
@@ -87,9 +89,9 @@ mutation, database or graphics importer is introduced.
 
 Text catalogs prove real text resources only. Graphical catalogs must later come
 from the selected renderer's real assets. No graphics engine or asset production
-is claimed. ADR-0008 remains proposed; reviewers should assess versioning,
-commit ordering and storage contract. Existing accepted architecture remains the
-baseline. M5a can now proceed as an offline representative contract increment;
+is claimed. ADR-0008 is accepted for architectural semantics; concrete APIs
+and formats remain deliberately versionable until graphical WHITEOUT integration,
+with explicit versioning, migration/compatibility tests and review. M5a can now proceed as an offline representative contract increment;
 the complete graphical milestone remains unfinished.
 
 ## PR #21 architecture-review checklist
@@ -155,10 +157,11 @@ M5a's whole-game conversion and graphical M5 remain incomplete.
    reapplied patches. The merge had no conflicts and changed no tracked file
    contents. New verification is required on this reconciled head; the earlier
    `210a1fe` CI result is historical evidence only.
-2. **ADR acceptance:** ADR-0008 explicitly remains Proposed. Owner: maintainer
-   `rjtg`. Acceptance requires explicit maintainer sign-off and a separate Accepted
-   status change after contract review. M4.6's tested opt-in implementation is
-   complete; a stable long-lived public contract is not implicitly accepted.
+2. **ADR acceptance:** maintainer `rjtg` subsequently accepted ADR-0008 in
+   `d54f44c`, with migration clarification `50e8eb0`. Lifecycle/state/timing
+   semantics are accepted; the explicit API-stability reservation permits
+   deliberate versioned Rust API/format changes until graphical WHITEOUT
+   integration. Existing schema/save compatibility remains required.
 3. **Provider trust:** trait rustdoc, ADR and migration guide now state that
    returned-snapshot checks happen after provider mutation and cannot undo a
    contract violation. The deliberately non-conforming provider fixture tests
@@ -173,7 +176,7 @@ M5a's whole-game conversion and graphical M5 remain incomplete.
    restart after restore. `oversized_boundary_history_is_rejected_before_replay_without_mutation`
    covers the history-limit rejection path.
 5. **PR evidence:** description is refreshed after reconciliation and final-head
-   checks, distinguishing verified M4.6 implementation, proposed ADR acceptance,
+   checks, distinguishing verified M4.6 implementation, accepted ADR semantics,
    partial M5a and future graphical resource work. No M5b/M5c work is added.
 
 Verification after merging current main and adding the targeted review regressions:
@@ -183,3 +186,21 @@ Verification after merging current main and adding the targeted review regressio
 diagnostics were requested for all three touched Rust files; the initial provider
 source check was current/clean, subsequent diagnostics timed out/stale, so Cargo
 provides semantic verification. CI is checked separately on the final pushed head.
+
+
+## Maintainer ADR acceptance follow-up
+
+The [maintainer comment](https://github.com/rjtg/grimm/pull/22#issuecomment-6557274767)
+records acceptance with an explicit API-stability reservation. Commits `d54f44c`
+and `50e8eb0` were incorporated by fast-forward; their accepted semantics are
+preserved without further ADR changes. Roadmap, architecture, open questions and
+PR summary now reflect that decision. Concrete Rust APIs/protocol serialization
+remain deliberately versionable until graphical WHITEOUT integration; explicit
+migration/compatibility tests and review remain mandatory. This does not approve
+external providers, establish graphical readiness or complete M5. PR #22 remains
+open and is not merged by this follow-up.
+
+After incorporating the maintainer commits and synchronizing the remaining status
+references, fmt, workspace build, Clippy (`-D warnings`) and workspace tests were
+rerun successfully: **212 tests, 0 failures**. Final-head CI is recorded in the
+PR summary after pushing. No Rust source changed in this documentation follow-up.

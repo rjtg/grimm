@@ -20,7 +20,7 @@ their reference documents; current serialized behavior is defined by the
 | M3 Story Authoring & Validation Toolchain | Complete: source-aware IDs/index, compiler diagnostics and bounded exit/deadlock checks; [guide](milestones/m3.md). Renderer inventory comparison stays outside core authoring. |
 | M4 Complete Text Adventure | Complete: [WHITEOUT](../examples/whiteout/README.md), nine contexts, linked puzzles, alternative repairs, state/cold consequences, three endings and replay tests. |
 | M4.5 Timer Lifecycle & Interactive Terminal UI | Complete and merged on main at `065d207` (PR #20). Protocol/story schema 2, independent scene clock/deadline lifecycle, timed/overlapping text, TUI/inspector and legacy compatibility; [evidence](milestones/m4-5-implementation.md). |
-| M4.6 Scene Lifecycle, Provider & Renderer Catalog | Implementation complete and verified on the **feature integration branch**, not main. Existing design commits merged at `c117675`; runtime/preparation/storage/checkpoints/CLI/PTY and 205 workspace tests pass. [Integration ledger](milestones/m4-6-integration.md), proposed [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md). ADR-0008 remains Proposed with maintainer `rjtg` owning the explicit acceptance gate; runtime PR review/main integration remain pending. |
+| M4.6 Scene Lifecycle, Provider & Renderer Catalog | Implementation complete and verified on the **feature integration branch**, not main. Existing design commits merged at `c117675`; runtime/preparation/storage/checkpoints/CLI/PTY and 205 workspace tests pass. [Integration ledger](milestones/m4-6-integration.md), accepted [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md). Maintainer `rjtg` accepted the architectural semantics with an explicit API-stability reservation; concrete APIs/formats remain deliberately versionable with compatibility safeguards until graphical WHITEOUT integration. Runtime PR review/main integration remain pending. |
 
 ## WHITEOUT production: M5a–M5g
 
@@ -95,8 +95,10 @@ canonical game model or a large IDE now.
 
 ## Open decisions and later work
 
-- Maintainer `rjtg` must explicitly accept ADR-0008 in a status-change commit after reviewing opt-in envelope/checkpoint versioning, atomic provider contract
-  and commit-at-selection pending destination locals. Accepted ADRs are unchanged.
+- ADR-0008 is accepted by maintainer `rjtg` for lifecycle/state/timing semantics.
+  Concrete Rust APIs and serialized contracts retain an explicit stability
+  reservation until graphical WHITEOUT integration; changes require deliberate
+  versioning, migration/compatibility tests and review. Earlier ADRs remain unchanged.
 - Screenplay conditional beat representation, actor identity references and timing
   metadata versus authored rules need evidence from the second sample.
 - M5b chooses identity formats/style and provenance; generated images are replaceable

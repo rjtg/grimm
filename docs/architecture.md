@@ -265,5 +265,8 @@ story schemas and saves remain unchanged. Canonical rule authority stays in the
 engine; backing storage is supplied by an atomic provider. Configuration,
 checkpoint and inspection data are host-only. Scene metadata exposes deliberate
 semantic presentation scope, never world variables, graph structure or paths.
-[ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) records the proposed
-implementation choices for review without modifying accepted ADRs.
+[ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) is accepted for
+architectural semantics with an explicit API-stability reservation. Concrete Rust
+APIs and serialized contracts remain deliberately versionable until graphical
+WHITEOUT integration, with explicit migration/compatibility tests and review.
+Earlier accepted ADRs and dependency directions remain unchanged.
