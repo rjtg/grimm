@@ -147,14 +147,18 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
     }
     fn register(&mut self) {
         let sheet = self.output();
-        self.issued.insert(
-            self.revision,
+        let entry = self.issued.entry(self.revision).or_insert_with(|| {
             (
                 sheet.scene.epoch,
                 self.inner.engine().revision,
-                sheet.plan.cues.into_iter().map(|cue| cue.cue_id).collect(),
-            ),
-        );
+                BTreeSet::new(),
+            )
+        });
+        // Issued IDs describe correlation history, not just the current pending
+        // subset. Keep completed controls identifiable for duplicate ACKs.
+        entry
+            .2
+            .extend(sheet.plan.cues.into_iter().map(|cue| cue.cue_id));
     }
     fn begin_closing(&mut self, old_scene: String, mut old_clock: SceneClock, has_next: bool) {
         old_clock.running = false;

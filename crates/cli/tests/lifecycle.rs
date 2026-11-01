@@ -330,3 +330,90 @@ fn fresh_start_can_restore_a_verified_boundary_before_any_scene_begins() {
     assert_eq!(fresh.output().scene.scene_id, "demo.hall");
     assert_eq!(fresh.output().plan.clock.elapsed_ms, 0);
 }
+
+#[test]
+fn shared_host_finishes_outgoing_media_without_advancing_frozen_gameplay() {
+    use grimm_cli::scene_session::SceneSession;
+    use grimm_presentation::lifecycle::ScenePhase as Phase;
+    let mut host = SceneSession::new_lifecycle(new(), true).unwrap();
+    assert_eq!(host.preparation_scene().unwrap(), "demo.room");
+    assert!(host.advance_to(10000).is_err());
+    host.begin_prepared_scene().unwrap();
+    host.advance_to(10).unwrap();
+    assert_eq!(host.player().clock().unwrap().deadline_ms, Some(1010));
+    host.choose("room.travel", host.player().revision(), 10)
+        .unwrap();
+    assert_eq!(host.scene().unwrap().phase, Phase::Ending);
+    assert!(!host.player().clock().unwrap().running);
+    assert_eq!(host.player().clock().unwrap().elapsed_ms, 10);
+    assert_eq!(host.player().running_narratives().len(), 1);
+    let revision = host.provider_revision();
+    assert!(host.save_json().is_err());
+    host.advance_presentation_by(4999).unwrap();
+    assert_eq!(host.scene().unwrap().phase, Phase::Ending);
+    assert_eq!(host.provider_revision(), revision);
+    assert_eq!(host.player().clock().unwrap().elapsed_ms, 10);
+    host.advance_presentation_by(1).unwrap();
+    assert_eq!(host.scene().unwrap().phase, Phase::Stable);
+    assert_eq!(host.provider_revision(), revision);
+    let checkpoint = host.save_json().unwrap();
+    let mut fresh = SceneSession::new_lifecycle(new(), true).unwrap();
+    fresh.restore_json(&checkpoint).unwrap();
+    assert!(fresh.take_started_text().is_empty());
+    assert_eq!(fresh.preparation_scene().unwrap(), "demo.hall");
+    fresh.begin_prepared_scene().unwrap();
+    assert_eq!(fresh.player().clock().unwrap().elapsed_ms, 0);
+    assert_eq!(fresh.player().clock().unwrap().deadline_ms, Some(500));
+    fresh.advance_to(100).unwrap();
+    assert!(fresh.player().actions().contains(&"hall.finish".into()));
+    assert_eq!(fresh.engine().globals()["count"], Value::Int(1));
+    fresh
+        .choose("hall.finish", fresh.player().revision(), 100)
+        .unwrap();
+    assert!(!fresh.is_complete());
+    fresh.preparation_scene().unwrap();
+    fresh.begin_prepared_scene().unwrap();
+    assert!(fresh.is_complete());
+    assert!(fresh.save_json().is_ok());
+}
+
+#[test]
+fn automatic_terminal_text_finishes_before_scene_closure_and_does_not_replay_on_load() {
+    use grimm_cli::scene_session::SceneSession;
+    use grimm_cli_renderer::cues::Lifecycle;
+    let story=STORY.replace("    terminal: true\n    cues: []","    terminal: true\n    cues: [{cue_id: end_text, kind: narrative, narrative_id: done, duration_ms: 100}]");
+    let engine = LifecycleEngine::new(
+        serde_yaml_ng::from_str(&story).unwrap(),
+        serde_yaml_ng::from_str(CONFIG).unwrap(),
+    )
+    .unwrap();
+    let mut host = SceneSession::new_lifecycle(engine, true).unwrap();
+    host.begin_prepared_scene().unwrap();
+    host.advance_to(10).unwrap();
+    host.choose("room.travel", host.player().revision(), 10)
+        .unwrap();
+    host.advance_presentation_by(5000).unwrap();
+    host.preparation_scene().unwrap();
+    host.begin_prepared_scene().unwrap();
+    host.advance_to(100).unwrap();
+    host.choose("hall.finish", host.player().revision(), 100)
+        .unwrap();
+    host.preparation_scene().unwrap();
+    host.begin_prepared_scene().unwrap();
+    assert!(!host.is_complete());
+    host.advance_to(500).unwrap();
+    assert!(host.is_complete());
+    assert_eq!(host.player().clock().unwrap().elapsed_ms, 100);
+    assert!(
+        host.player()
+            .history()
+            .iter()
+            .flat_map(|sheet| &sheet.cues)
+            .any(|row| row.cue.cue_id == "end.end_text"
+                && matches!(row.lifecycle, Lifecycle::Completed { .. }))
+    );
+    let saved = host.save_json().unwrap();
+    host.restore_json(&saved).unwrap();
+    assert!(host.is_complete());
+    assert!(host.take_started_text().is_empty());
+}

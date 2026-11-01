@@ -110,3 +110,13 @@ restore. Seven lifecycle tests and three provider tests pass. The first pushed
 headless increment's full workspace run passed **189 tests**; both GitHub CI
 runs passed. PR #22 had no reviews, general comments or inline comments when
 checked before this increment. Runtime/TUI resource coordination remains pending.
+
+The shared `SceneSession` now supports an explicitly opted-in lifecycle backend
+without replacing the legacy backend. A fake-clock host test runs 5,000ms of
+outgoing presentation while canonical gameplay time remains frozen, restores a
+stable checkpoint, and begins the next deadline with its full budget. A second
+test completes terminal text automatically before closing and verifies no replay
+after load. The integration exposed and fixed loss of issued-ID correlation for
+already completed controls. Nine lifecycle and three provider tests pass, along
+with all 16 M4.5 timing and 23 scene regressions. CLI flags/resource preparation
+and the actual TUI path are not connected yet.
