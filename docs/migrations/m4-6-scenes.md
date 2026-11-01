@@ -96,8 +96,7 @@ without duration completes through explicit acknowledgement. Callback estimates
 are not enforced durations. Graphical asset import/export is an M5 renderer task;
 this text validation does not prove mesh/audio/sprite availability.
 
-Implementation decisions remain proposed for review in [ADR-0008](../adr/0008-m46-versioned-lifecycle-and-storage.md);
-no accepted ADR or dependency direction was changed.
+The architectural semantics are accepted with an explicit API-stability reservation in [ADR-0008](../adr/0008-m46-versioned-lifecycle-and-storage.md). Concrete Rust APIs and serialized contracts remain deliberately versionable through graphical WHITEOUT integration; existing compatibility and migration guarantees still apply.
 
 ## Revision and epoch ownership
 
@@ -168,5 +167,4 @@ exactly-once effects, retained/canceled cues and old-save compatibility. Benchma
 representative long histories before choosing a compaction scheme. Compaction is
 not implemented or required for this WHITEOUT milestone.
 
-ADR-0008 remains **Proposed**, owned by repository maintainer `rjtg`; its explicit
-acceptance gate is separate from verifying or merging the opt-in implementation.
+ADR-0008 is **Accepted (architectural semantics; API stability reserved)** by repository maintainer `rjtg` on 2026-11-01. This does not imply graphical renderer readiness or freeze concrete public Rust/serialized APIs.
