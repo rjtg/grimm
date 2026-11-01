@@ -1,5 +1,6 @@
 //! Host-side codecs and filesystem access. The engine has no format/I/O dependency.
 pub mod authoring;
+pub mod catalog;
 pub mod runtime;
 pub mod scene_runtime;
 pub mod scene_session;

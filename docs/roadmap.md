@@ -12,6 +12,30 @@ Locked Room are described in [implementation evidence](milestones/m2-implementat
 and the [concrete format](scene-format.md). Historical planning sections below
 retain their original decision context.
 
+## M4.6 integration gate (2026-11-01)
+
+M4.5 is complete and merged in PR #20. The existing M4.6 proposal and M5
+production plan from PR #21 have been merged **into the feature integration
+branch**, not main; see the [integration audit](milestones/m4-6-integration.md)
+for commit IDs, evidence and missing criteria. **M4.6 implementation is missing**;
+do not confuse its design documents with a working lifecycle/provider/catalog.
+Complete the acceptance ledger before beginning M5 production implementation.
+
+M5 keeps its established meaning: **Graphic Adaptation of WHITEOUT**. The
+[production plan](milestones/m5-whiteout-production-plan.md) divides it into
+M5a Screenplay → M5b Visual identity → M5c Engine evaluation → M5d Assets →
+M5e Cueables → M5f Choice UI → M5g Integration. These are the requested
+M5–M11 production deliverables as named phases; existing numbering and the
+separate M6 statistics proposal are preserved. The canonical graph remains one
+source across text and graphics. Prove a thin shared-scene slice before whole-
+game screenplay rewriting, bulk assets or a renderer migration.
+
+Immediate blocking task: strict renderer-catalog validation against the existing
+M3 index, followed by M4.6's atomic provider and opt-in versioned lifecycle/save
+contract. No renderer engine has been selected and no sprite backend exists.
+M5a's first subsequent increment is a validated screenplay contract and one
+representative scene, not the full screenplay or graphical adventure.
+
 ## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
 
 This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.
@@ -58,6 +82,8 @@ Every milestone ends with an executable demo and regression tests. Milestones de
 | M2 Interactive Scene Foundation | **Deliver a small authored story DSL** for narrative contexts, ON/IF/ELSE-equivalent choice/timeout rules, typed global/local state, effects, time costs, presentation cues and conditional offers; implement choice-time deterministic resolution, Cue Sheets and continuing deadlines, with backward compatibility and basic DSL/graph validation | **Play a DSL-authored `The Locked Room`** end-to-end following the [complete Cue Sheet/Game Action reference](milestones/m2-cue-sheet-reference.md): drawers, keys, explicit `door_damage += character_strength` updates, progress/strength-dependent door cues, unlocked `squeeze_through` with dexterity success/failure, timed branches, timeout, authoring diagnostics and deterministic response traces |
 | M3 Story Authoring & Validation Toolchain (implemented; [guide](milestones/m3.md)) | Extend M2's compiler and stable cue/action IDs with an author-facing **story index** (per context, source references), actionable diagnostics and **basic exit/dead-end checks**. Failed endings count as valid exits; no new imperative loop syntax or exhaustive state-space proof. GRIMM tools do **not** depend on renderer asset formats or implement an asset comparison. | Run lint/index on authored examples: detect invalid references, duplicate normalized names and obvious dead ends; produce machine-readable IDs for **external** renderer/IDE tooling to compare with its own asset inventory. Distinguish errors, warnings and inconclusive state-dependent reachability. No new game is required. |
 | M4 Complete Text Adventure (implemented: [WHITEOUT](../examples/whiteout/README.md)) | **Author and ship one complete text-based LucasArts/Telltale hybrid adventure** using the M2 DSL and GRIMM as a library. Multiple explicitly linked locations/situations, interconnected puzzles, order-dependent choices, persistent consequences, optional light character values, deadlines and several endings. Extend the DSL/engine only when the real game reveals a specific limitation. | One finished playable text adventure with a concrete text renderer, documented authoring, multiple routes and endings, cross-location state, save/load using existing capabilities where appropriate, and regression tests. This **same authored game** is the basis of M5. |
+| M4.5 Timer Lifecycle & Interactive Terminal UI (complete) | Running scene clock, optional deadline lifecycle, automatic overlapping narratives and structured TUI/inspector | Verified by timing, WHITEOUT and real PTY tests; [evidence](milestones/m4-5-implementation.md) |
+| M4.6 Scene Lifecycle, Provider & Renderer Catalog (design integrated; implementation incomplete) | Explicit prepare/begin/end/stable boundary, atomic replaceable storage and independent renderer catalog | [Acceptance ledger](milestones/m4-6-integration.md); all blocking rows must pass before M5 |
 | M5 Graphic Adaptation of the M4 Adventure | **Turn the actual M4 game into a graphical adventure**, retaining the same GRIMM-authored gameplay logic and Cue Sheet/action interface. Create suitable game assets and implement a concrete graphical renderer/input layer that interprets its cue IDs. Prefer a concrete game application embedding GRIMM as a Rust library; decide exact repository/workspace and runtime integration based on the shipped game, not a speculative generic framework. | The **M4 adventure**, playable in graphical form with game-specific generated/created assets, animation/dialogue, clickable offered actions, deadline/readiness handling and renderer-state save integration. Compare key story choices, state transitions, timed outcomes and endings to the M4 text version; document any necessary engine/host boundary corrections. |
 | Later: Dynamic Narrative / Story-RPG | Optional provider-neutral runtime proposals from human DM, authored tools, rules or LLM; validated graph extensions, open narrative frontiers, persistence and replay | A live human DM extends an ongoing session with valid choices and authored scenes while existing adventure rules remain unchanged |
 | Later: Free-text Input, NPC Agency & Narrative Direction | Optional intent resolution, NPC planning and director proposals, introduced only once the authored narrative/adventure model is understood | Separate opt-in demos; baseline authored games remain fully playable offline |

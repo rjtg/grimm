@@ -1,0 +1,12 @@
+manifest_version: 1
+renderer: fixture_text
+contexts: {room: demo.room, end: demo.end}
+scenes:
+  demo.room: {resource: 'fixture://room'}
+  demo.end: {resource: 'fixture://end'}
+presentations:
+  room.intro: {scene_ids: [demo.room], completion: timed, duration_ms: 100, duration_kind: exact}
+  room.hidden: {scene_ids: [demo.room], completion: callback, duration_ms: 200, duration_kind: estimate}
+  room.normal: {scene_ids: [demo.room], completion: callback}
+  room.timeout: {scene_ids: [demo.room], completion: instant}
+  end.ending: {scene_ids: [demo.end], completion: persistent}

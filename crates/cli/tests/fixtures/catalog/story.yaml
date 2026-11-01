@@ -1,0 +1,26 @@
+schema_version: 2
+id: catalog_demo
+version: 1
+title: Catalog demo
+start: room
+globals: {clue: false}
+contexts:
+  - id: room
+    cues:
+      - {cue_id: clock, at_ms: 0, kind: timer, set_deadline_ms: 1000}
+      - {cue_id: intro, kind: narrative, narrative_id: intro, duration_ms: 100}
+      - {kind: actions, available_actions: eligible}
+    actions:
+      - id: leave
+        outcomes:
+          - when: {op: eq, left: {var: global.clue}, right: true}
+            cues: [{kind: narrative, narrative_id: hidden}]
+            goto: end
+          - cues: [{kind: narrative, narrative_id: normal}]
+            goto: end
+    timeout:
+      cues: [{kind: narrative, narrative_id: timeout}]
+      goto: end
+  - id: end
+    terminal: true
+    cues: [{kind: narrative, narrative_id: ending}]
