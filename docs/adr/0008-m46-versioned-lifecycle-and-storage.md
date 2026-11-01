@@ -1,13 +1,19 @@
 # ADR-0008: Versioned M4.6 lifecycle and transactional storage
 
-Status: Proposed (explicitly retained by PR #22 follow-up). Date: 2026-11-01.
+Status: Accepted (architectural semantics; API stability reserved). Date: 2026-11-01.
 Decision owner: `rjtg`, repository maintainer.
-Acceptance gate: explicit maintainer sign-off and a separate change marking this
-ADR Accepted after reviewing versioning, commit-at-selection/destination-local
-initialization, provider trust and checkpoint compatibility. Passing tests or
-merging the opt-in implementation does not implicitly accept or freeze a
-long-lived public contract. Until that gate, these additive APIs remain proposed
-and opt-in; existing accepted ADRs and legacy APIs remain the baseline.
+Decision: Maintainer explicitly accepted ADR-0008 on 2026-11-01 with an API
+reservation. The scene lifecycle, state ownership and transactional semantics,
+commit-at-selection, destination-local initialization, gameplay/presentation
+clock separation, opt-in behavior and legacy compatibility are accepted as
+architectural direction. Concrete Rust public APIs, protocol envelopes and
+serialized formats remain versionable and may be revised deliberately until
+WHITEOUT's graphical integration validates them end-to-end. Such revisions must
+be explicit, versioned where persisted/on-wire data is affected, covered by
+migration/compatibility tests and reviewed against these accepted invariants;
+there is no blanket license to silently break existing schemas or saves.
+This acceptance does not certify graphical renderer/importer readiness, approve
+external provider implementations, or mark M5 production complete.
 Supersedes no accepted ADR. Implements the scope of the M4.6 design after the
 integration audit found no existing runtime implementation.
 
@@ -56,7 +62,7 @@ backing storage does not grant a provider independent gameplay authority.
 - Provider snapshot/revision is host-only, separate from Cue Sheets. Renderer
   catalogs are independent tooling; concrete paths/resources stay opaque to core.
 
-## Required proof before accepting this ADR
+## Verification evidence for this architectural decision
 
 Atomic provider rejection/overflow/local reset/stale revision; begin/end/ready
 idempotency; persistent stable boundary; preparation failure/retry without time
