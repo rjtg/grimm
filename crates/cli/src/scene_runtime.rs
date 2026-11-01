@@ -20,7 +20,9 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct TextBindings {
+    #[serde(deserialize_with = "crate::catalog::unique_map")]
     pub(crate) narratives: BTreeMap<String, String>,
+    #[serde(deserialize_with = "crate::catalog::unique_map")]
     pub(crate) actions: BTreeMap<String, String>,
 }
 pub fn parse(source: &str, yaml: &str) -> std::result::Result<SceneEngine, FileError> {

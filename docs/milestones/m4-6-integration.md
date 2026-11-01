@@ -120,3 +120,11 @@ after load. The integration exposed and fixed loss of issued-ID correlation for
 already completed controls. Nine lifecycle and three provider tests pass, along
 with all 16 M4.5 timing and 23 scene regressions. CLI flags/resource preparation
 and the actual TUI path are not connected yet.
+
+The actual text-renderer resource increment exports `grimm.text` catalogs from
+the existing story index, explicit `scenes.yaml` and real text/action bindings.
+`TextResources::prepare` resolves all possible scoped resources into a replacement
+cache before Ready; failed preparation retains the old cache. Three real-WHITEOUT
+resource/export tests pass, including the actual CLI exporter and unavailable
+resource failure/retry. Physical sprite/mesh/audio import remains outside this
+text backend. Interactive/pipe lifecycle flag wiring is the next pending step.

@@ -55,7 +55,7 @@ pub struct Report {
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
 }
-fn unique_map<'de, D, T>(deserializer: D) -> Result<BTreeMap<String, T>, D::Error>
+pub(crate) fn unique_map<'de, D, T>(deserializer: D) -> Result<BTreeMap<String, T>, D::Error>
 where
     D: serde::Deserializer<'de>,
     T: Deserialize<'de>,
