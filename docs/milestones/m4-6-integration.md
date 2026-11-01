@@ -132,3 +132,13 @@ stays design-only; implementation and evidence belong to PR #22. Responses:
    bulk sprites, final models or migration. No renderer selected here.
 10. **Tooling scope:** CLI/catalog/screenplay validators first; stable identity
     specifications separate from generated artifacts. No authoring IDE.
+
+## Subsequent M5a.1 increment
+
+After the verified M4.6 gates, the isolated screenplay experiment was adapted to
+reference the actual lifecycle scene configuration. `screenplay.rs`, four tests
+and `production/blackout.screenplay.yaml` provide a partial offline production
+contract, not a screenplay executor. The canonical story/text remain unchanged.
+The exact README `check-screenplay` command passed (one scene/one beat); current
+full fmt/build/Clippy/workspace verification passed **209 tests, 0 failures**.
+M5a's whole-game conversion and graphical M5 remain incomplete.

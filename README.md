@@ -317,3 +317,13 @@ the session menu stays open for save/load; Continue starts the next scene.
 Boundary checkpoints have a separate format and filename from legacy saves.
 For redirected/manual-clock play, use `:continue` at boundaries and `:present MS`
 for outgoing presentation time; `:time MS` controls active scene time only.
+
+The first offline WHITEOUT screenplay fragment is checked with:
+
+```bash
+cargo run -p grimm-cli -- check-screenplay examples/whiteout/story.yaml examples/whiteout/production/blackout.screenplay.yaml examples/whiteout/text.yaml examples/whiteout/scenes.yaml
+```
+
+See the [production contract and conversion strategy](examples/whiteout/production/README.md).
+Only the blackout sample is converted; staging execution and full graphical
+WHITEOUT remain future milestones.

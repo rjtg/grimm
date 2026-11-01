@@ -37,7 +37,7 @@ superseded, not revived by these production phases.
 
 | Phase | Dependencies and status | Verifiable deliverables / exit gate |
 | --- | --- | --- |
-| M5a Screenplay adaptation (task's M5) | M4/M4.5 + verified M4.6; next contract increment, **not a complete screenplay** | Versioned machine-readable scene/beat/content/staging contract; stable context/cue/narrative/action mapping; conversion strategy; one representative scene validated before broader conversion. Complete gate requires all meaningful branches, dialogue, actions, movement/blocking, shots/close-ups, transitions, timing/pauses, environment/audio, decision points and endings mapped with editorial review and tests. |
+| M5a Screenplay adaptation (task's M5) | M4/M4.5 + verified M4.6; M5a.1 implemented, **not a complete screenplay** | Versioned machine-readable scene/beat/content/staging contract; stable context/cue/narrative/action mapping; conversion strategy; one representative scene validated before broader conversion. Complete gate requires all meaningful branches, dialogue, actions, movement/blocking, shots/close-ups, transitions, timing/pauses, environment/audio, decision points and endings mapped with editorial review and tests. |
 | M5b Visual identity & virtual actors (task's M6) | Validated M5a sample; **Missing** | Character and location specification formats, canonical appearance/silhouette/proportions, clothing/variants, expressions, poses, lighting/style guide, example actor, variant validation and provenance/versioning. Canonical specs remain separate from replaceable generated artifacts; no provider lock-in. Evaluate 2D references/sprites, meshes/rigs or hybrid before bulk production. |
 | M5c Rendering engine evaluation (task's M7) | Same M5a scene and M5b identity/requirements; **Missing** | Requirements/comparison matrix for sprite/2D, Bevy and hybrid; camera movement/close-ups, positioning/animation, transitions, depth/parallax, lighting, timelines, loading/preloading, cues/input, complexity, performance, testing, Rust integration and maintenance. Prototype or measurable evidence on the same 30–60s staging, actual assets/preload/radio overlap/choice deadlines; reviewed ADR and migration implications **before** engine selection or full migration. No sprite renderer currently exists to assume adequate. |
 | M5d Asset production (task's M8) | M5b + reviewed M5c decision; **Missing** | Versioned manifest with stable asset ID/type/logical identity, required variants, source specification, physical resource path/format/version, dependencies, provenance and production status. Extract requirements from screenplay, compare actual available registry for missing/unused resources, produce/load sample assets and document reproducible import/build. Cover characters, expressions/animation, locations, props, environment/camera/audio/UI as required by the chosen renderer. |
@@ -71,14 +71,14 @@ a boundary checkpoint. Engine validates canonical rules; a replaceable provider
 owns backing storage. Renderer inspection never leaks private world state into
 player output. Legacy story/save modes remain supported explicitly.
 
-### Immediate next increment
+### First increment and next task
 
-With M4.6's blocking runtime gates verified, implement **M5a.1**: an offline,
+With M4.6's blocking runtime gates verified, **M5a.1 is implemented**: an offline,
 versioned screenplay contract and the representative blackout scene, checked
 against M3 context/cue/narrative/action IDs and original text. Separate narrative
 content from descriptive staging. Test positive and negative references, duplicate
 IDs, story identity, duration bounds and text traceability; expose a reproducible
-CLI validator. This is neither the full screenplay nor executable staging.
+CLI validator. The [sample contract and reproducible validator](../examples/whiteout/production/README.md) implement this gate. This is neither the full screenplay nor executable staging.
 
 After reviewing that sample, convert the generator's branching warning/startup
 sequence and decide conditional-beat/actor representation from actual authoring

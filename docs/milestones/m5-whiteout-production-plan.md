@@ -1,6 +1,6 @@
 # M5 — WHITEOUT Graphical Adaptation: Production Pipeline and Gates
 
-**Status:** Proposed sequence of **intermediate goals**, not an authorization to implement the entire graphic adaptation at once. **Prerequisite:** [M4.6 architecture contract](m4-6-scene-state-renderer-contract.md). **Product constraint:** preserve WHITEOUT's canonical authored game rules/decisions/endings as a single source; adapt and enrich presentation rather than fork into a separately scripted game.
+**Status:** Supporting production gates; current ordering/status is maintained in the [canonical roadmap](../roadmap.md). M5a.1 adds a validated [blackout screenplay fragment](../../examples/whiteout/production/README.md); the complete M5 remains unfinished. Proposed sequence of **intermediate goals**, not an authorization to implement the entire graphic adaptation at once. **Prerequisite:** [M4.6 architecture contract](m4-6-scene-state-renderer-contract.md). **Product constraint:** preserve WHITEOUT's canonical authored game rules/decisions/endings as a single source; adapt and enrich presentation rather than fork into a separately scripted game.
 
 M5 should be delivered in **reviewable increments** with explicit go/no-go gates. The story-engine, narrative writing and rendering pipelines have different owners and artifact formats; do not combine them into one oversized PR.
 

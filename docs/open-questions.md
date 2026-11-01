@@ -1,5 +1,22 @@
 # Open design questions
 
+## M4.6 integration and M5 production review (2026-11-01)
+
+The [canonical roadmap](roadmap.md) preserves M5 as graphical WHITEOUT and uses
+named M5a–M5g phases for screenplay through integration. M4.6 now has an opt-in
+[text lifecycle/storage/catalog implementation](migrations/m4-6-scenes.md) on the
+feature branch; this does not decide graphical packaging or alter legacy saves.
+[ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) remains proposed for
+review: envelope/checkpoint versioning, storage atomicity and transition effects
+committing pending destination locals before presentation Begin.
+
+M5a.1 validates a representative blackout fragment. Open before broader conversion:
+conditional beats/outcomes, references to canonical actor specifications, staging
+estimates versus authored duration, and editorial prose-to-dialogue migration.
+M5c still requires a measured same-scene sprite/2D versus Bevy comparison and ADR;
+no rendering engine or asset import pipeline is selected. Text resource validation
+is not evidence of graphical asset availability.
+
 ## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
 
 This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.

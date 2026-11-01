@@ -20,7 +20,7 @@ M4.5 functionality.
 | Replaceable backing world storage | Complete on feature branch | atomic typed provider, injected rejection/stale revision/overflow/local reset tests, engine remains sole rule authority |
 | Stable-boundary checkpoints | Complete opt-in on feature branch | history/world validation, transactional restore and fresh revision; legacy saves unchanged, CLI boundary round-trip and no replay tests |
 | Renderer registry/catalog | Partially implemented | actual text exporter and scoped preparation, all-path catalog diagnostics; selected graphical renderer/exporter/import still missing |
-| Screenplay production | Missing at audited baseline | existing text bindings are not a screenplay/staging model; first M5a fragment is the next increment |
+| Screenplay production | Missing at audited baseline | existing text bindings are not a screenplay/staging model; first M5a fragment is now implemented after verified M4.6 |
 | Visual identities/base assets/graphics engine | Missing | no canonical actor bible, production asset pipeline, sprite backend or reviewed graphics selection |
 | Renderer-specific cueables | Partially implemented foundations | semantic playback exists; physical movement/camera/timelines/audio production missing and belongs to renderer |
 | Authoring studio | Partially implemented CLI foundation | M3 index/lint and M4.6 catalog comparison; no integrated screenplay/asset preview or visual editor |
