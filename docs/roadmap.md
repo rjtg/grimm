@@ -37,15 +37,15 @@ superseded, not revived by these production phases.
 
 | Phase | Dependencies and status | Verifiable deliverables / exit gate |
 | --- | --- | --- |
-| M5a Screenplay adaptation (task's M5) | M4/M4.5 + verified M4.6; M5a.1 implemented, **not a complete screenplay** | Versioned machine-readable scene/beat/content/staging contract; stable context/cue/narrative/action mapping; conversion strategy; one representative scene validated before broader conversion. Complete gate requires all meaningful branches, dialogue, actions, movement/blocking, shots/close-ups, transitions, timing/pauses, environment/audio, decision points and endings mapped with editorial review and tests. |
-| M5b Visual identity & virtual actors (task's M6) | Validated M5a sample; **Missing** | Character and location specification formats, canonical appearance/silhouette/proportions, clothing/variants, expressions, poses, lighting/style guide, example actor, variant validation and provenance/versioning. Canonical specs remain separate from replaceable generated artifacts; no provider lock-in. Evaluate 2D references/sprites, meshes/rigs or hybrid before bulk production. |
+| M5a Screenplay adaptation (task's M5) | M4/M4.5 + verified M4.6; M5a.1 implemented, **not a complete screenplay** | Writer-friendly screenplay-style alternative text analogous to prose presentation assets: dialogue, action, blocking, shots, lighting and sound. Optional existing semantic-ID notes; human editorial review for narrative/branch consistency. This increment delivers one useful scene sample, not a screenplay compiler, schema, automated coverage/text-equality gate or whole-game rewrite. Continue writing in later content increments. |
+| M5b Visual identity & virtual actors (task's M6) | Editorially reviewed M5a sample; **Missing** | Character and location specification formats, canonical appearance/silhouette/proportions, clothing/variants, expressions, poses, lighting/style guide, example actor, variant validation and provenance/versioning. Canonical specs remain separate from replaceable generated artifacts; no provider lock-in. Evaluate 2D references/sprites, meshes/rigs or hybrid before bulk production. |
 | M5c Rendering engine evaluation (task's M7) | Same M5a scene and M5b identity/requirements; **Missing** | Requirements/comparison matrix for sprite/2D, Bevy and hybrid; camera movement/close-ups, positioning/animation, transitions, depth/parallax, lighting, timelines, loading/preloading, cues/input, complexity, performance, testing, Rust integration and maintenance. Prototype or measurable evidence on the same 30–60s staging, actual assets/preload/radio overlap/choice deadlines; reviewed ADR and migration implications **before** engine selection or full migration. No sprite renderer currently exists to assume adequate. |
 | M5d Asset production (task's M8) | M5b + reviewed M5c decision; **Missing** | Versioned manifest with stable asset ID/type/logical identity, required variants, source specification, physical resource path/format/version, dependencies, provenance and production status. Extract requirements from screenplay, compare actual available registry for missing/unused resources, produce/load sample assets and document reproducible import/build. Cover characters, expressions/animation, locations, props, environment/camera/audio/UI as required by the chosen renderer. |
 | M5e Cueable presentation production (task's M9) | M5a + selected engine + sample M5d assets + M4.6 catalog/ACK; **Partially implemented** foundations | Map staging to renderer-authored presentations: movement, expressions, animations, camera pan/zoom/target/close-up, fades, light/environment/audio, waits and transitions. Specify targets, optional duration, ordering/parallelism, blocking/completion, error/cancellation and scene ownership; compile one scene timeline and test deterministically through adapters. Reuse existing CuePlayer/ACK/REPLACE semantics. Extend schemas only for a demonstrated gap; no renderer-specific movement commands in story nodes. |
 | M5f Graphical choice input (task's M10) | Selected engine + M4.6 lifecycle/checkpoints + vertical scene/cue integration; **Partially implemented** semantics/text UI | Choice interface and selected-engine implementation with layout/focus, keyboard/pointer/controller where appropriate, feedback, timed appearance, full-set disabling/replacement, stale input protection and concurrent presentation. Test offered action IDs against graph transitions; renderer never owns branching. |
-| M5g WHITEOUT integration (task's M11) | Thin samples from M5a–f + M4.6 lifecycle/provider/resource gate; **Missing** graphical integration | First executable vertical slice: load graph, resolve screenplay/scene, validate actual assets, preload, enter, run staging/dialogue, offer choices, resolve decisions, transition, retain/release resources. Verify IDs, cues, choices and missing-reference diagnostics with automated tests. Only then extend to all locations/routes/endings; publish content completion plan, setup, playtests and canonical parity evidence with CLI. |
+| M5g WHITEOUT integration (task's M11) | Thin samples from M5a–f + M4.6 lifecycle/provider/resource gate; **Missing** graphical integration | First executable vertical slice: load graph, resolve actual renderer scene/presentations, validate actual assets, preload, enter, run staging/dialogue, offer choices, resolve decisions, transition, retain/release resources. Verify IDs, cues, choices and missing-reference diagnostics with automated tests. Only then extend to all locations/routes/endings; publish content completion plan, setup, playtests and canonical parity evidence with CLI. |
 
-M5a writing/validation does not require choosing a renderer or changing the
+M5a writing/editorial review does not require choosing a renderer or changing the
 engine. Identity work may overlap writing; evaluate candidate engines on the same
 representative screenplay, not different demonstrations. M5d/e/f converge on a
 thin playable slice before bulk asset production or whole-game conversion. M5g
@@ -73,25 +73,32 @@ player output. Legacy story/save modes remain supported explicitly.
 
 ### First increment and next task
 
-With M4.6's blocking runtime gates verified, **M5a.1 is implemented**: an offline,
-versioned screenplay contract and the representative blackout scene, checked
-against M3 context/cue/narrative/action IDs and original text. Separate narrative
-content from descriptive staging. Test positive and negative references, duplicate
-IDs, story identity, duration bounds and text traceability; expose a reproducible
-CLI validator. The [sample contract and reproducible validator](../examples/whiteout/production/README.md) implement this gate. This is neither the full screenplay nor executable staging.
+With M4.6's runtime gates verified, M5a.1 supplies a readable
+[blackout screenplay sample](../examples/whiteout/production/blackout.screenplay.md):
+an alternative presentation text associated with `blackout.arrival`, using the
+same semantic association as prose assets. It adapts exposition into dialogue,
+visible action and staging. Human editorial review checks narrative/branch
+consistency; no screenplay schema, compiler, runtime, structural validation,
+coverage gate or exact-text requirement applies. Gameplay rules remain canonical
+in `story.yaml` and current CLI prose bindings are unchanged.
 
-After reviewing that sample, convert the generator's branching warning/startup
-sequence and decide conditional-beat/actor representation from actual authoring
-friction. Do not rewrite all WHITEOUT scenes before validating that second sample.
+Next, continue screenplay writing with the generator's branching warning/startup
+sequence in a later content increment. Review dramatic clarity, alternatives,
+clue timing and production needs, without making creative adaptation a parser
+contract. This PR does not rewrite the whole game.
 
 ## Cross-cutting authoring work
 
-Begin with CLI validation of graph → screenplay → scene → actual asset registry →
-renderer timeline. Diagnose missing/unused references, scope, duration/completion
-and render readiness. Later previews may inspect graph, screenplay, staging,
-assets, choice transitions and scene dependencies together. Introduce a graphical
-editor only when production experience justifies it; do not create a third
-canonical game model or a large IDE now.
+Use existing CLI graph validation and, at later concrete renderer production
+gates, validation against actual exported resources and cue bindings. Screenplay
+writing remains editorial content. Human readers may use optional semantic-ID
+notes for traceability; a machine-checkable screenplay layer is not required.
+
+The long-term vision of descriptions evolving through screenplay and
+previsualization into polished graphics is a creative workflow, not an immediate
+requirement for asset tiers, runtime layer interchangeability, fallback selection
+or an authoring studio. Do not build generalized production infrastructure for
+this scene sample. Later tooling must be justified by actual production needs.
 
 ## Open decisions and later work
 
@@ -99,8 +106,8 @@ canonical game model or a large IDE now.
   Concrete Rust APIs and serialized contracts retain an explicit stability
   reservation until graphical WHITEOUT integration; changes require deliberate
   versioning, migration/compatibility tests and review. Earlier ADRs remain unchanged.
-- Screenplay conditional beat representation, actor identity references and timing
-  metadata versus authored rules need evidence from the second sample.
+- Further screenplay writing needs human review of branch meaning, clue timing
+  and staging. Editorial pacing notes do not change authored gameplay timing.
 - M5b chooses identity formats/style and provenance; generated images are replaceable
   outputs, not actor identity or a promise of game-ready rigs/models.
 - M5c selects sprite/2D, Bevy or hybrid only after a comparison/vertical-slice ADR.

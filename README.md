@@ -318,12 +318,9 @@ Boundary checkpoints have a separate format and filename from legacy saves.
 For redirected/manual-clock play, use `:continue` at boundaries and `:present MS`
 for outgoing presentation time; `:time MS` controls active scene time only.
 
-The first offline WHITEOUT screenplay fragment is checked with:
-
-```bash
-cargo run -p grimm-cli -- check-screenplay examples/whiteout/story.yaml examples/whiteout/production/blackout.screenplay.yaml examples/whiteout/text.yaml examples/whiteout/scenes.yaml
-```
-
-See the [production contract and conversion strategy](examples/whiteout/production/README.md).
-Only the blackout sample is converted; staging execution and full graphical
-WHITEOUT remain future milestones.
+The [WHITEOUT blackout screenplay sample](examples/whiteout/production/blackout.screenplay.md)
+is a writer-friendly alternative presentation text, with dialogue, action, camera,
+lighting and sound notes for later production. It is reviewed editorially; no
+screenplay-specific CLI, schema or text-equality requirement applies. See the
+[writing scope](examples/whiteout/production/README.md). Only this scene is adapted;
+existing gameplay/prose assets and M4.6 runtime behavior are unchanged.

@@ -12,9 +12,12 @@ pending destination locals committing before presentation Begin. Its explicit
 API-stability reservation permits deliberate versioned API/format changes until
 graphical WHITEOUT integration, preserving compatibility and migration guarantees.
 
-M5a.1 validates a representative blackout fragment. Open before broader conversion:
-conditional beats/outcomes, references to canonical actor specifications, staging
-estimates versus authored duration, and editorial prose-to-dialogue migration.
+M5a.1 provides a writer-friendly blackout screenplay sample, analogous to prose
+presentation assets. Prose may be freely adapted into dialogue and visual action;
+review of story/branch consistency is editorial, not a screenplay schema or
+coverage gate. Later content increments continue that writing. A future creative
+workflow through previsualization and polished graphics is not a requirement for
+asset tiers, interchangeable runtime layers, fallback selection or an IDE now.
 M5c still requires a measured same-scene sprite/2D versus Bevy comparison and ADR;
 no rendering engine or asset import pipeline is selected. Text resource validation
 is not evidence of graphical asset availability.

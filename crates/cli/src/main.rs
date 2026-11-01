@@ -24,12 +24,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args_os().skip(1).collect();
     if args
         .first()
-        .is_some_and(|command| command == "check-screenplay")
-    {
-        return grimm_cli::screenplay::run(&args[1..]);
-    }
-    if args
-        .first()
         .is_some_and(|command| command == "export-text-catalog")
     {
         return grimm_cli::text_resources::export(&args[1..]);

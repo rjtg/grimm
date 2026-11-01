@@ -91,7 +91,7 @@ Text catalogs prove real text resources only. Graphical catalogs must later come
 from the selected renderer's real assets. No graphics engine or asset production
 is claimed. ADR-0008 is accepted for architectural semantics; concrete APIs
 and formats remain deliberately versionable until graphical WHITEOUT integration,
-with explicit versioning, migration/compatibility tests and review. M5a can now proceed as an offline representative contract increment;
+with explicit versioning, migration/compatibility tests and review. M5a proceeds as a writer-friendly editorial scene sample;
 the complete graphical milestone remains unfinished.
 
 ## PR #21 architecture-review checklist
@@ -129,26 +129,33 @@ stays design-only; implementation and evidence belong to PR #22. Responses:
 6. **Verification:** the 205-test full run above follows CLI/TUI integration; it
    is not the old 181-test catalog baseline. Both review-specific regressions
    passed in the final 205-test full workspace run with all four checks.
-7. **One game:** story.yaml/text.yaml remain unchanged. M5a checks original text
-   and graph/cue/action references before broader conversion.
+7. **One game:** story.yaml/text.yaml remain unchanged. M5a adapts prose
+   into screenplay text with optional semantic-ID notes and human editorial review.
 8. **Staging ownership:** descriptive production data only; no core camera/motion
    DSL or new per-track protocol.
 9. **Renderer decision:** canonical roadmap M5c requires the same 30–60s scene,
    actual assets/preload/radio overlap/choices/deadline and a reviewed ADR before
    bulk sprites, final models or migration. No renderer selected here.
-10. **Tooling scope:** CLI/catalog/screenplay validators first; stable identity
+10. **Tooling scope:** existing graph CLI/catalog checks; screenplay review is editorial, not a new validator; stable identity
     specifications separate from generated artifacts. No authoring IDE.
 
-## Subsequent M5a.1 increment
+## Subsequent M5a.1 increment — corrected production scope
 
-After the verified M4.6 gates, the isolated screenplay experiment was adapted to
-reference the actual lifecycle scene configuration. `screenplay.rs`, four tests
-and `production/blackout.screenplay.yaml` provide a partial offline production
-contract, not a screenplay executor. The canonical story/text remain unchanged.
-The exact README `check-screenplay` command passed (one scene/one beat); current
-full fmt/build/Clippy/workspace verification passed **209 tests, 0 failures**.
-M5a's whole-game conversion and graphical M5 remain incomplete.
+The first attempt introduced a strict YAML screenplay schema, validator and four
+tests. The maintainer's production-direction clarification supersedes that
+approach: those additions are removed, including `check-screenplay` and exact
+text/structure validation. Their earlier 209/212-test counts elsewhere in this
+ledger are historical verification results, not remaining screenplay gates.
 
+The replacement is `production/blackout.screenplay.md`: a writer-friendly
+alternative presentation text associated with the existing `blackout.arrival`
+binding. It adapts prose into dialogue, visible action, blocking, shots, lighting
+and sound; retains useful sample staging; and leaves story.yaml/text.yaml and all
+M4.6 runtime behavior unchanged. Human editorial review considers story/branch
+consistency. The prose need not be reproduced verbatim, and no new runtime lookup,
+compiler or presentation layer is introduced. Actual renderer catalog validation
+remains a separate later technical gate. Further screenplay writing follows in
+subsequent content increments; no whole-game conversion or M5b/M5c work is added.
 
 ## PR #22 targeted review follow-up
 
@@ -204,3 +211,23 @@ After incorporating the maintainer commits and synchronizing the remaining statu
 references, fmt, workspace build, Clippy (`-D warnings`) and workspace tests were
 rerun successfully: **212 tests, 0 failures**. Final-head CI is recorded in the
 PR summary after pushing. No Rust source changed in this documentation follow-up.
+
+
+## Maintainer M5a product-direction follow-up
+
+The [final clarification](https://github.com/rjtg/grimm/pull/22#issuecomment-6557417609)
+supersedes earlier technical screenplay suggestions. The README, canonical
+roadmap and supporting production notes now state that the current requirement
+is one readable editorial screenplay sample. Progressive replacement through
+previsualization/graphics remains a creative vision, not a commitment to asset
+tiers, runtime layer selection/fallbacks or an authoring studio. The removed
+validator's four tests are intentionally removed with its subsystem; existing
+M4.6/game regression coverage remains intact.
+
+After the M5a scope correction, formatting, workspace build, Clippy with
+`-D warnings` and workspace tests passed: **208 tests, 0 failures**. The count
+drops by exactly the four removed screenplay-validator tests; all M4.6 and
+existing-game tests remain. Semantic definition/references were checked before
+removing the CLI entry/module; post-edit LSP diagnostics for main.rs/lib.rs timed
+out, with the full Cargo checks used as fallback. The Markdown sample is reviewed
+as editorial content, not tested with a replacement structural/coverage gate.
