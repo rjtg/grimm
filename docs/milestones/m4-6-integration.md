@@ -37,10 +37,10 @@ The following are **missing M4.6 work**, not reasons to reopen M4.5:
 
 | Area | Current evidence / status | Required completion evidence |
 | --- | --- | --- |
-| Explicit prepare/begin/end/stable boundary | **Missing**: current CueSheet has revision/clock/cues only; GOTO immediately enters a new epoch | Typed lifecycle, idempotent and stale ACK tests, reentry/endings, resource readiness/failure, executable host demo |
+| Explicit prepare/begin/end/stable boundary | **Partially implemented, headless tests pass**; host/renderer integration missing. Baseline: current CueSheet has revision/clock/cues only; GOTO immediately enters a new epoch | Typed lifecycle, idempotent and stale ACK tests, reentry/endings, resource readiness/failure, executable host demo |
 | Scene ID/preloading | **Missing** at runtime; namespaces are not a preload API | Stable semantic scene/scope metadata, readiness before T=0, missing-resource diagnostic without changed story outcomes |
-| World-state provider | **Missing**: engine stores globals/locals internally and clones candidate state transactionally | Replaceable typed storage, InMemory implementation, atomic effects/local lifecycle, stale revision, rollback/replay and inspection tests |
-| Stable-boundary checkpoints | **Missing**: M4.5 supports paused mid-scene saves | Explicit persistent boundary, versioned opt-in policy, next-scene deterministic restore, original schema-1/2 saves remain executable |
+| World-state provider | **Partially implemented**: injected provider and atomic engine wrapper tested; new lifecycle host integration pending. Baseline: engine stores globals/locals internally and clones candidate state transactionally | Replaceable typed storage, InMemory implementation, atomic effects/local lifecycle, stale revision, rollback/replay and inspection tests |
+| Stable-boundary checkpoints | **Partially implemented, headless replay/rollback tests pass**; CLI/UI and migration/demo pending. Baseline: M4.5 supports paused mid-scene saves | Explicit persistent boundary, versioned opt-in policy, next-scene deterministic restore, original schema-1/2 saves remain executable |
 | Renderer catalog | **Partially implemented**: strict portable comparison CLI and all-path/scope/duration tests; actual renderer exporter/resource loading missing | Strict versioned catalog, all-path ID/scope/completion/duration diagnostics, real supplied resource validation at renderer production gate |
 | Existing timing rules | **Complete M4.5 foundation**, M4.6 lifecycle interaction unimplemented | Preserve relative actual-start deadlines, absolute deadlines, unset/reveal/extend, interruption and cold accounting across lifecycle boundaries |
 | Debug/CLI integration | **Partially implemented**: M4.5 inspector exists | Show prepare/end/stable states and provider snapshots; preserve noninteractive/manual-clock execution |
@@ -81,3 +81,25 @@ Verification after the actual document merge and catalog increment:
 `cargo test --workspace --locked` passed (**181 tests, 0 failures**).
 This proves the existing M4.5 functionality still passes on the merged target;
 it does not substitute for the missing M4.6 lifecycle/provider/checkpoint gates.
+
+## Intermediate lifecycle/storage increment (not milestone completion)
+
+The reviewable implementation now includes `WorldStateProvider`, offline
+`InMemoryWorldState`, `ProvidedSceneEngine` transactional composition and an
+opt-in `LifecycleEngine`. Existing SceneEngine/story/checkpoint APIs remain
+unchanged. Lifecycle configuration maps the same schema-2 story to stable
+presentation scene IDs; its protocol-3 envelope wraps one existing replacement
+cue plan. Boundary checkpoints have their own versioned format.
+
+Targeted verification: five deterministic lifecycle tests and three injected
+storage tests pass. These exercise readiness/duplicate/stale feedback, frozen
+outgoing time, actual-start relative deadlines, atomic effects/scope changes,
+backend rejection, overflow, checkpoint replay/corruption and terminal closure.
+The existing 181-test full-workspace result above predates this increment; full
+verification will be rerun as integration proceeds.
+
+Still required: presentation adapter/envelope types, real host/TUI lifecycle,
+media scheduling while gameplay time is frozen, actual resource validation and
+preloading, reentry and extended timing/parity regressions, executable M4.6 demo,
+complete migration instructions, full workspace checks and review of ADR-0008.
+The M5 draft remains isolated. No milestone completion is claimed.
