@@ -17,11 +17,11 @@ GRIMM supports authored choose-your-own-adventure graphs and, as optional extens
 
 See [vision](docs/vision.md), [architecture](docs/architecture.md), [requirements](docs/requirements.md), [roadmap](docs/roadmap.md), [open questions](docs/open-questions.md), and [M0 brief](docs/milestones/m0.md).
 
-Status: M0 through M4 implemented: an authored CYOA engine with YAML stories, typed
+Status: M0 through M4.5 implemented: an authored CYOA engine with YAML stories, typed
 conditions/effects, structured narrative output, and versioned session saves.
 Four reference adventures exercise persistent state, bounded playability checks,
 optional deterministic time, narrative-only continuation and presentation-gated decisions.
-M2 adds a scene DSL, full replacement Cue Sheets and The Locked Room. M3 adds source-aware validation, a semantic story index and structural exit checks. M4 delivers **WHITEOUT**, a complete survival-mystery text adventure. The next milestone is **M5 Graphic Adaptation** (the **same authored M4 game** presented through a concrete graphical renderer and game-specific assets). The former **M3 Inventory/Puzzles/Character-State scope is cancelled and replaced** by authoring tools because ordinary M2 state/choice rules already express the required lightweight gameplay. Choices remain the shared state-dependent action model, with optional RPG attributes and item combinations rather than hard-coded player verbs. Choices may take **authored execution time**: GRIMM resolves each choice **immediately at selection** using its duration, known scene deadline and the externally supplied selection time. It commits the outcome and sends the prescribed presentation (e.g. a five-second logical drawer-opening action or a four-second logical attempt cut short by a deadline); the next gameplay choices become usable at the Cue Sheet's explicit availability time, subject to safe input readiness, even if an animation remains in progress. Classic **choice-selection** deadlines still resolve on timely selection or authored silence. GRIMM never reads/ticks a wall clock and needs no running action/progress callback for these authored cases. Runtime Dynamic Node Providers, generative story extensions, free text and NPC direction are deferred toward a later open-world/Story-RPG phase; their boundaries are intentionally not defined yet.
+M2 adds a scene DSL, full replacement Cue Sheets and The Locked Room. M3 adds source-aware validation, a semantic story index and structural exit checks. M4 delivers **WHITEOUT**, a complete survival-mystery text adventure. M4.5 adds the structured terminal UI, read-only Cue Inspector, automatic overlapping narratives and explicit deadline cancellation; see the [migration guide](docs/migrations/m4-5-scenes.md). The next milestone is **M5 Graphic Adaptation** (the **same authored M4 game** presented through a concrete graphical renderer and game-specific assets). The former **M3 Inventory/Puzzles/Character-State scope is cancelled and replaced** by authoring tools because ordinary M2 state/choice rules already express the required lightweight gameplay. Choices remain the shared state-dependent action model, with optional RPG attributes and item combinations rather than hard-coded player verbs. Choices may take **authored execution time**: GRIMM resolves each choice **immediately at selection** using its duration, known scene deadline and the externally supplied selection time. It commits the outcome and sends the prescribed presentation (e.g. a five-second logical drawer-opening action or a four-second logical attempt cut short by a deadline); the next gameplay choices become usable at the Cue Sheet's explicit availability time, subject to safe input readiness, even if an animation remains in progress. Classic **choice-selection** deadlines still resolve on timely selection or authored silence. GRIMM never reads/ticks a wall clock and needs no running action/progress callback for these authored cases. Runtime Dynamic Node Providers, generative story extensions, free text and NPC direction are deferred toward a later open-world/Story-RPG phase; their boundaries are intentionally not defined yet.
 
 ## Build and run
 
@@ -53,9 +53,13 @@ cargo run --locked -p grimm-cli -- play-scene examples/locked-room/story.yaml ex
 cargo run --locked -p grimm-cli -- check-scene examples/locked-room/story.yaml
 ```
 
-Enter finishes prose; number keys choose immediately and Esc opens the paused
-session menu. The hidden thirty-second countdown starts after the introduction;
-a radio warning reveals it at ten seconds. Escape with keys, strength, dexterity
+Interactive scene play uses a structured terminal UI: prose advances automatically,
+number keys choose immediately, and Esc opens the paused session menu. F2 toggles
+the read-only Cue Inspector; Tab changes focus and arrows scroll. The hidden
+thirty-second countdown runs from scene entry; a radio warning reveals it at ten seconds.
+Use `--manual-reading` for explicit text completion. Piped/manual-clock playback
+retains manual reading by default; `--auto-reading` enables authored durations there.
+See the [M4.5 migration guide](docs/migrations/m4-5-scenes.md) for old checkpoints. Escape with keys, strength, dexterity
 or an iron bar. Rules and text bindings are separate. See the
 [play guide](examples/locked-room/README.md) and [M2 format](docs/scene-format.md)
 for deterministic clock controls, save/load and the replacement Cue Sheet contract.

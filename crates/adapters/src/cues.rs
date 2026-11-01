@@ -4,6 +4,7 @@ use grimm_semantic::scene as s;
 
 pub fn present(sheet: &s::CueSheet) -> p::CueSheet {
     p::CueSheet {
+        protocol_version: sheet.protocol_version,
         revision: sheet.revision,
         clock: p::Clock {
             epoch: sheet.clock.epoch,
@@ -18,20 +19,29 @@ pub fn present(sheet: &s::CueSheet) -> p::CueSheet {
             .map(|cue| p::Cue {
                 cue_id: cue.cue_id.clone(),
                 at_ms: cue.at_ms,
+                started_at_ms: cue.started_at_ms,
                 after_cue: cue.after_cue.clone(),
                 instruction: match &cue.instruction {
-                    s::Instruction::Narrative { narrative_id } => p::Instruction::Narrative {
+                    s::Instruction::Narrative {
+                        narrative_id,
+                        duration_ms,
+                    } => p::Instruction::Narrative {
                         narrative_id: narrative_id.clone(),
+                        duration_ms: *duration_ms,
                     },
                     s::Instruction::Actions { available_actions } => p::Instruction::Actions {
                         available_actions: available_actions.clone(),
                     },
                     s::Instruction::Timer {
                         start_ms,
+                        deadline_at_ms,
+                        unset_deadline,
                         extend_ms,
                         visible,
                     } => p::Instruction::Timer {
                         start_ms: *start_ms,
+                        deadline_at_ms: *deadline_at_ms,
+                        unset_deadline: *unset_deadline,
                         extend_ms: *extend_ms,
                         visible: *visible,
                     },

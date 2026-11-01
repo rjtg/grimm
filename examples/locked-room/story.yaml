@@ -1,7 +1,7 @@
 # M2 DSL. All puzzle rules are authored here; text is in text.yaml.
-schema_version: 1
+schema_version: 2
 id: the_locked_room
-version: 1
+version: 2
 title: The Locked Room
 start: locked_room
 globals:
@@ -20,10 +20,10 @@ contexts:
       trained: false
       barricaded: false
     cues:
-      - {cue_id: intro, kind: narrative, narrative_id: locked_in}
-      - {cue_id: scene_deadline, kind: timer, start_ms: 30000, visible: false}
+      - {cue_id: scene_deadline, at_ms: 0, kind: timer, set_deadline_ms: 30000, visible: false}
+      - {cue_id: intro, kind: narrative, narrative_id: locked_in, duration_ms: 2000}
       - {cue_id: initial_choices, kind: actions, available_actions: eligible}
-      - {cue_id: radio_warning, at_ms: 10000, kind: narrative, narrative_id: radio_johnny_returns}
+      - {cue_id: radio_warning, at_ms: 10000, kind: narrative, narrative_id: radio_johnny_returns, duration_ms: 1800}
       - {cue_id: reveal_clock, at_ms: 10000, kind: timer, visible: true}
       - {cue_id: warning_choices, at_ms: 10000, kind: actions, available_actions: eligible}
     actions:
@@ -32,13 +32,13 @@ contexts:
         duration_ms: 1000
         outcomes:
           - effects: [{op: set, var: local.drawer_open, value: true}]
-            cues: [{cue_id: drawer_opened, kind: narrative, narrative_id: drawer_opened}]
+            cues: [{cue_id: drawer_opened, kind: narrative, narrative_id: drawer_opened, duration_ms: 1800}]
       - id: close_drawer
         when: {op: eq, left: {var: local.drawer_open}, right: true}
         duration_ms: 1000
         outcomes:
           - effects: [{op: set, var: local.drawer_open, value: false}]
-            cues: [{cue_id: drawer_closed, kind: narrative, narrative_id: drawer_closed}]
+            cues: [{cue_id: drawer_closed, kind: narrative, narrative_id: drawer_closed, duration_ms: 1800}]
       - id: take_keychain
         when:
           op: all
@@ -48,12 +48,12 @@ contexts:
         duration_ms: 1000
         outcomes:
           - effects: [{op: set, var: global.has_keychain, value: true}]
-            cues: [{cue_id: keys_taken, kind: narrative, narrative_id: keys_taken}]
+            cues: [{cue_id: keys_taken, kind: narrative, narrative_id: keys_taken, duration_ms: 1800}]
       - id: unlock_door_key1
         when: {op: eq, left: {var: global.has_keychain}, right: true}
         duration_ms: 2000
         outcomes:
-          - cues: [{cue_id: wrong_key, kind: narrative, narrative_id: wrong_key_does_not_turn}]
+          - cues: [{cue_id: wrong_key, kind: narrative, narrative_id: wrong_key_does_not_turn, duration_ms: 1800}]
       - id: unlock_door_key2
         when: {op: eq, left: {var: global.has_keychain}, right: true}
         duration_ms: 2000
@@ -61,16 +61,16 @@ contexts:
           # This game explicitly treats completion exactly at the deadline as failure.
           - when: {op: ge, left: {clock: time_passed}, right: {clock: deadline_ms}}
             goto: caught
-            cues: [{cue_id: late_key, kind: narrative, narrative_id: caught_while_unlocking}]
+            cues: [{cue_id: late_key, kind: narrative, narrative_id: caught_while_unlocking, duration_ms: 1800}]
           - effects: [{op: set, var: global.door_open, value: true}]
             goto: corridor
-            cues: [{cue_id: correct_key, kind: narrative, narrative_id: unlock_door_success}]
+            cues: [{cue_id: correct_key, kind: narrative, narrative_id: unlock_door_success, duration_ms: 1800}]
       - id: carefully_look_around
         when: {op: eq, left: {var: local.surveyed}, right: false}
         duration_ms: 1000
         outcomes:
           - effects: [{op: set, var: local.surveyed, value: true}]
-            cues: [{cue_id: survey, kind: narrative, narrative_id: room_surveyed}]
+            cues: [{cue_id: survey, kind: narrative, narrative_id: room_surveyed, duration_ms: 1800}]
       - id: open_wardrobe
         when:
           op: all
@@ -80,7 +80,7 @@ contexts:
         duration_ms: 1000
         outcomes:
           - effects: [{op: set, var: local.wardrobe_open, value: true}]
-            cues: [{cue_id: wardrobe, kind: narrative, narrative_id: wardrobe_opened}]
+            cues: [{cue_id: wardrobe, kind: narrative, narrative_id: wardrobe_opened, duration_ms: 1800}]
       - id: search_fireplace
         when:
           op: all
@@ -90,7 +90,7 @@ contexts:
         duration_ms: 1000
         outcomes:
           - effects: [{op: set, var: global.has_iron_bar, value: true}]
-            cues: [{cue_id: iron_bar, kind: narrative, narrative_id: iron_bar_found}]
+            cues: [{cue_id: iron_bar, kind: narrative, narrative_id: iron_bar_found, duration_ms: 1800}]
       - id: brace_for_strength
         when: {op: eq, left: {var: local.trained}, right: false}
         outcomes:
@@ -98,7 +98,7 @@ contexts:
               - {op: set, var: global.character_strength, value: 4}
               - {op: set, var: global.character_dex, value: 1}
               - {op: set, var: local.trained, value: true}
-            cues: [{cue_id: strength, kind: narrative, narrative_id: strength_prepared}]
+            cues: [{cue_id: strength, kind: narrative, narrative_id: strength_prepared, duration_ms: 1800}]
       - id: break_door
         when: {op: eq, left: {var: global.door_open}, right: false}
         duration_ms: 2000
@@ -107,14 +107,14 @@ contexts:
           - when: {op: ge, left: {var: local.door_damage}, right: 4}
             effects: [{op: set, var: global.door_open, value: true}]
             goto: corridor
-            cues: [{cue_id: door_success, kind: narrative, narrative_id: break_door_success}]
+            cues: [{cue_id: door_success, kind: narrative, narrative_id: break_door_success, duration_ms: 1800}]
           - when: {op: eq, left: {var: local.door_damage}, right: 3}
-            cues: [{cue_id: door_almost, kind: narrative, narrative_id: break_door_almost_open}]
+            cues: [{cue_id: door_almost, kind: narrative, narrative_id: break_door_almost_open, duration_ms: 1800}]
           - when: {op: eq, left: {var: local.door_damage}, right: 2}
-            cues: [{cue_id: door_progress, kind: narrative, narrative_id: break_door_progress}]
+            cues: [{cue_id: door_progress, kind: narrative, narrative_id: break_door_progress, duration_ms: 1800}]
           - when: {op: eq, left: {var: local.door_damage}, right: 1}
-            cues: [{cue_id: door_barely, kind: narrative, narrative_id: break_door_barely_moves}]
-          - cues: [{cue_id: door_nothing, kind: narrative, narrative_id: break_door_nothing_happens}]
+            cues: [{cue_id: door_barely, kind: narrative, narrative_id: break_door_barely_moves, duration_ms: 1800}]
+          - cues: [{cue_id: door_nothing, kind: narrative, narrative_id: break_door_nothing_happens, duration_ms: 1800}]
         interrupted_outcomes:
           # Arithmetic attempted progress is authored, not a running action.
           - effects:
@@ -127,8 +127,8 @@ contexts:
                     - {clock: duration_ms}
             goto: caught
             cues:
-              - {cue_id: partial_door, kind: narrative, narrative_id: door_attempt_cut_short}
-              - {cue_id: partial_capture, kind: narrative, narrative_id: caught_while_escaping}
+              - {cue_id: partial_door, kind: narrative, narrative_id: door_attempt_cut_short, duration_ms: 1800}
+              - {cue_id: partial_capture, kind: narrative, narrative_id: caught_while_escaping, duration_ms: 1800}
       - id: squeeze_through
         when:
           op: all
@@ -139,24 +139,24 @@ contexts:
         outcomes:
           - when: {op: gt, left: {var: global.character_dex}, right: {var: local.door_damage}}
             goto: corridor
-            cues: [{cue_id: squeeze_success, kind: narrative, narrative_id: squeeze_through_success}]
-          - cues: [{cue_id: squeeze_failure, kind: narrative, narrative_id: squeeze_through_does_not_fit}]
+            cues: [{cue_id: squeeze_success, kind: narrative, narrative_id: squeeze_through_success, duration_ms: 1800}]
+          - cues: [{cue_id: squeeze_failure, kind: narrative, narrative_id: squeeze_through_does_not_fit, duration_ms: 1800}]
       - id: use_iron_bar
         when: {op: eq, left: {var: global.has_iron_bar}, right: true}
         duration_ms: 2000
         outcomes:
           - effects: [{op: set, var: global.door_open, value: true}]
             goto: corridor
-            cues: [{cue_id: lever, kind: narrative, narrative_id: lever_door_open}]
+            cues: [{cue_id: lever, kind: narrative, narrative_id: lever_door_open, duration_ms: 1800}]
       - id: escape_window
         when: {op: eq, left: {var: local.wardrobe_open}, right: true}
         duration_ms: 3000
         outcomes:
           - when: {op: ge, left: {var: global.character_dex}, right: 3}
             goto: window_escape
-            cues: [{cue_id: window_success, kind: narrative, narrative_id: window_escape}]
+            cues: [{cue_id: window_success, kind: narrative, narrative_id: window_escape, duration_ms: 1800}]
           - goto: injured
-            cues: [{cue_id: window_failure, kind: narrative, narrative_id: window_fall}]
+            cues: [{cue_id: window_failure, kind: narrative, narrative_id: window_fall, duration_ms: 1800}]
       - id: buy_time
         when: {op: eq, left: {var: local.wardrobe_open}, right: true}
         duration_ms: 2000
@@ -166,23 +166,23 @@ contexts:
         outcomes:
           - cues:
               - {cue_id: extra_time, kind: timer, extend_ms: 5000}
-              - {cue_id: barricade, kind: narrative, narrative_id: wardrobe_barricade}
+              - {cue_id: barricade, kind: narrative, narrative_id: wardrobe_barricade, duration_ms: 1800}
       - id: give_up
         outcomes:
           - goto: caught
-            cues: [{cue_id: surrender, kind: narrative, narrative_id: surrendered}]
+            cues: [{cue_id: surrender, kind: narrative, narrative_id: surrendered, duration_ms: 1800}]
     timeout:
       goto: caught
-      cues: [{cue_id: idle_timeout, kind: narrative, narrative_id: caught_while_escaping}]
+      cues: [{cue_id: idle_timeout, kind: narrative, narrative_id: caught_while_escaping, duration_ms: 1800}]
   - id: corridor
     terminal: true
-    cues: [{cue_id: corridor_end, kind: narrative, narrative_id: common.corridor_escape}]
+    cues: [{cue_id: corridor_end, kind: narrative, narrative_id: common.corridor_escape, duration_ms: 1800}]
   - id: window_escape
     terminal: true
-    cues: [{cue_id: window_end, kind: narrative, narrative_id: common.window_escape}]
+    cues: [{cue_id: window_end, kind: narrative, narrative_id: common.window_escape, duration_ms: 1800}]
   - id: caught
     terminal: true
-    cues: [{cue_id: caught_end, kind: narrative, narrative_id: common.caught}]
+    cues: [{cue_id: caught_end, kind: narrative, narrative_id: common.caught, duration_ms: 1800}]
   - id: injured
     terminal: true
-    cues: [{cue_id: injury_end, kind: narrative, narrative_id: common.injured}]
+    cues: [{cue_id: injury_end, kind: narrative, narrative_id: common.injured, duration_ms: 1800}]

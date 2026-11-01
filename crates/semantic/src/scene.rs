@@ -140,6 +140,8 @@ pub struct AuthoredCue {
     #[serde(default)]
     pub at_ms: Option<u64>,
     #[serde(default)]
+    pub after_cue: Option<String>,
+    #[serde(default)]
     pub when: Option<Test>,
     #[serde(flatten)]
     pub instruction: AuthoredInstruction,
@@ -150,13 +152,19 @@ pub struct AuthoredCue {
 pub enum AuthoredInstruction {
     Narrative {
         narrative_id: String,
+        #[serde(default)]
+        duration_ms: Option<u64>,
     },
     Actions {
         available_actions: ActionSet,
     },
     Timer {
-        #[serde(default)]
+        #[serde(default, rename = "set_deadline_ms", alias = "start_ms")]
         start_ms: Option<u64>,
+        #[serde(default)]
+        deadline_at_ms: Option<u64>,
+        #[serde(default)]
+        unset_deadline: bool,
         #[serde(default)]
         extend_ms: Option<u64>,
         #[serde(default)]
@@ -167,6 +175,7 @@ pub enum AuthoredInstruction {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CueSheet {
+    pub protocol_version: u32,
     pub revision: u64,
     pub clock: SceneClock,
     /// Complete remaining plan. Always replaces; never append/merge instructions.
@@ -187,8 +196,10 @@ pub struct SceneClock {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Cue {
     pub cue_id: String,
+    /// Absolute scene time. Sequential lowering is expressed by after_cue.
+    pub at_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub at_ms: Option<u64>,
+    pub started_at_ms: Option<u64>,
     /// A logical-time release can also wait for a preceding sequential cue.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub after_cue: Option<String>,
@@ -201,12 +212,17 @@ pub struct Cue {
 pub enum Instruction {
     Narrative {
         narrative_id: String,
+        #[serde(default)]
+        duration_ms: Option<u64>,
     },
     Actions {
         available_actions: Vec<String>,
     },
     Timer {
+        #[serde(rename = "set_deadline_ms", alias = "start_ms")]
         start_ms: Option<u64>,
+        deadline_at_ms: Option<u64>,
+        unset_deadline: bool,
         extend_ms: Option<u64>,
         visible: Option<bool>,
     },
@@ -314,24 +330,46 @@ struct CueFields<A> {
     kind: String,
     #[serde(default)]
     narrative_id: Option<String>,
-    available_actions: Option<A>,
     #[serde(default)]
+    duration_ms: Option<u64>,
+    #[serde(default)]
+    started_at_ms: Option<u64>,
+    available_actions: Option<A>,
+    #[serde(default, alias = "set_deadline_ms")]
     start_ms: Option<u64>,
     #[serde(default)]
-    extend_ms: Option<u64>,
+    deadline_at_ms: Option<u64>,
     #[serde(default)]
+    unset_deadline: bool,
+    #[serde(default)]
+    extend_ms: Option<u64>,
+    #[serde(default, alias = "show_deadline")]
     visible: Option<bool>,
 }
 
 impl<A> CueFields<A> {
     fn valid(&self) -> bool {
-        let timer = self.start_ms.is_some() || self.extend_ms.is_some() || self.visible.is_some();
+        let timer = self.start_ms.is_some()
+            || self.deadline_at_ms.is_some()
+            || self.unset_deadline
+            || self.extend_ms.is_some()
+            || self.visible.is_some();
         match self.kind.as_str() {
             "narrative" => {
                 self.narrative_id.is_some() && self.available_actions.is_none() && !timer
             }
-            "actions" => self.available_actions.is_some() && self.narrative_id.is_none() && !timer,
-            "timer" => timer && self.narrative_id.is_none() && self.available_actions.is_none(),
+            "actions" => {
+                self.duration_ms.is_none()
+                    && self.available_actions.is_some()
+                    && self.narrative_id.is_none()
+                    && !timer
+            }
+            "timer" => {
+                self.duration_ms.is_none()
+                    && timer
+                    && self.narrative_id.is_none()
+                    && self.available_actions.is_none()
+            }
             _ => false,
         }
     }
@@ -340,20 +378,23 @@ impl<A> CueFields<A> {
 impl<'de> Deserialize<'de> for AuthoredCue {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let f = CueFields::<ActionSet>::deserialize(deserializer)?;
-        if !f.valid() || f.after_cue.is_some() {
+        if !f.valid() || f.started_at_ms.is_some() {
             return Err(serde::de::Error::custom(
-                "cue kind/payload mismatch or authored after_cue is unsupported",
+                "cue kind/payload mismatch or authored started_at_ms is unsupported",
             ));
         }
         let instruction = match f.kind.as_str() {
             "narrative" => AuthoredInstruction::Narrative {
                 narrative_id: f.narrative_id.unwrap(),
+                duration_ms: f.duration_ms,
             },
             "actions" => AuthoredInstruction::Actions {
                 available_actions: f.available_actions.unwrap(),
             },
             _ => AuthoredInstruction::Timer {
                 start_ms: f.start_ms,
+                deadline_at_ms: f.deadline_at_ms,
+                unset_deadline: f.unset_deadline,
                 extend_ms: f.extend_ms,
                 visible: f.visible,
             },
@@ -361,6 +402,7 @@ impl<'de> Deserialize<'de> for AuthoredCue {
         Ok(Self {
             cue_id: f.cue_id,
             at_ms: f.at_ms,
+            after_cue: f.after_cue,
             when: f.when,
             instruction,
         })
@@ -370,27 +412,41 @@ impl<'de> Deserialize<'de> for AuthoredCue {
 impl<'de> Deserialize<'de> for Cue {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let f = CueFields::<Vec<String>>::deserialize(deserializer)?;
-        if !f.valid() || f.cue_id.is_none() || f.when.is_some() {
+        if !f.valid() || f.cue_id.is_none() || f.at_ms.is_none() || f.when.is_some() {
             return Err(serde::de::Error::custom("invalid Cue Sheet instruction"));
         }
         let instruction = match f.kind.as_str() {
             "narrative" => Instruction::Narrative {
                 narrative_id: f.narrative_id.unwrap(),
+                duration_ms: f.duration_ms,
             },
             "actions" => Instruction::Actions {
                 available_actions: f.available_actions.unwrap(),
             },
             _ => Instruction::Timer {
                 start_ms: f.start_ms,
+                deadline_at_ms: f.deadline_at_ms,
+                unset_deadline: f.unset_deadline,
                 extend_ms: f.extend_ms,
                 visible: f.visible,
             },
         };
         Ok(Self {
             cue_id: f.cue_id.unwrap(),
-            at_ms: f.at_ms,
+            at_ms: f.at_ms.unwrap(),
+            started_at_ms: f.started_at_ms,
             after_cue: f.after_cue,
             instruction,
         })
     }
+}
+
+/// Read-only host inspection, never part of the player Cue Sheet.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldStateSnapshot {
+    pub context_id: String,
+    pub scene_epoch: u64,
+    pub revision: u64,
+    pub globals: Variables,
+    pub locals: Variables,
 }

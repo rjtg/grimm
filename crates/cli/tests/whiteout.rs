@@ -47,7 +47,7 @@ impl Game {
             };
             let feedback = self.player.started(&cue.cue_id).unwrap();
             self.engine.cue_input(&adapter::feedback(feedback)).unwrap();
-            if let Instruction::Narrative { narrative_id } = &cue.instruction {
+            if let Instruction::Narrative { narrative_id, .. } = &cue.instruction {
                 self.narratives.push(narrative_id.clone());
             }
             if finish_text || !matches!(cue.instruction, Instruction::Narrative { .. }) {
@@ -498,9 +498,14 @@ fn deadline_cutoff_accounts_only_effective_time_and_does_not_invent_power() {
         g.at(selected);
         g.step("start_generator");
         assert_eq!(g.flag("generator_done"), success);
-        assert!(g.flag("engineering_lost"));
+        assert_eq!(g.flag("engineering_lost"), !success);
         assert_eq!(g.int("cold_exposure"), 31000);
-        assert_eq!(g.int("accounted_ms"), if success { 0 } else { 3000 });
+        assert_eq!(g.int("accounted_ms"), if success { 30000 } else { 3000 });
+        if success {
+            assert_eq!(g.player.clock().unwrap().deadline_ms, None);
+            g.at(40000);
+            assert!(!g.flag("engineering_lost"));
+        }
         if !success {
             g.at(3000);
             g.settle();
@@ -519,7 +524,7 @@ fn deadline_cutoff_accounts_only_effective_time_and_does_not_invent_power() {
             g.player
                 .actions()
                 .iter()
-                .all(|id| id.starts_with("dispatch."))
+                .all(|id| id.starts_with(if success { "generator." } else { "dispatch." }))
         );
     }
 }
@@ -615,7 +620,7 @@ fn actual_cli_reaches_all_three_endings_and_the_lever_rescue() {
             String::from_utf8_lossy(&output.stderr)
         );
         let text = String::from_utf8(output.stdout).unwrap();
-        assert!(text.contains(ending), "{text}");
+        assert!(text.lines().any(|line| line == ending), "{text}");
         for unwanted in [
             "Action rejected",
             "Choose an available",
@@ -764,4 +769,83 @@ fn interrupted_work_credit_is_not_charged_again_in_the_new_scene() {
     idle.at(1000);
     idle.step("communications");
     assert_eq!(idle.int("cold_exposure"), 71000);
+}
+
+#[test]
+fn automatic_whiteout_books_presentation_once_and_reaches_full_rescue_without_text_input() {
+    use grimm_cli::scene_session::SceneSession;
+    fn ready(session: &mut SceneSession) {
+        for _ in 0..128 {
+            if !session.player().actions().is_empty() || session.engine().is_terminal() {
+                return;
+            }
+            let at = session
+                .player()
+                .next_event_ms()
+                .expect("authored automatic presentation must progress");
+            session.advance_to(at).unwrap();
+        }
+        panic!("automatic presentation did not settle");
+    }
+    fn step(session: &mut SceneSession, id: &str) {
+        ready(session);
+        assert!(
+            session.player().actions().contains(&id.into()),
+            "{id}: {:?}",
+            session.player().actions()
+        );
+        let clock = session.player().clock().unwrap();
+        session
+            .choose(id, session.player().revision(), clock.elapsed_ms)
+            .unwrap();
+    }
+    let mut host = SceneSession::new(
+        SceneEngine::new(serde_yaml_ng::from_str(STORY).unwrap()).unwrap(),
+        true,
+    )
+    .unwrap();
+    ready(&mut host);
+    assert_eq!(host.player().clock().unwrap().elapsed_ms, 12000);
+    assert_eq!(host.engine().globals()["cold_exposure"], Value::Int(0));
+    step(&mut host, "blackout.begin");
+    assert_eq!(host.engine().globals()["cold_exposure"], Value::Int(0));
+    ready(&mut host);
+    step(&mut host, "stores.take_thermal_liner");
+    assert_eq!(host.engine().globals()["cold_exposure"], Value::Int(8000));
+    for action in [
+        "jonas_treated",
+        "take_copper_braid",
+        "take_ceramic_mug",
+        "take_spanner",
+        "take_heat_pack",
+        "log_read",
+        "take_safety_line",
+        "leave",
+    ] {
+        step(&mut host, &format!("stores.{action}"));
+    }
+    step(&mut host, "dispatch.engineering");
+    step(&mut host, "generator.deploy_heat_pack");
+    ready(&mut host);
+    step(&mut host, "generator.open_generator_latch");
+    let booked = host.engine().globals()["cold_exposure"].clone();
+    ready(&mut host);
+    assert_eq!(host.engine().globals()["cold_exposure"], booked); // media completion is no world tick
+    step(&mut host, "generator.open_generator_latch");
+    step(&mut host, "generator.isolate_deicer");
+    step(&mut host, "generator.start_generator");
+    assert_eq!(host.player().clock().unwrap().deadline_ms, None);
+    step(&mut host, "generator.return");
+    step(&mut host, "dispatch.communications");
+    step(&mut host, "radio.make_adapter");
+    step(&mut host, "radio.send_signal");
+    assert_eq!(host.player().clock().unwrap().deadline_ms, None);
+    step(&mut host, "radio.return");
+    step(&mut host, "dispatch.ridge");
+    step(&mut host, "crisis.coordinate");
+    assert!(host.engine().is_terminal());
+    assert_eq!(
+        host.engine().globals()["ending"],
+        Value::Text("full_rescue".into())
+    );
 }

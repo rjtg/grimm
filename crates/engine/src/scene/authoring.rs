@@ -264,8 +264,10 @@ fn entry_can_progress(context: &Context) -> bool {
         }
         match &cue.instruction {
             AuthoredInstruction::Timer {
-                start_ms: Some(_), ..
-            } => context.timeout.is_some(),
+                start_ms,
+                deadline_at_ms,
+                ..
+            } if start_ms.is_some() || deadline_at_ms.is_some() => context.timeout.is_some(),
             AuthoredInstruction::Actions { available_actions } => {
                 context.actions.iter().any(|action| {
                     truth(action.when.as_ref()) != Some(false)
@@ -291,7 +293,7 @@ fn index_cues(
             cue_id: cue.cue_id.clone().expect("compiled cue ID"),
             generated: original.cue_id.is_none(),
             narrative_id: match &cue.instruction {
-                AuthoredInstruction::Narrative { narrative_id } => Some(narrative_id.clone()),
+                AuthoredInstruction::Narrative { narrative_id, .. } => Some(narrative_id.clone()),
                 _ => None,
             },
             source: Source::at(format!("{path}/{i}")),

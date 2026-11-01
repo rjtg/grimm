@@ -198,7 +198,7 @@ fn locked_room_is_a_real_authored_dsl_with_complete_text_bindings() {
             .chain(result_cues)
             .chain(context.timeout.iter().flat_map(|outcome| &outcome.cues))
         {
-            if let grimm_semantic::scene::AuthoredInstruction::Narrative { narrative_id } =
+            if let grimm_semantic::scene::AuthoredInstruction::Narrative { narrative_id, .. } =
                 &cue.instruction
             {
                 let id = if narrative_id.contains('.') {
@@ -604,9 +604,11 @@ fn generated_cue_identity_depends_on_content_and_timing_not_list_position() {
         AuthoredCue {
             cue_id: Some("another_intro".into()),
             at_ms: None,
+            after_cue: None,
             when: None,
             instruction: AuthoredInstruction::Narrative {
                 narrative_id: "another_intro".into(),
+                duration_ms: None,
             },
         },
     );
@@ -708,7 +710,7 @@ fn five_second_action_at_six_is_resolved_as_four_seconds_at_ten_without_more_inp
         (6000, 4000, 10000)
     );
     assert!(result.interrupted);
-    assert!(engine.output().cues.iter().any(|cue| matches!(&cue.instruction, grimm_semantic::scene::Instruction::Narrative { narrative_id } if narrative_id == "room.four_second_attempt_cut_short")));
+    assert!(engine.output().cues.iter().any(|cue| matches!(&cue.instruction, grimm_semantic::scene::Instruction::Narrative { narrative_id, .. } if narrative_id == "room.four_second_attempt_cut_short")));
 }
 
 #[test]
@@ -874,7 +876,7 @@ fn cue_sheets_and_replay_checkpoints_round_trip_without_private_projections() {
             .keys()
             .map(String::as_str)
             .collect::<Vec<_>>(),
-        ["clock", "cues", "revision"]
+        ["clock", "cues", "protocol_version", "revision"]
     );
     for private in [
         "door_damage",

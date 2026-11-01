@@ -13,8 +13,8 @@ narratives:
 
     The generator intake is freezing shut. The antenna motors have lost power. A rescue helicopter can
     reach Aurora only if a signal gets out before the storm closes the ridge. Take what you need, choose
-    which repair comes first, and bring these people home. Enter finishes prose; number keys choose. Esc
-    opens a paused save menu. The dispatch hall is the safest checkpoint.'
+    which repair comes first, and bring these people home. Text advances automatically; number keys choose.
+    Esc opens a paused save menu; scroll back to reread. The dispatch hall is the safest checkpoint.'
   stores.arrival: 'Mara braces Jonas against the shelves. ''We have three minutes before the storm shutter
     seals this room. Choose deliberately.'' A thermal liner and medical kit are closest. A copper earthing
     braid, ceramic mug and adjustable spanner lie in a spilled repair tray. A safety line, spare battery
@@ -62,8 +62,8 @@ narratives:
   generator.arrival: The generator annex trembles under ice. A pressure gauge over the access shutter
     marks THIRTY SECONDS until its coil cuts out. The countdown display is dark; the backup radio should
     announce the remaining time. A spare heat-pack battery can buy one extra minute. Jonas says the latch
-    will take repeated work, or a spanner wrapped in copper braid. Read now; the countdown starts after
-    this briefing.
+    will take repeated work, or a spanner wrapped in copper braid. The coil is already running; read the warning while the hidden countdown advances.
+    Esc pauses the scene if you need more reading time.
   generator.radio_warning: 'Lea on the backup set: ''Engineering, ten seconds elapsed on your coil. I''m
     putting the remaining budget on your handset.'' The display wakes without restarting the circuit.'
   generator.heat_pack: You plug the spare battery into the shutter coil. Another minute. Mara tells you
@@ -103,8 +103,8 @@ narratives:
   radio.arrival: 'Lea has sixty seconds of transmitter reserve before this cabin''s battery protector
     trips. The powered dish can be bypassed: copper braid through the mug''s ceramic handle makes an isolated
     jumper. Without it, someone must hold the antenna by hand. Lea can do that, but cannot leave the mast
-    while the line is live. A ridge safety line could replace her grip later. Read now; the battery budget
-    starts when you finish.'
+    while the line is live. A ridge safety line could replace her grip later. The battery budget is already running; Esc pauses the scene
+    if you need more reading time.'
   radio.gust_warning: A gust hits the mast. Lea catches its handwheel with both arms. 'If we do this manually,
     remember that I'm still out here.'
   radio.adapter: You thread the copper through the ceramic handle and clamp it clear of the shorted bracket.

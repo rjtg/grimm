@@ -37,6 +37,7 @@ pub struct SceneEngine {
     eligible_ms: u64,
     plan: Vec<Cue>,
     statuses: BTreeMap<String, Status>,
+    cue_started_at: BTreeMap<String, u64>,
     issued: BTreeMap<u64, (u64, BTreeSet<String>)>,
     offered: Vec<String>,
     records: Vec<ActionRecord>,
@@ -67,6 +68,7 @@ impl SceneEngine {
             eligible_ms: 0,
             plan: vec![],
             statuses: BTreeMap::new(),
+            cue_started_at: BTreeMap::new(),
             issued: BTreeMap::new(),
             offered: vec![],
             records: vec![],
@@ -82,15 +84,16 @@ impl SceneEngine {
         &self.story.contexts[self.context]
     }
     fn enter_clock(&mut self) {
-        self.clock.running = !self.ctx().cues.iter().any(|cue| {
-            matches!(
-                cue.instruction,
-                AuthoredInstruction::Timer {
-                    start_ms: Some(_),
-                    ..
-                }
-            )
-        });
+        self.clock.running = self.story.schema_version >= 2
+            || !self.ctx().cues.iter().any(|cue| {
+                matches!(
+                    cue.instruction,
+                    AuthoredInstruction::Timer {
+                        start_ms: Some(_),
+                        ..
+                    }
+                )
+            });
     }
     fn times(&self, selected: u64) -> Times {
         Times {
@@ -114,6 +117,7 @@ impl SceneEngine {
         // its last executed instruction for a fresh renderer/checkpoint restore.
         let active_offer = self.plan.iter().rev().find(|cue| matches!(&cue.instruction, Instruction::Actions { available_actions } if !available_actions.is_empty() && *available_actions == self.offered) && self.statuses.contains_key(&cue.cue_id)).map(|cue| &cue.cue_id);
         CueSheet {
+            protocol_version: 2,
             revision: self.revision,
             clock: self.clock.clone(),
             cues: self
@@ -125,6 +129,12 @@ impl SceneEngine {
                 })
                 .cloned()
                 .map(|mut cue| {
+                    cue.started_at_ms = if self.statuses.get(&cue.cue_id) == Some(&Status::Started)
+                    {
+                        self.cue_started_at.get(&cue.cue_id).copied()
+                    } else {
+                        None
+                    };
                     if cue
                         .after_cue
                         .as_ref()
@@ -135,6 +145,17 @@ impl SceneEngine {
                     cue
                 })
                 .collect(),
+        }
+    }
+
+    /// Immutable host-only state; never included in a Cue Sheet.
+    pub fn inspect_world(&self) -> WorldStateSnapshot {
+        WorldStateSnapshot {
+            context_id: self.ctx().id.clone(),
+            scene_epoch: self.clock.epoch,
+            revision: self.revision,
+            globals: self.globals.clone(),
+            locals: self.locals.clone(),
         }
     }
 
@@ -207,7 +228,13 @@ impl SceneEngine {
     pub fn observe(&mut self, revision: u64, scene_time_ms: u64) -> SceneResult<CueSheet> {
         let mut candidate = self.clone();
         candidate.selection_valid(revision, scene_time_ms)?;
-        if scene_time_ms != candidate.clock.elapsed_ms {
+        let newly_due = candidate.story.schema_version >= 2
+            && !candidate.is_terminal()
+            && candidate
+                .clock
+                .deadline_ms
+                .is_some_and(|end| scene_time_ms >= end);
+        if scene_time_ms != candidate.clock.elapsed_ms || newly_due {
             candidate.clock.elapsed_ms = scene_time_ms;
             if candidate
                 .clock
@@ -246,6 +273,10 @@ impl SceneEngine {
     ) -> SceneResult<Vec<Cue>> {
         let mut result = vec![];
         let mut previous_sequential = None;
+        let local_ids: BTreeSet<_> = authored
+            .iter()
+            .filter_map(|cue| cue.cue_id.as_ref())
+            .collect();
         for cue in authored {
             if let Some(test) = &cue.when
                 && !check(test, &self.globals, &self.locals, time, 0)?
@@ -258,15 +289,23 @@ impl SceneEngine {
                 continue;
             }
             let instruction = match &cue.instruction {
-                AuthoredInstruction::Narrative { narrative_id } => Instruction::Narrative {
+                AuthoredInstruction::Narrative {
+                    narrative_id,
+                    duration_ms,
+                } => Instruction::Narrative {
                     narrative_id: narrative_id.clone(),
+                    duration_ms: *duration_ms,
                 },
                 AuthoredInstruction::Timer {
                     start_ms,
+                    deadline_at_ms,
+                    unset_deadline,
                     extend_ms,
                     visible,
                 } => Instruction::Timer {
                     start_ms: *start_ms,
+                    deadline_at_ms: *deadline_at_ms,
+                    unset_deadline: *unset_deadline,
                     extend_ms: *extend_ms,
                     visible: *visible,
                 },
@@ -286,23 +325,37 @@ impl SceneEngine {
                     }
                 }
             };
-            let at_ms = if matches!(instruction, Instruction::Actions { ref available_actions } if !available_actions.is_empty())
+            let authored_at = cue.at_ms.unwrap_or(time.selection);
+            let mut at_ms = if run.is_some() {
+                authored_at.max(time.selection)
+            } else {
+                authored_at
+            };
+            if matches!(&instruction, Instruction::Actions { available_actions } if !available_actions.is_empty())
             {
-                Some(cue.at_ms.unwrap_or(time.selection).max(self.eligible_ms))
-            } else {
-                cue.at_ms
-            };
-            let after_cue = if cue.at_ms.is_none() {
-                previous_sequential.clone()
-            } else {
-                None
-            };
+                at_ms = at_ms.max(self.eligible_ms);
+            }
+            let explicit_after = cue.after_cue.as_ref().map(|id| {
+                if let Some(run) = run.filter(|_| local_ids.contains(id)) {
+                    format!("{id}__run_{run}")
+                } else {
+                    id.clone()
+                }
+            });
+            let after_cue = explicit_after.or_else(|| {
+                if cue.at_ms.is_none() {
+                    previous_sequential.clone()
+                } else {
+                    None
+                }
+            });
             if cue.at_ms.is_none() {
                 previous_sequential = Some(cue_id.clone());
             }
             result.push(Cue {
                 cue_id,
                 at_ms,
+                started_at_ms: None,
                 after_cue,
                 instruction,
             });
@@ -387,6 +440,10 @@ impl SceneEngine {
             }
             selected_outcome.ok_or_else(|| SceneError("action has no matching outcome".into()))?
         };
+        if time.interrupted && self.story.schema_version >= 2 {
+            self.clock.deadline_ms = None;
+            self.clock.visible = false;
+        }
         self.records.push(ActionRecord {
             action_id: action.id,
             selected_ms: selected,
@@ -407,6 +464,12 @@ impl SceneEngine {
             end: self.clock.deadline_ms.unwrap_or(at),
             ..self.times(at)
         };
+        // A v2 deadline expires once, including timeout outcomes that stay in
+        // the same context. Its old value remains available in Times for rules.
+        if self.story.schema_version >= 2 {
+            self.clock.deadline_ms = None;
+            self.clock.visible = false;
+        }
         self.records.push(ActionRecord {
             action_id: "timeout".into(),
             selected_ms: at,
@@ -421,7 +484,7 @@ impl SceneEngine {
         update(&outcome.effects, &mut self.globals, &mut self.locals, time)?;
         let previous = self.plan.clone();
         self.eligible_ms = time.end;
-        let result = self.materialize(&outcome.cues, Some(self.records.len()), time)?;
+        let mut result = self.materialize(&outcome.cues, Some(self.records.len()), time)?;
         self.clock.elapsed_ms = time.selection;
         self.eligible_ms = time.end;
         self.offered.clear();
@@ -451,17 +514,40 @@ impl SceneEngine {
             // bypass the selected action's remaining logical duration.
             self.eligible_ms = time.end.saturating_sub(time.selection);
             self.statuses.clear();
+            self.cue_started_at.clear();
             self.issued.clear();
+            // Authored transition results are untimed and belong to the new epoch.
+            for cue in &mut result {
+                cue.at_ms = 0;
+            }
         }
         let ns = self.ctx().namespace.clone().expect("compiled namespace");
         self.plan = vec![Cue {
             cue_id: format!("{ns}.__grimm_lock_{}", self.revision),
-            at_ms: None,
+            at_ms: self.clock.elapsed_ms,
+            started_at_ms: None,
             after_cue: None,
             instruction: Instruction::Actions {
                 available_actions: vec![],
             },
         }];
+        let lock_id = self.plan[0].cue_id.clone();
+        let sequential_result: BTreeSet<_> = outcome
+            .cues
+            .iter()
+            .filter(|cue| cue.at_ms.is_none())
+            .filter_map(|cue| cue.cue_id.as_ref())
+            .map(|id| format!("{id}__run_{}", self.records.len()))
+            .collect();
+        for cue in &mut result {
+            if sequential_result.contains(&cue.cue_id) && cue.after_cue.is_none() {
+                cue.after_cue = Some(lock_id.clone());
+            }
+        }
+        let prefix_tail = result
+            .iter()
+            .rfind(|cue| sequential_result.contains(&cue.cue_id))
+            .map_or(lock_id.clone(), |cue| cue.cue_id.clone());
         self.plan.extend(result);
         if !transitioned {
             // Carry only running narrative identities, never obsolete action lists.
@@ -472,7 +558,7 @@ impl SceneEngine {
                         && self.statuses.get(&cue.cue_id) == Some(&Status::Started)
                 })
                 .map(|mut cue| {
-                    cue.at_ms = Some(time.selection);
+                    cue.at_ms = time.selection;
                     cue
                 })
                 .collect();
@@ -480,11 +566,29 @@ impl SceneEngine {
             // Entry untimed instructions are one-time; future clock-scheduled
             // cues are regenerated from canonical facts and semantic history.
             let entry = self.materialize(&self.ctx().cues, None, time)?;
-            self.plan
-                .extend(entry.into_iter().filter(|cue| cue.at_ms.is_some()));
+            let scheduled: BTreeSet<_> = self
+                .ctx()
+                .cues
+                .iter()
+                .filter(|cue| cue.at_ms.is_some())
+                .filter_map(|cue| cue.cue_id.as_ref())
+                .collect();
+            let pending: Vec<_> = entry.into_iter().filter(|cue| scheduled.contains(&cue.cue_id) || matches!(&cue.instruction, Instruction::Actions { available_actions } if !available_actions.is_empty())).collect();
+            self.plan.extend(pending);
         } else {
-            self.plan
-                .extend(self.materialize(&self.ctx().cues, None, self.times(0))?);
+            let mut entry = self.materialize(&self.ctx().cues, None, self.times(0))?;
+            for cue in &mut entry {
+                let authored = self
+                    .ctx()
+                    .cues
+                    .iter()
+                    .find(|a| a.cue_id.as_ref() == Some(&cue.cue_id))
+                    .expect("compiled entry cue");
+                if authored.at_ms.is_none() && cue.after_cue.is_none() {
+                    cue.after_cue = Some(prefix_tail.clone());
+                }
+            }
+            self.plan.extend(entry);
         }
         // A local action with no explicit action-list instruction defaults to a
         // full eligible replacement after its sequential narrative result.
@@ -500,14 +604,23 @@ impl SceneEngine {
                     names.push(action.id.clone());
                 }
             }
+            let sequential_ids: BTreeSet<_> = outcome
+                .cues
+                .iter()
+                .filter(|cue| cue.at_ms.is_none())
+                .filter_map(|cue| cue.cue_id.as_ref())
+                .map(|id| format!("{id}__run_{}", self.records.len()))
+                .collect();
             let after_cue = self
                 .plan
                 .iter()
-                .rfind(|cue| cue.at_ms.is_none())
-                .map(|cue| cue.cue_id.clone());
+                .rfind(|cue| sequential_ids.contains(&cue.cue_id))
+                .map(|cue| cue.cue_id.clone())
+                .or(Some(lock_id));
             self.plan.push(Cue {
                 cue_id: format!("{ns}.__grimm_actions_{}", self.revision),
-                at_ms: Some(self.eligible_ms),
+                at_ms: self.eligible_ms,
+                started_at_ms: None,
                 after_cue,
                 instruction: Instruction::Actions {
                     available_actions: names,
@@ -522,15 +635,7 @@ impl SceneEngine {
 
     fn due(&self, index: usize, at: u64) -> bool {
         let cue = &self.plan[index];
-        let timing = cue.at_ms.map_or_else(
-            || {
-                self.plan[..index]
-                    .iter()
-                    .filter(|cue| cue.at_ms.is_none())
-                    .all(|cue| self.statuses.get(&cue.cue_id) == Some(&Status::Completed))
-            },
-            |target| self.clock.running && at >= target,
-        );
+        let timing = at >= cue.at_ms && (self.clock.running || cue.at_ms == 0);
         timing
             && cue
                 .after_cue
@@ -549,6 +654,11 @@ impl SceneEngine {
             return Err(SceneError(
                 "cue acknowledgement was not issued in this scene epoch".into(),
             ));
+        }
+        if self.statuses.get(&input.cue_id) == Some(&Status::Completed)
+            && (self.story.schema_version >= 2 || input.revision == self.revision)
+        {
+            return Ok(false);
         }
         let Some(index) = self.plan.iter().position(|cue| cue.cue_id == input.cue_id) else {
             return Err(SceneError("cue is absent from the replacement plan".into()));
@@ -594,6 +704,8 @@ impl SceneEngine {
                     }
                     Instruction::Timer {
                         start_ms,
+                        deadline_at_ms,
+                        unset_deadline,
                         extend_ms,
                         visible,
                     } => {
@@ -606,6 +718,18 @@ impl SceneEngine {
                                     .ok_or_else(|| SceneError("timer overflow".into()))?,
                             );
                             self.clock.running = true;
+                        }
+                        if let Some(at) = deadline_at_ms {
+                            if *at < input.scene_time_ms {
+                                return Err(SceneError(
+                                    "absolute deadline cannot precede its execution time".into(),
+                                ));
+                            }
+                            self.clock.deadline_ms = Some(*at);
+                        }
+                        if *unset_deadline {
+                            self.clock.deadline_ms = None;
+                            self.clock.visible = false;
                         }
                         if let Some(duration) = extend_ms {
                             self.clock.deadline_ms = Some(
@@ -623,9 +747,30 @@ impl SceneEngine {
                             self.clock.visible = *visible;
                         }
                     }
+                    Instruction::Narrative {
+                        duration_ms: Some(duration),
+                        ..
+                    } => {
+                        input
+                            .scene_time_ms
+                            .checked_add(*duration)
+                            .filter(|end| *end <= i64::MAX as u64)
+                            .ok_or_else(|| {
+                                SceneError("narrative completion time overflow".into())
+                            })?;
+                    }
                     Instruction::Narrative { .. } => {}
                 }
-                self.statuses.insert(input.cue_id.clone(), Status::Started);
+                let status = if self.story.schema_version >= 2
+                    && !matches!(cue.instruction, Instruction::Narrative { .. })
+                {
+                    Status::Completed
+                } else {
+                    Status::Started
+                };
+                self.statuses.insert(input.cue_id.clone(), status);
+                self.cue_started_at
+                    .insert(input.cue_id.clone(), input.scene_time_ms);
             }
             CueEvent::Completed => {
                 if status != Some(Status::Started) {
@@ -640,7 +785,7 @@ impl SceneEngine {
 
     pub fn save(&self) -> SceneSave {
         SceneSave {
-            schema_version: 1,
+            schema_version: self.story.schema_version,
             story_id: self.story.id.clone(),
             story_version: self.story.version,
             revision: self.revision,
@@ -651,7 +796,7 @@ impl SceneEngine {
     /// Validate by deterministic replay before replacing canonical state. Offline
     /// time is never inferred. Old callbacks cannot cross the restore epoch.
     pub fn restore(&mut self, save: SceneSave) -> SceneResult<CueSheet> {
-        if save.schema_version != 1
+        if save.schema_version != self.story.schema_version
             || save.story_id != self.story.id
             || save.story_version != self.story.version
             || save.history.len() > 65536

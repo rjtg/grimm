@@ -1,7 +1,7 @@
 # DSL-13 regression: authored action order, not an autonomous NPC timer.
-schema_version: 1
+schema_version: 2
 id: detective_order
-version: 1
+version: 2
 title: An Absent Suspect
 start: crime_scene
 globals: {suspect_present: true}
@@ -14,13 +14,13 @@ contexts:
         outcomes:
           - when: {op: eq, left: {var: global.suspect_present}, right: true}
             effects: [{op: set, var: local.confront, value: true}]
-            cues: [{cue_id: suspect_found, kind: narrative, narrative_id: suspect_found}]
+            cues: [{cue_id: suspect_found, kind: narrative, narrative_id: suspect_found, duration_ms: 1800}]
           - effects: [{op: set, var: local.footprints, value: true}]
-            cues: [{cue_id: footprints_found, kind: narrative, narrative_id: suspect_footprints}]
+            cues: [{cue_id: footprints_found, kind: narrative, narrative_id: suspect_footprints, duration_ms: 1800}]
       - id: examine_body
         effects: [{op: set, var: global.suspect_present, value: false}]
         outcomes:
-          - cues: [{cue_id: body, kind: narrative, narrative_id: body_examined}]
+          - cues: [{cue_id: body, kind: narrative, narrative_id: body_examined, duration_ms: 1800}]
       - id: confront_suspect
         when:
           op: all
@@ -42,4 +42,4 @@ contexts:
         outcomes: [{goto: finished}]
   - id: finished
     terminal: true
-    cues: [{cue_id: end, kind: narrative, narrative_id: case_closed}]
+    cues: [{cue_id: end, kind: narrative, narrative_id: case_closed, duration_ms: 1800}]

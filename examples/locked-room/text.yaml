@@ -1,6 +1,6 @@
 # Concrete text-renderer bindings, not part of GRIMM rules or Cue Sheets.
 narratives:
-  locked_room.locked_in: "You wake in Johnny's locked storeroom. A desk drawer, wardrobe and cold fireplace offer possibilities. Listen first; once you finish this introduction, thirty seconds begin. At ten seconds his radio will warn you. Escape by keys, force, a tool or the window."
+  locked_room.locked_in: "You wake in Johnny's locked storeroom. A desk drawer, wardrobe and cold fireplace offer possibilities. The thirty-second countdown is already running. Esc pauses the scene if you need more reading time. At ten seconds his radio will warn you. Escape by keys, force, a tool or the window."
   locked_room.drawer_opened: "The drawer slides open. Two keys hang from a brass ring."
   locked_room.drawer_closed: "You push the drawer shut."
   locked_room.keys_taken: "You pocket the keychain. One key is notched, the other round."

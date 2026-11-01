@@ -1,0 +1,45 @@
+# DSL-13 regression: authored action order, not an autonomous NPC timer.
+schema_version: 1
+id: detective_order
+version: 1
+title: An Absent Suspect
+start: crime_scene
+globals: {suspect_present: true}
+contexts:
+  - id: crime_scene
+    locals: {confront: false, footprints: false}
+    cues: [{cue_id: initial, kind: actions, available_actions: eligible}]
+    actions:
+      - id: search_crime_scene
+        outcomes:
+          - when: {op: eq, left: {var: global.suspect_present}, right: true}
+            effects: [{op: set, var: local.confront, value: true}]
+            cues: [{cue_id: suspect_found, kind: narrative, narrative_id: suspect_found}]
+          - effects: [{op: set, var: local.footprints, value: true}]
+            cues: [{cue_id: footprints_found, kind: narrative, narrative_id: suspect_footprints}]
+      - id: examine_body
+        effects: [{op: set, var: global.suspect_present, value: false}]
+        outcomes:
+          - cues: [{cue_id: body, kind: narrative, narrative_id: body_examined}]
+      - id: confront_suspect
+        when:
+          op: all
+          tests:
+            - {op: eq, left: {var: local.confront}, right: true}
+            - {op: eq, left: {var: global.suspect_present}, right: true}
+        outcomes: [{goto: finished}]
+      - id: find_suspect_footprints
+        when: {op: eq, left: {var: local.footprints}, right: true}
+        outcomes: [{goto: finished}]
+      - id: leave
+        outcomes: [{goto: hall}]
+  - id: hall
+    cues: [{cue_id: hall_offers, kind: actions, available_actions: eligible}]
+    actions:
+      - id: return_to_scene
+        outcomes: [{goto: crime_scene}]
+      - id: finish
+        outcomes: [{goto: finished}]
+  - id: finished
+    terminal: true
+    cues: [{cue_id: end, kind: narrative, narrative_id: case_closed}]

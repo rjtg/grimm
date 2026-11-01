@@ -1,6 +1,6 @@
 # M4.5 — Scene Clock, Cue Timing & Developer Terminal UI
 
-**Status:** Proposed implementation specification, based on WHITEOUT playtesting. **Target:** M4.5, before M5 graphical rendering. **Scope:** deliberately limited to the single-scene-clock M2/M4 architecture. This document is a design contract, not implemented behavior.
+**Status:** Implemented; see [implementation evidence](m4-5-implementation.md). Based on WHITEOUT playtesting. **Target:** M4.5, before M5 graphical rendering. **Scope:** deliberately limited to the single-scene-clock M2/M4 architecture. This document remains the approved design contract; the implementation and migration notes describe its concrete representation.
 
 Existing reference material: [scene format](../scene-format.md), [WHITEOUT game](../../examples/whiteout/README.md), [WHITEOUT timing notes](../../examples/whiteout/DESIGN.md), [M6 history proposal](m6-execution-history-statistics.md).
 
