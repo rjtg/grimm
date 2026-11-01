@@ -17,6 +17,18 @@ M5c still requires a measured same-scene sprite/2D versus Bevy comparison and AD
 no rendering engine or asset import pipeline is selected. Text resource validation
 is not evidence of graphical asset availability.
 
+## M4.6 review follow-ups
+
+- **ADR-0008 acceptance:** explicitly remains Proposed in PR #22. Owner: `rjtg`;
+  acceptance requires maintainer sign-off and an Accepted status change after
+  reviewing versioning, transition commit ordering, provider trust and checkpoint
+  compatibility. Verified opt-in implementation is not an implicit public-contract
+  freeze.
+- **OPEN-M46-HISTORY-01 — Deferred:** benchmark long checkpoint histories and
+  consider versioned snapshot/continuation compaction with bounded replay,
+  deterministic validation and preserved cue/revision deduplication. Current
+  restore has a 65,536-entry limit and no compaction; see the migration guide.
+
 ## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
 
 This section supersedes earlier **working-design** descriptions in this document that show top-level `cue`, `actions`, `actions_available_at`, `new_timer`, `show_timer`, or an `ADD` mode. Older M2 acceptance traces remain historical compatibility evidence, not the proposed newer serialization. Concrete wire/DSL grammar remains illustrative.

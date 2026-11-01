@@ -39,6 +39,7 @@ contexts:
 struct Storage {
     state: Arc<Mutex<InMemoryWorldState>>,
     reject: Arc<AtomicBool>,
+    misreport: Arc<AtomicBool>,
 }
 impl WorldStateProvider for Storage {
     fn snapshot(&self) -> WorldSnapshot {
@@ -48,13 +49,21 @@ impl WorldStateProvider for Storage {
         if self.reject.load(Ordering::SeqCst) {
             return Err(SceneError("storage unavailable".into()));
         }
-        self.state.lock().unwrap().commit(revision, mutations)
+        let mut result = self.state.lock().unwrap().commit(revision, mutations)?;
+        if self.misreport.load(Ordering::SeqCst) {
+            result.revision = u64::MAX;
+        }
+        Ok(result)
     }
     fn restore(&mut self, revision: u64, snapshot: &WorldSnapshot) -> SceneResult<WorldSnapshot> {
         if self.reject.load(Ordering::SeqCst) {
             return Err(SceneError("storage unavailable".into()));
         }
-        self.state.lock().unwrap().restore(revision, snapshot)
+        let mut result = self.state.lock().unwrap().restore(revision, snapshot)?;
+        if self.misreport.load(Ordering::SeqCst) {
+            result.revision = u64::MAX;
+        }
+        Ok(result)
     }
 }
 fn engine() -> (ProvidedSceneEngine<Storage>, Storage) {
@@ -67,6 +76,7 @@ fn engine() -> (ProvidedSceneEngine<Storage>, Storage) {
                 initial.locals,
             )?)),
             reject: Arc::new(AtomicBool::new(false)),
+            misreport: Arc::new(AtomicBool::new(false)),
         };
         handle = Some(storage.clone());
         Ok(storage)
@@ -232,4 +242,41 @@ fn typed_storage_rejects_partial_effects_overflow_unknown_variables_and_bad_scop
     invalid.globals.insert("count".into(), Value::Bool(true));
     assert!(store.restore(1, &invalid).is_err());
     assert_eq!(store.snapshot(), next);
+}
+
+#[test]
+fn contract_violating_provider_is_detected_but_persisted_writes_cannot_be_undone() {
+    for restore in [false, true] {
+        let (mut engine, storage) = engine();
+        pump(&mut engine);
+        let initial = engine.engine().save();
+        if restore {
+            action(&mut engine, "room.step").unwrap();
+        }
+        let before = engine.engine().save();
+        storage.misreport.store(true, Ordering::SeqCst);
+        let error = if restore {
+            engine.restore(initial)
+        } else {
+            action(&mut engine, "room.step")
+        }
+        .unwrap_err();
+        assert!(error.to_string().contains("violated its atomic"), "{error}");
+        assert_eq!(engine.engine().save(), before);
+        // The backend wrote before misreporting success. Wrapper-side error
+        // handling cannot reverse that contract violation or safely retry it.
+        assert_eq!(
+            storage.snapshot().globals["count"],
+            Value::Int(if restore { 0 } else { 1 })
+        );
+        assert_ne!(engine.world_snapshot(), storage.snapshot());
+        storage.misreport.store(false, Ordering::SeqCst);
+        assert!(
+            action(&mut engine, "room.step")
+                .unwrap_err()
+                .to_string()
+                .contains("stale")
+        );
+        assert_eq!(engine.engine().save(), before);
+    }
 }

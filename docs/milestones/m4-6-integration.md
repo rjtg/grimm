@@ -6,14 +6,17 @@ Verified 2026-11-01 on `feat/whiteout-production-roadmap`, based on main
 ## Actual integration and scope
 
 Repository/remote/PR inspection found no M4.6 runtime implementation branch.
-Open PR #21 (`docs/m46-scene-state-and-m5-production-plan`) contained only:
+At the original integration audit, PR #21 (`docs/m46-scene-state-and-m5-production-plan`) was open and contained only:
 
 - `455cb081037f29cdc7fb2930c896a6c3634cc207`: M4.6 architecture proposal.
 - `10ba7a7e4c5b464054dd6eaec04a6e077b698595`: M5a–M5g production proposal.
 
 These were **actually merged into the feature target at `c117675`**, without
 conflicts or discarded functionality. The proposal changed no Rust or story data.
-Main and PR #21 were not merged by this operation. Missing blocking M4.6 runtime
+That original feature merge did not modify main. PR #21 was subsequently merged
+independently into main at `c812575`; the PR #22 follow-up reconciles that main
+commit via merge `a4721e6`, without conflicts, duplicate design commits or lost
+documentation changes. Missing blocking M4.6 runtime
 work was then implemented on this feature branch, rather than recreating an
 existing implementation. The original M5 experiment was isolated locally at
 `323379b` until the M4.6 verification below passed.
@@ -47,11 +50,12 @@ implementation choices are proposed for review in [ADR-0008](../adr/0008-m46-ver
 - `d761553`: real CLI/TUI lifecycle and boundary-save integration; fixes boundary
   load-status overwrite found by the PTY regression.
 
-These increments were pushed for inspection in draft PR #22. Reviews, general
+These increments were initially pushed for inspection in draft PR #22, which is
+now ready for review. Reviews, general
 comments and inline comments were checked before pushes. PR #21 received an
 actionable architecture review; the per-item responses appear below. PR #22
-had no additional feedback at the latest check. Review remains required; implementation status is not
-an assertion that main already contains these changes.
+subsequently received the targeted code review addressed below. Implementation
+verification is distinct from ADR acceptance and main integration of the runtime.
 
 ## Exact verification before M5a
 
@@ -142,3 +146,40 @@ contract, not a screenplay executor. The canonical story/text remain unchanged.
 The exact README `check-screenplay` command passed (one scene/one beat); current
 full fmt/build/Clippy/workspace verification passed **209 tests, 0 failures**.
 M5a's whole-game conversion and graphical M5 remain incomplete.
+
+
+## PR #22 targeted review follow-up
+
+1. **Main reconciliation:** `a4721e6` merges main `c812575` into the feature branch.
+   PR #21 is already merged; its two original commits are shared ancestors, not
+   reapplied patches. The merge had no conflicts and changed no tracked file
+   contents. New verification is required on this reconciled head; the earlier
+   `210a1fe` CI result is historical evidence only.
+2. **ADR acceptance:** ADR-0008 explicitly remains Proposed. Owner: maintainer
+   `rjtg`. Acceptance requires explicit maintainer sign-off and a separate Accepted
+   status change after contract review. M4.6's tested opt-in implementation is
+   complete; a stable long-lived public contract is not implicitly accepted.
+3. **Provider trust:** trait rustdoc, ADR and migration guide now state that
+   returned-snapshot checks happen after provider mutation and cannot undo a
+   contract violation. The deliberately non-conforming provider fixture tests
+   commit and restore: candidate engine/history remain unpublished, persisted
+   backend writes remain, and subsequent operations reject the divergent store.
+   Conformance scenarios are listed for future external implementations.
+4. **Checkpoint costs:** migration/ADR document full history size/replay costs,
+   the 65,536-entry restore limit (not a byte/latency bound), lack of compaction
+   and OPEN-M46-HISTORY-01 for a future validated snapshot/continuation scheme.
+   `restore_reservation_keeps_duplicate_acknowledgements_safe_and_stale_ones_inert`
+   checks duplicate lifecycle/control ACKs, stale scene/cue input and no timer
+   restart after restore. `oversized_boundary_history_is_rejected_before_replay_without_mutation`
+   covers the history-limit rejection path.
+5. **PR evidence:** description is refreshed after reconciliation and final-head
+   checks, distinguishing verified M4.6 implementation, proposed ADR acceptance,
+   partial M5a and future graphical resource work. No M5b/M5c work is added.
+
+Verification after merging current main and adding the targeted review regressions:
+`cargo fmt --all --check`, `cargo build --workspace --locked`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings` and
+`cargo test --workspace --locked` all passed: **212 tests, 0 failures**. LSP
+diagnostics were requested for all three touched Rust files; the initial provider
+source check was current/clean, subsequent diagnostics timed out/stale, so Cargo
+provides semantic verification. CI is checked separately on the final pushed head.

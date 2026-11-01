@@ -122,3 +122,51 @@ These counters have distinct jobs and are not interchangeable:
 Inspection is read-only; the host never writes a cached inspector snapshot back
 into game truth. Provider checkpoints are read only when they still match the
 engine's committed snapshot, preventing mixed-revision continuation/world saves.
+
+
+## Trusted provider conformance
+
+`ProvidedSceneEngine::transact` and `replace_replayed` call the provider before
+checking its returned snapshot. These checks detect contract violations; they
+cannot roll back writes the custom backend has already persisted. A provider
+that writes partially, returns a different snapshot, or writes then reports an
+error breaks the atomicity guarantee. The engine withholds candidate/history
+publication on detected violations, but the backing store can then disagree with
+its last-committed snapshot. Stop and reconcile the backend; do not automatically
+retry an action or continue treating that session as healthy.
+
+Before exposing a custom provider, run conformance cases for expected-revision
+CAS, no-op revision checks, exact returned/persisted snapshot equality, rejection
+without writes, ordered/type/overflow validation, atomic local scope reset and
+restore with a fresh revision. The existing injected/InMemory tests exercise
+these cases. `contract_violating_provider_is_detected_but_persisted_writes_cannot_be_undone`
+explicitly demonstrates the limit for both commit and restore; it is a failure
+fixture, not a supported provider implementation.
+
+## Checkpoint history costs and future compaction
+
+A boundary checkpoint serializes full semantic history and a world snapshot.
+Restore constructs an offline engine and replays that history from story defaults
+before comparing the resulting world/scope and installing it atomically. Save
+size grows with recorded events and values; restore work grows with replay and
+per-event rule/candidate work. Candidate history cloning can make long replays
+more expensive than a simple linear scan. The recorded world snapshot is a
+consistency check, not currently a fast path that skips replay.
+
+Restore rejects more than **65,536 history entries** before replay; this count is
+not a file-size limit or a promised memory/latency bound. Deserialization and
+large individual values still cost resources. Live history/checkpoint creation
+are not compacted or capped by that restore check, so hosts running exceptionally
+long sessions must track the history budget and avoid producing an oversized
+checkpoint they cannot restore. WHITEOUT's tested playthroughs remain well below
+this limit. No long-session performance guarantee is claimed by those tests.
+
+Future follow-up (OPEN-M46-HISTORY-01): investigate a versioned trusted snapshot
+plus sufficient semantic continuation/cue history, bounded replay since that
+snapshot and explicit revision reservation. Preserve deterministic verification,
+exactly-once effects, retained/canceled cues and old-save compatibility. Benchmark
+representative long histories before choosing a compaction scheme. Compaction is
+not implemented or required for this WHITEOUT milestone.
+
+ADR-0008 remains **Proposed**, owned by repository maintainer `rjtg`; its explicit
+acceptance gate is separate from verifying or merging the opt-in implementation.

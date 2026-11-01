@@ -1,6 +1,13 @@
 # ADR-0008: Versioned M4.6 lifecycle and transactional storage
 
-Status: Proposed implementation decision for review. Date: 2026-11-01.
+Status: Proposed (explicitly retained by PR #22 follow-up). Date: 2026-11-01.
+Decision owner: `rjtg`, repository maintainer.
+Acceptance gate: explicit maintainer sign-off and a separate change marking this
+ADR Accepted after reviewing versioning, commit-at-selection/destination-local
+initialization, provider trust and checkpoint compatibility. Passing tests or
+merging the opt-in implementation does not implicitly accept or freeze a
+long-lived public contract. Until that gate, these additive APIs remain proposed
+and opt-in; existing accepted ADRs and legacy APIs remain the baseline.
 Supersedes no accepted ADR. Implements the scope of the M4.6 design after the
 integration audit found no existing runtime implementation.
 
@@ -57,3 +64,21 @@ cost; outgoing presentation and deadline ordering; terminal closure; exact next-
 scene checkpoint restore; schema-1/2 compatibility; existing WHITEOUT endings and
 cold accounting; headless manual-clock and TUI/inspector integration. Keep M5
 screenplay and rendering work isolated until these blocking M4.6 tests pass.
+
+
+## Review clarifications
+
+Providers are trusted implementations of an atomic persistence contract. The
+wrapper checks their returned snapshot **after** commit/restore; it cannot roll
+back a provider that persists incorrect state, misreports its result, or writes
+before returning an error. Engine candidate/history publication is withheld on a
+detected violation, but persisted provider state may already have changed. Halt
+and reconcile that backend; do not retry the player action. See the provider
+conformance and deliberately non-conforming fixture tests in world_provider.rs.
+
+Boundary checkpoints retain full semantic history plus a world snapshot. Restore
+replays from story defaults and rejects histories above 65,536 entries before
+replay. This is an entry budget, not a serialized-byte or latency bound. There is
+no compaction in M4.6; long-running games need a future versioned, validated
+snapshot/continuation strategy preserving cue deduplication and stale-revision
+protection. See the migration guide for performance and size implications.

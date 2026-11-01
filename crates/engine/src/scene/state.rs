@@ -10,6 +10,15 @@ use grimm_semantic::{
 /// changes. Snapshot/commit is one revision-CAS transaction, never a retry loop.
 /// Empty mutation lists atomically validate the revision without incrementing it.
 /// External writes are unsupported unless the host records them semantically.
+///
+/// This is a trusted storage contract, not a rollback service. A successful
+/// commit/restore must atomically persist and return the exact requested state
+/// with the required revision. Conformance checks happen after that operation;
+/// the engine cannot undo persisted writes from a provider that violates this
+/// contract (including one that writes and then returns an error). Such a
+/// violation requires host intervention; never retry it as an ordinary action.
+/// Custom implementations should run the rejection, CAS, type/overflow, scope
+/// and restore conformance scenarios in the workspace's world_provider tests.
 pub trait WorldStateProvider: std::fmt::Debug {
     fn snapshot(&self) -> WorldSnapshot;
     fn commit(

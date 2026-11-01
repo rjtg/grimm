@@ -539,3 +539,82 @@ fn legacy_and_boundary_save_formats_are_rejected_cross_mode_without_mutation() {
         assert_eq!(boundary.checkpoint().unwrap(), saved);
     }
 }
+
+#[test]
+fn restore_reservation_keeps_duplicate_acknowledgements_safe_and_stale_ones_inert() {
+    let mut e = new();
+    room(&mut e, 10);
+    let old = e.output();
+    travel(&mut e, 10);
+    finish_outgoing(&mut e);
+    let saved = e.checkpoint().unwrap();
+    let accepted_end = match saved.history.last().unwrap() {
+        LifecycleInput::Scene(input) => input.clone(),
+        other => panic!("expected end acknowledgement, got {other:?}"),
+    };
+    e.restore(saved).unwrap();
+    let restored = e.output();
+    let world = e.world_snapshot();
+    assert_eq!(e.scene_input(&accepted_end).unwrap(), restored);
+    assert_eq!(e.scene_input(&accepted_end).unwrap(), restored);
+    assert!(
+        e.scene_input(&SceneFeedback {
+            event: SceneEvent::Begin,
+            ..accepted_end.clone()
+        })
+        .is_err()
+    );
+    assert_eq!(e.output(), restored);
+    assert_eq!(e.world_snapshot(), world);
+    signal(&mut e, SceneEvent::Prepare);
+    begin(&mut e);
+    let current = e.output();
+    assert_eq!(e.scene_input(&accepted_end).unwrap(), current);
+    assert!(
+        e.cue_input(&CueInput {
+            revision: old.plan.revision,
+            cue_id: "room.warning".into(),
+            event: CueEvent::Started,
+            scene_time_ms: 100
+        })
+        .is_err()
+    );
+    let clock = CueInput {
+        revision: current.plan.revision,
+        cue_id: "hall.clock".into(),
+        event: CueEvent::Started,
+        scene_time_ms: 0,
+    };
+    let started = e.cue_input(&clock).unwrap();
+    assert_eq!(e.cue_input(&clock).unwrap(), started);
+    assert_eq!(
+        e.cue_input(&CueInput {
+            event: CueEvent::Completed,
+            ..clock
+        })
+        .unwrap(),
+        started
+    );
+    assert_eq!(started.plan.clock.deadline_ms, Some(500));
+    assert_eq!(e.world_snapshot(), world);
+}
+
+#[test]
+fn oversized_boundary_history_is_rejected_before_replay_without_mutation() {
+    let mut e = new();
+    room(&mut e, 10);
+    travel(&mut e, 10);
+    finish_outgoing(&mut e);
+    let saved = e.checkpoint().unwrap();
+    let mut oversized = saved.clone();
+    oversized
+        .history
+        .resize(65537, oversized.history[0].clone());
+    assert!(
+        e.restore(oversized)
+            .unwrap_err()
+            .to_string()
+            .contains("history mismatch")
+    );
+    assert_eq!(e.checkpoint().unwrap(), saved);
+}
