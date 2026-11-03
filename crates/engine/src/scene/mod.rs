@@ -296,7 +296,12 @@ impl SceneEngine {
                     names.push(action.id.clone());
                 }
             }
-            let id = format!("{}__world_{}", source.base, self.revision);
+            let id = format!(
+                "{}.__grimm_world_{}_{}",
+                self.ctx().namespace.as_deref().expect("compiled namespace"),
+                self.revision,
+                source.base
+            );
             if self.statuses.get(&cue.cue_id) != Some(&Status::Completed) {
                 renames.insert(cue.cue_id.clone(), id.clone());
             }

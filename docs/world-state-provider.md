@@ -81,7 +81,7 @@ snapshot still validates with a read-only CAS and creates no new revision.
 On success, refresh installs one validated projection and re-evaluates authored
 **action predicates** for the action-set instructions already in the current
 plan. It retains `eligible` versus explicit-list restrictions, including formerly
-empty eligible sets that now gain choices. Fresh `__world_<revision>` action-cue
+empty eligible sets that now gain choices. Fresh reserved `__grimm_world_<revision>_...` action-cue
 identities force the renderer to consume the replacement full offer rather than
 reuse a completed control ACK. Old selection revisions are invalidated.
 Logical eligibility floors and future scheduling/completion dependencies remain;
@@ -170,8 +170,8 @@ provider/transaction/refresh foundation, not the complete Bevy adapter.
 
 `cargo fmt --all --check`, `cargo build --workspace --locked`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings` and
-`cargo test --workspace --locked` passed: **217 tests, 0 failures** (210 baseline
-plus seven headless provider tests). WHITEOUT story/prose, dependencies and
+`cargo test --workspace --locked` passed: **218 tests, 0 failures** (210 baseline
+plus eight headless provider tests, including reserved-ID collision protection). WHITEOUT story/prose, dependencies and
 Cue Sheet schemas are unchanged. Semantic definition/references were checked
 before refactoring provider/materialization access. LSP diagnostics for the test
 files were initially current/clean; engine diagnostics and later responses timed

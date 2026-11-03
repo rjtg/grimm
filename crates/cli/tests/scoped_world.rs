@@ -600,3 +600,38 @@ fn renderer_consumes_refreshed_full_action_set_and_retains_live_media() {
     assert_eq!(player.running_narratives(), ["room.ambient"]);
     assert_eq!(player.clock().unwrap().deadline_ms, Some(1000));
 }
+
+#[test]
+fn refreshed_offer_ids_cannot_collide_with_authored_media_names() {
+    let source=STORY.replace("  - {cue_id: ambient,", "  - {cue_id: choices__world_1, at_ms: 0, kind: narrative, narrative_id: authored_collision, duration_ms: 100}\n  - {cue_id: ambient,");
+    let mut world = World::new();
+    let mut engine = ProvidedSceneEngine::from_provider(
+        serde_yaml_ng::from_str(&source).unwrap(),
+        &mut Fields(&mut world),
+    )
+    .unwrap();
+    world.host_change(true, 3);
+    engine
+        .with_provider_access(&mut Fields(&mut world), |e| {
+            e.refresh()?;
+            let sheet = e.engine().output();
+            let ids: std::collections::BTreeSet<_> = sheet.cues.iter().map(|c| &c.cue_id).collect();
+            assert_eq!(ids.len(), sheet.cues.len());
+            assert!(
+                sheet
+                    .cues
+                    .iter()
+                    .any(|c| c.cue_id == "room.choices__world_1"
+                        && matches!(c.instruction, Instruction::Narrative { .. }))
+            );
+            assert!(
+                sheet
+                    .cues
+                    .iter()
+                    .any(|c| c.cue_id.contains(".__grimm_world_")
+                        && matches!(c.instruction, Instruction::Actions { .. }))
+            );
+            Ok(())
+        })
+        .unwrap();
+}
