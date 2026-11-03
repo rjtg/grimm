@@ -15,7 +15,7 @@ struct Closing {
     has_next: bool,
 }
 #[derive(Debug)]
-pub struct LifecycleEngine<P: WorldStateProvider = InMemoryWorldState> {
+pub struct LifecycleEngine<P = InMemoryWorldState> {
     inner: ProvidedSceneEngine<P>,
     configuration: SceneConfiguration,
     phase: ScenePhase,
@@ -32,13 +32,11 @@ impl LifecycleEngine<InMemoryWorldState> {
         })
     }
 }
-impl<P: WorldStateProvider> LifecycleEngine<P> {
-    pub fn with_provider(
-        story: SceneStory,
+impl<P> LifecycleEngine<P> {
+    fn from_inner(
+        inner: ProvidedSceneEngine<P>,
         configuration: SceneConfiguration,
-        make: impl FnOnce(WorldSnapshot) -> SceneResult<P>,
     ) -> SceneResult<Self> {
-        let inner = ProvidedSceneEngine::new(story, make)?;
         let compiled = &inner.engine().story;
         if configuration.schema_version != 1
             || configuration.version == 0
@@ -202,6 +200,27 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
         {
             self.begin_closing(self.scene_id(), self.inner.engine().clock.clone(), false);
         }
+    }
+}
+impl<P: WorldStateProvider> LifecycleEngine<P> {
+    /// Synchronize one authorized host revision without evaluating a player
+    /// action. Old choices are invalidated; clocks and media statuses persist.
+    pub fn refresh(&mut self) -> SceneResult<SceneCueSheet> {
+        let next = self.next_revision()?;
+        if self.inner.refresh()? {
+            self.revision = next;
+            self.register();
+        }
+        Ok(self.output())
+    }
+
+    pub fn with_provider(
+        story: SceneStory,
+        configuration: SceneConfiguration,
+        make: impl FnOnce(WorldSnapshot) -> SceneResult<P>,
+    ) -> SceneResult<Self> {
+        let inner = ProvidedSceneEngine::new(story, make)?;
+        Self::from_inner(inner, configuration)
     }
     // The rule transaction and the internal input-lock acknowledgement share a
     // single provider commit. No preparation/begin or incoming media runs here.
@@ -438,6 +457,11 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
                 "M4.6 checkpoints require a stable scene boundary".into(),
             ));
         }
+        if !self.inner.replay_supported() {
+            return Err(SceneError(
+                "external worlds require host snapshot save (#63)".into(),
+            ));
+        }
         // Provider snapshot must still correspond to the exact committed engine.
         let world = self.inner.checked_world_snapshot()?;
         Ok(BoundaryCheckpoint {
@@ -452,6 +476,11 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
         })
     }
     pub fn restore(&mut self, save: BoundaryCheckpoint) -> SceneResult<SceneCueSheet> {
+        if !self.inner.replay_supported() {
+            return Err(SceneError(
+                "external worlds require host snapshot restore (#63)".into(),
+            ));
+        }
         if self.phase != ScenePhase::Stable
             && !(self.phase == ScenePhase::Prepare && self.history.is_empty())
         {
@@ -528,5 +557,58 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
         self.issued.clear();
         self.register();
         Ok(self.output())
+    }
+}
+
+impl<P> LifecycleEngine<P> {
+    fn rebind<Q>(&self, provider: Q) -> LifecycleEngine<Q> {
+        LifecycleEngine {
+            inner: self.inner.rebind(provider),
+            configuration: self.configuration.clone(),
+            phase: self.phase,
+            ready: self.ready,
+            closing: self.closing.clone(),
+            revision: self.revision,
+            issued: self.issued.clone(),
+            history: self.history.clone(),
+        }
+    }
+}
+impl LifecycleEngine<()> {
+    /// Create a detached narrative runtime from an initialized host world.
+    /// Attaches only at the authored initial scope; this is not a save import.
+    pub fn from_provider<P: WorldStateProvider>(
+        story: SceneStory,
+        configuration: SceneConfiguration,
+        provider: &mut P,
+    ) -> SceneResult<Self> {
+        Self::from_inner(
+            ProvidedSceneEngine::from_provider(story, provider)?,
+            configuration,
+        )
+    }
+    /// Borrow provider access for the scope; no provider or host reference is
+    /// retained afterward. Each accepted input commits independently. Previously
+    /// accepted inputs remain accepted if a later call returns Err or unwinds.
+    pub fn with_provider_access<'p, P: WorldStateProvider, R>(
+        &mut self,
+        provider: &'p mut P,
+        operation: impl FnOnce(&mut LifecycleEngine<&'p mut P>) -> SceneResult<R>,
+    ) -> SceneResult<R> {
+        let bound = self.rebind(provider);
+        let mut scope = LifecycleScope {
+            target: self,
+            bound,
+        };
+        operation(&mut scope.bound)
+    }
+}
+struct LifecycleScope<'a, 'p, P> {
+    target: &'a mut LifecycleEngine<()>,
+    bound: LifecycleEngine<&'p mut P>,
+}
+impl<P> Drop for LifecycleScope<'_, '_, P> {
+    fn drop(&mut self) {
+        *self.target = self.bound.rebind(());
     }
 }

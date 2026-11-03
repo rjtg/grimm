@@ -29,6 +29,12 @@ enum Status {
 }
 
 #[derive(Debug, Clone)]
+struct OfferSource {
+    base: String,
+    actions: ActionSet,
+}
+
+#[derive(Debug, Clone)]
 pub struct SceneEngine {
     story: Arc<SceneStory>,
     context: usize,
@@ -42,6 +48,7 @@ pub struct SceneEngine {
     cue_started_at: BTreeMap<String, u64>,
     issued: BTreeMap<u64, (u64, BTreeSet<String>)>,
     offered: Vec<String>,
+    offer_sources: BTreeMap<String, OfferSource>,
     records: Vec<ActionRecord>,
     history: Vec<SceneInput>,
 }
@@ -73,11 +80,12 @@ impl SceneEngine {
             cue_started_at: BTreeMap::new(),
             issued: BTreeMap::new(),
             offered: vec![],
+            offer_sources: BTreeMap::new(),
             records: vec![],
             history: vec![],
         };
         engine.enter_clock();
-        engine.plan = engine.materialize(&engine.ctx().cues, None, Times::default())?;
+        engine.plan = engine.materialize(&engine.ctx().cues.clone(), None, Times::default())?;
         engine.register();
         Ok(engine)
     }
@@ -267,8 +275,58 @@ impl SceneEngine {
         Ok(self.output())
     }
 
+    // Reproject only action capabilities already in the issued presentation
+    // plan. Do not reselect outcomes or replay/introduce presentation cues.
+    fn refresh_offers(&mut self) -> SceneResult<()> {
+        self.next_revision()?;
+        self.offered.clear();
+        let mut renames = BTreeMap::new();
+        let mut plan = self.plan.clone();
+        for cue in &mut plan {
+            let Some(source) = self.offer_sources.get(&cue.cue_id).cloned() else {
+                continue;
+            };
+            let mut names = vec![];
+            for action in &self.ctx().actions {
+                let requested = match &source.actions {
+                    ActionSet::Eligible(_) => true,
+                    ActionSet::Only(ids) => ids.contains(&action.id),
+                };
+                if requested && self.allowed(action, self.times(self.clock.elapsed_ms))? {
+                    names.push(action.id.clone());
+                }
+            }
+            let id = format!("{}__world_{}", source.base, self.revision);
+            if self.statuses.get(&cue.cue_id) != Some(&Status::Completed) {
+                renames.insert(cue.cue_id.clone(), id.clone());
+            }
+            cue.cue_id = id.clone();
+            cue.started_at_ms = None;
+            cue.at_ms = cue.at_ms.max(self.clock.elapsed_ms);
+            if !names.is_empty() {
+                cue.at_ms = cue.at_ms.max(self.eligible_ms);
+            }
+            cue.instruction = Instruction::Actions {
+                available_actions: names,
+            };
+            self.offer_sources.insert(id, source);
+        }
+        for cue in &mut plan {
+            if let Some(id) = cue.after_cue.as_mut()
+                && let Some(new) = renames.get(id)
+            {
+                *id = new.clone();
+            }
+        }
+        self.plan = plan;
+        self.offer_sources
+            .retain(|id, _| self.plan.iter().any(|cue| &cue.cue_id == id));
+        self.register();
+        Ok(())
+    }
+
     fn materialize(
-        &self,
+        &mut self,
         authored: &[AuthoredCue],
         run: Option<usize>,
         time: Times,
@@ -312,6 +370,13 @@ impl SceneEngine {
                     visible: *visible,
                 },
                 AuthoredInstruction::Actions { available_actions } => {
+                    self.offer_sources.insert(
+                        cue_id.clone(),
+                        OfferSource {
+                            base: cue_id.clone(),
+                            actions: available_actions.clone(),
+                        },
+                    );
                     let mut names = vec![];
                     for action in &self.ctx().actions {
                         let requested = match available_actions {
@@ -567,7 +632,7 @@ impl SceneEngine {
             self.plan.extend(retained);
             // Entry untimed instructions are one-time; future clock-scheduled
             // cues are regenerated from canonical facts and semantic history.
-            let entry = self.materialize(&self.ctx().cues, None, time)?;
+            let entry = self.materialize(&self.ctx().cues.clone(), None, time)?;
             let scheduled: BTreeSet<_> = self
                 .ctx()
                 .cues
@@ -578,7 +643,7 @@ impl SceneEngine {
             let pending: Vec<_> = entry.into_iter().filter(|cue| scheduled.contains(&cue.cue_id) || matches!(&cue.instruction, Instruction::Actions { available_actions } if !available_actions.is_empty())).collect();
             self.plan.extend(pending);
         } else {
-            let mut entry = self.materialize(&self.ctx().cues, None, self.times(0))?;
+            let mut entry = self.materialize(&self.ctx().cues.clone(), None, self.times(0))?;
             for cue in &mut entry {
                 let authored = self
                     .ctx()
@@ -619,8 +684,16 @@ impl SceneEngine {
                 .rfind(|cue| sequential_ids.contains(&cue.cue_id))
                 .map(|cue| cue.cue_id.clone())
                 .or(Some(lock_id));
+            let offer_id = format!("{ns}.__grimm_actions_{}", self.revision);
+            self.offer_sources.insert(
+                offer_id.clone(),
+                OfferSource {
+                    base: offer_id.clone(),
+                    actions: ActionSet::Eligible("eligible".into()),
+                },
+            );
             self.plan.push(Cue {
-                cue_id: format!("{ns}.__grimm_actions_{}", self.revision),
+                cue_id: offer_id,
                 at_ms: self.eligible_ms,
                 started_at_ms: None,
                 after_cue,

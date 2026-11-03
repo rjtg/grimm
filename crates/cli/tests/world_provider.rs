@@ -42,7 +42,7 @@ struct Storage {
     misreport: Arc<AtomicBool>,
 }
 impl WorldStateProvider for Storage {
-    fn snapshot(&self) -> WorldSnapshot {
+    fn snapshot(&self) -> SceneResult<WorldSnapshot> {
         self.state.lock().unwrap().snapshot()
     }
     fn commit(&mut self, revision: u64, mutations: &[StateMutation]) -> SceneResult<WorldSnapshot> {
@@ -122,35 +122,35 @@ fn engine_and_storage_commit_effects_and_scope_atomically_and_restore_by_replay(
     pump(&mut engine);
     let saved = engine.engine().save();
     action(&mut engine, "room.step").unwrap();
-    assert_eq!(storage.snapshot().globals["count"], Value::Int(1));
-    assert_eq!(storage.snapshot().locals["marker"], Value::Int(2));
-    assert_eq!(storage.snapshot(), engine.world_snapshot());
+    assert_eq!(storage.snapshot().unwrap().globals["count"], Value::Int(1));
+    assert_eq!(storage.snapshot().unwrap().locals["marker"], Value::Int(2));
+    assert_eq!(storage.snapshot().unwrap(), engine.world_snapshot());
     pump(&mut engine);
     action(&mut engine, "room.finish").unwrap();
     assert!(engine.engine().is_terminal());
-    assert_eq!(storage.snapshot().scope.context_id, "end");
-    assert_eq!(storage.snapshot().scope.epoch, 1);
-    assert_eq!(storage.snapshot().locals["marker"], Value::Int(7));
-    assert_eq!(storage.snapshot().globals["count"], Value::Int(2));
+    assert_eq!(storage.snapshot().unwrap().scope.context_id, "end");
+    assert_eq!(storage.snapshot().unwrap().scope.epoch, 1);
+    assert_eq!(storage.snapshot().unwrap().locals["marker"], Value::Int(7));
+    assert_eq!(storage.snapshot().unwrap().globals["count"], Value::Int(2));
     engine.restore(saved).unwrap();
-    assert_eq!(storage.snapshot().scope.context_id, "room");
-    assert_eq!(storage.snapshot().globals["count"], Value::Int(0));
-    assert_eq!(storage.snapshot().locals["marker"], Value::Int(1));
-    assert_eq!(storage.snapshot(), engine.world_snapshot());
+    assert_eq!(storage.snapshot().unwrap().scope.context_id, "room");
+    assert_eq!(storage.snapshot().unwrap().globals["count"], Value::Int(0));
+    assert_eq!(storage.snapshot().unwrap().locals["marker"], Value::Int(1));
+    assert_eq!(storage.snapshot().unwrap(), engine.world_snapshot());
 }
 #[test]
 fn backend_failure_and_stale_revision_leave_engine_history_and_state_unchanged() {
     let (mut engine, mut storage) = engine();
     pump(&mut engine);
     let original = engine.engine().save();
-    let world = storage.snapshot();
+    let world = storage.snapshot().unwrap();
     storage.reject.store(true, Ordering::SeqCst);
     assert!(action(&mut engine, "room.step").is_err());
     assert_eq!(engine.engine().save(), original);
-    assert_eq!(storage.snapshot(), world);
+    assert_eq!(storage.snapshot().unwrap(), world);
     assert!(engine.restore(original.clone()).is_err());
     assert_eq!(engine.engine().save(), original);
-    assert_eq!(storage.snapshot(), world);
+    assert_eq!(storage.snapshot().unwrap(), world);
     storage.reject.store(false, Ordering::SeqCst);
     storage
         .commit(
@@ -169,7 +169,7 @@ fn backend_failure_and_stale_revision_leave_engine_history_and_state_unchanged()
             .contains("stale")
     );
     assert_eq!(engine.engine().save(), original);
-    assert_eq!(storage.snapshot().globals["count"], Value::Int(1));
+    assert_eq!(storage.snapshot().unwrap().globals["count"], Value::Int(1));
 }
 #[test]
 fn typed_storage_rejects_partial_effects_overflow_unknown_variables_and_bad_scope() {
@@ -182,7 +182,7 @@ fn typed_storage_rejects_partial_effects_overflow_unknown_variables_and_bad_scop
         Variables::from([("marker".into(), Value::Int(1))]),
     )
     .unwrap();
-    let original = store.snapshot();
+    let original = store.snapshot().unwrap();
     for invalid in [
         StateMutation::Add {
             scope: VariableScope::Global,
@@ -216,7 +216,7 @@ fn typed_storage_rejects_partial_effects_overflow_unknown_variables_and_bad_scop
             invalid,
         ];
         assert!(store.commit(0, &changes).is_err());
-        assert_eq!(store.snapshot(), original);
+        assert_eq!(store.snapshot().unwrap(), original);
     }
     assert_eq!(store.commit(0, &[]).unwrap(), original);
     assert!(store.commit(1, &[]).is_err());
@@ -241,7 +241,7 @@ fn typed_storage_rejects_partial_effects_overflow_unknown_variables_and_bad_scop
     let mut invalid = original.clone();
     invalid.globals.insert("count".into(), Value::Bool(true));
     assert!(store.restore(1, &invalid).is_err());
-    assert_eq!(store.snapshot(), next);
+    assert_eq!(store.snapshot().unwrap(), next);
 }
 
 #[test]
@@ -266,10 +266,10 @@ fn contract_violating_provider_is_detected_but_persisted_writes_cannot_be_undone
         // The backend wrote before misreporting success. Wrapper-side error
         // handling cannot reverse that contract violation or safely retry it.
         assert_eq!(
-            storage.snapshot().globals["count"],
+            storage.snapshot().unwrap().globals["count"],
             Value::Int(if restore { 0 } else { 1 })
         );
-        assert_ne!(engine.world_snapshot(), storage.snapshot());
+        assert_ne!(engine.world_snapshot(), storage.snapshot().unwrap());
         storage.misreport.store(false, Ordering::SeqCst);
         assert!(
             action(&mut engine, "room.step")
