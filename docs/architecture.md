@@ -1,4 +1,24 @@
-# Architecture — initial boundary contract
+# Architecture — boundary contract
+
+## Current Bevy host decision (2026-11-03)
+
+This section and amended [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md)
+supersede older M5 save/ownership/renderer-selection working examples below.
+GRIMM interprets narrative rules; Bevy owns mapped authoritative ECS world fields,
+physical timers/deadline detection, rendering/audio/input and aggregate saves.
+The thin adapter supplies typed atomic provider access and action-at-T/deadline
+notifications, not a second narrative FSM or game-state store. No core Bevy
+dependency or autonomous GRIMM ticking loop.
+
+Host saves copy automatically captured post-transition/pre-Begin boundary
+snapshots; Load installs world + continuation without replaying old effects.
+Development checkpoint formats may be replaced without migration. This target
+is **not yet** implemented by current M4.6 replay checkpoints/provider ownership.
+The [implementation audit and dependency-ordered #37 plan](bevy-integration.md)
+identify precise gaps, the small timeout-event foundation and remaining work.
+Bevy is the first graphical host, with fixed-camera point-and-click; no alternate
+sprite-engine evaluation or multi-renderer framework.
+
 
 M4.5 implements Cue Sheet protocol 2 and scene schema 2: a running scene clock,
 optional authored deadline lifecycle, explicit emitted cue times and automatic
@@ -159,7 +179,7 @@ Concrete presentation resources are owned by each example renderer/game; they ma
 
 The **former inventory/RPG M3 scope is cancelled**, and replaced by **M3 Story Authoring & Validation Toolchain**; no first-class item or RPG framework is required merely to fill a milestone. M4 authors and delivers a **complete text-based adventure** with M2's DSL and existing canonical World State/choice/Cue Sheet semantics. M5 **adapts the same authored adventure** for graphical presentation, using the same canonical gameplay conditions/effects and action identifiers. Text and graphical renderers can interpret the same semantic `cue(cue_id)` cues differently, including graphical camera/audio/animation work; the renderer may also maintain and serialize its own presentation state.
 
-The likely concrete game organization is **an application that embeds GRIMM as a headless Rust library** and owns its own renderer, media, inputs and game save coordination. M5 should use the actual game to determine the minimal library-host integration and how it packages that application. Do not require a separate Git repository or lock an external renderer framework prematurely. The renderer must not copy narrative rules or modify GRIMM-internal World State; differences in presentation do not imply differences in canonical choice consequences.
+The likely concrete game organization is **an application that embeds GRIMM as a headless Rust library** and owns its own renderer, media, inputs and game save coordination. M5 should use the actual game to determine the minimal library-host integration and how it packages that application. Do not require a separate Git repository; Bevy is the intended first graphical host. The renderer must not copy narrative rules or modify GRIMM-internal World State; differences in presentation do not imply differences in canonical choice consequences.
 
 ## Game composition and renderer ownership (future M5)
 
@@ -167,13 +187,20 @@ A **story graph** contains authored narrative structure, rules and choices, but 
 
 A generic 3D renderer does not magically know how to render every game's 3D world. The game must provide and configure its actual world, models, cameras, animation bindings and choice/hotspot mappings, potentially using custom game-specific renderer code. Shared renderer implementations are allowed, but are not assumed. Different presentation editions are separate **explicit compositions** with their own renderer+asset definitions, potentially sharing an underlying authored rules graph.
 
-**Ownership boundary:** the surrounding game/host composition root wires the actual runtime, renderer, adapters, GRIMM and assets, with the direction determined by the host. GRIMM remains headless and authoritative for **canonical narrative state**, its own choices, story timing and validated narrative effects; an external host may separately own position, physics, world simulation and other game-world state. No GRIMM engine crate imports Bevy or presentation asset types. Crossing the ownership boundary (narrative result → host world consequence or host fact → narrative condition) needs an explicit validated, replayable integration contract, not implicit shared mutation. Validate that required code/resources and semantic bindings are present before starting a game. Precise renderer identifiers, source references, trust/loading policy, packaging, versioning and deployment are unresolved in [open questions](open-questions.md#game-composition-renderer-origin-and-packaging); do not prescribe a generic plugin platform prematurely.
+**Ownership boundary:** the surrounding game/host composition root wires the actual runtime, renderer, adapters, GRIMM and assets, with the direction determined by the host. GRIMM remains headless and authoritative for narrative rules, valid choices and validated effects. Bevy owns the mapped ECS backing values and physical scene time/deadline detection; transaction projections are not a second mutable world. No GRIMM engine crate imports Bevy or presentation asset types. Crossing the ownership boundary (narrative result → host world consequence or host fact → narrative condition) needs an explicit validated, revisioned transaction contract, not implicit shared mutation. Validate that required code/resources and semantic bindings are present before starting a game. Precise renderer identifiers, source references, trust/loading policy, packaging, versioning and deployment are unresolved in [open questions](open-questions.md#game-composition-renderer-origin-and-packaging); do not prescribe a generic plugin platform prematurely.
 
 M2–M4 may continue to ship complete CLI-composed authored games. M5 should include a complete authored graphical game and **exercise an external host invoking GRIMM from a world event** before locking in the integration/packaging contract. Whether standalone and embedded entry points share any game-definition manifest remains open in [host integration questions](open-questions.md#host-integration-standalone-game-versus-embedded-narrative-engine).
 
-## Game-host save and restore inputs (M5 direction)
+## Game-host save and restore (current M5 direction)
 
-In addition to a player's `game_action`, a game application may send GRIMM a **separate host command** conceptually `saveAction` requesting an opaque serialization of its canonical game/session state. A matching `restoreAction(payload)` host command reinstates that GRIMM snapshot. The surrounding renderer/game owns its presentation state and combines it with the GRIMM snapshot in the game's save file; restoring the game requires both to refer to a consistent checkpoint. No renderer media, dialogue content or presentation state is serialized **by GRIMM**. The exact API types, snapshot format/version, safe checkpoint moment and replay/readiness response after restore are decided with the concrete M5 game. Existing M1.75/M1.8 save APIs remain supported; this does not create a new M2 mid-presentation save feature.
+The concrete host captures a coherent world/continuation pair into its automatic
+boundary slot, after transition effects and destination initialization and before
+Begin. User Save copies that slot; Load stages world + GRIMM continuation and
+resumes without old action/effect replay or local reinitialization. Full semantic
+history is independent of world reconstruction. No mid-animation save or opaque
+engine-world archive is required. Existing development replay checkpoints are a
+baseline to replace, not a save migration obligation. See [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md)
+and the [contract plan](bevy-integration.md).
 
 ## State and lifecycle
 - Engine state and presentation state are distinct.

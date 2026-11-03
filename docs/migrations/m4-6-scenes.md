@@ -1,5 +1,14 @@
 # M4.6 opt-in lifecycle and storage contract
 
+**Historical implemented baseline.** The 2026-11-03 maintainer amendment in
+[ADR-0008](../adr/0008-m46-versioned-lifecycle-and-storage.md) supersedes this
+file's replay-save, save-compatibility and external-write restrictions as target
+architecture. Current code still implements the baseline described below;
+host-owned boundary snapshots/non-replay restore and ECS refresh are planned,
+not implemented. No development-save migration is required. Use the
+[Bevy audit/plan](../bevy-integration.md) for current decisions and gaps.
+
+
 M4.6 adds a host configuration and protocol envelope; it does not change the
 schema-1/2 story DSL or the M4.5 `SceneEngine` API. Legacy `play-scene` commands,
 mid-scene saves and archived inputs keep their existing behavior. Opt in with:

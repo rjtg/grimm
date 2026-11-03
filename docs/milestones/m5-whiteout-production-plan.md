@@ -1,5 +1,10 @@
 # M5 — WHITEOUT Graphical Adaptation: Production Pipeline and Gates
 
+**2026-11-03 decision:** Bevy is the intended first graphical host. #25/#53/#63
+and the [current audit/plan](../bevy-integration.md) supersede prior alternative
+engine evaluation and replay-save direction. No generic renderer framework.
+
+
 **Status:** Supporting production gates; current ordering/status is maintained in the [canonical roadmap](../roadmap.md). M5a.1 adds a writer-friendly [blackout screenplay sample](../../examples/whiteout/production/README.md); the complete M5 remains unfinished. Proposed sequence of **intermediate goals**, not an authorization to implement the entire graphic adaptation at once. **Prerequisite:** [M4.6 architecture contract](m4-6-scene-state-renderer-contract.md). **Product constraint:** preserve WHITEOUT's canonical authored game rules/decisions/endings as a single source; adapt and enrich presentation rather than fork into a separately scripted game.
 
 M5 should be delivered in **reviewable increments** with explicit go/no-go gates. The story-engine, narrative writing and rendering pipelines have different owners and artifact formats; do not combine them into one oversized PR.
@@ -10,7 +15,7 @@ M5 should be delivered in **reviewable increments** with explicit go/no-go gates
 | --- | --- | --- |
 | **M5a — Screenplay adaptation** | WHITEOUT screenplay in scenes, dialogue and stage directions | Current increment: readable scene sample and human editorial review; later content increments extend writing. Optional existing semantic-ID notes; no gameplay change or screenplay-specific validation subsystem |
 | **M5b — Character bible and concept art** | Consistent virtual actors, environments, visual rules | Approved visual references for Alex, Mara, Jonas, Lea; controlled character continuity across shots |
-| **M5c — Rendering engine decision** | Honest 2D/sprite versus Bevy evaluation with vertical slices | Documented scored decision on art quality, asset pipeline, runtime/input, CI and team feasibility |
+| **M5c — Bevy integration proof** | Bevy-first fixed-camera point-and-click slice | Actual ECS provider, host timers/snapshots, readiness, cues/input and CI evidence |
 | **M5d — Required base assets** | Reusable actor/location/environment bases for chosen engine | All critical locations/actors available and loadable; right scale/material/style; license/provenance tracked |
 | **M5e — Cueable presentation production** | Renderer-authored animations/shot/dialogue sequences tied to semantic IDs | Every referenced cue bound; timing, completion and scene preload tested |
 | **M5f — Choice input presentation** | Legible interactive choices, timer UI, keyboard/controller navigation | Same action/offer semantics as M4.5; locks, deadline, pauses and accessibility covered |
@@ -54,27 +59,21 @@ Produce a small, versioned **character/visual bible** and approved **concept art
 - A consistent reference/identity workflow: approved reference sheets, immutable asset IDs, versions, asset metadata and composition checks across subsequent generations; do not assume a text prompt alone guarantees character identity.
 - Rights and provenance: source, author/model/tool where applicable, permission/licensing, reuse rights, review/approval status. Do not present placeholder generation as production-ready.
 
-Deliver approved art sheets, variants and a manifest linked to screenplay roles/locations. **No final engine commitment before the M5c decision.**
+Deliver approved art sheets, variants and a manifest linked to screenplay roles/locations. **No bulk production assets before the Bevy proof establishes requirements.**
 
-## M5c — Rendering strategy: sprites/2D versus Bevy
+## M5c — Bevy integration proof
 
-The comparison must be based on a **real representative vertical slice** from WHITEOUT, not abstract engine preferences. “Sprite engine” is a rendering approach, not by itself a specific engine; identify at least one concrete 2D/sprite runtime candidate and compare it to Bevy (and optionally hybrid 2.5D, if evidence strongly supports it).
-
-Prototype the same 30–60 second sequence in both paths with:
-- The same approved character/setting reference and dialog beat;
-- Scene preload/readiness and semantic presentation ID binding;
-- Character movement and an expressive camera/shot sequence;
-- Overlapping radio cue, deadline visibility and input offer/lock;
-- Callback/timed completion and a clean transition;
-- A reproducible development build.
-
-Evaluate **visual coherence**, character identity fidelity, animation labor, 2D/3D asset conversion cost, tools/editor and iteration speed, integration with Rust/GRIMM, performance and portability, test automation, accessible choice UI, debug inspector, maintenance risk and actual team/tool availability. Use a weighted scoring rubric with explicit assumptions and measured evidence, not a predetermined winner.
-
-**Decision gate:** document an ADR with chosen engine/approach, rejected options, cost/risk tradeoffs and consequences for asset generation. The decision must come **before** bulk model/sprite production.
+Bevy is the first graphical host, also for classic fixed-camera point-and-click.
+No second sprite engine or engine-selection matrix is required. Use Bevy 0.20.1
+core features first; no plugins without demonstrated need. #53 establishes ECS
+provider/event contracts; #63 supplies non-replay host snapshot continuation;
+#36 fixes the generator slice and #37 implements the actual proof in that order.
+See the [test/dependency plan](../bevy-integration.md). #38 records integration
+risks and measured evidence, rather than reopening renderer selection.
 
 ## M5d — Generate the required base assets
 
-Only after the engine choice, build the minimum viable reusable assets:
+After the Bevy slice establishes concrete requirements, build the minimum viable reusable assets:
 - Characters: production-ready actor representations appropriate to the chosen engine (**3D meshes/rigs/animations if 3D; layered sprites/rigs/poses if 2D**), with consistent visual identity and reusable expression/motion sets.
 - Locations: all key WHITEOUT environments in the target representation; props needed for latch, spanner, braid, mug, heat pack, radio, safety line and generator puzzle feedback.
 - Weather/lighting/audio: enough to stage the dramatic story, including storm, power outage, repairs, radio and rescue.
@@ -98,7 +97,7 @@ Make a renderer-specific choice presentation, not a second choice-rule engine. G
 - Choice labels, visual focus, input navigation (keyboard, pointer, controller where supported), usable timing pressure and legible timer/deadline state;
 - `available_actions: []` and revision-stale offers, lock/unlock during presentation barriers, and concurrent cues;
 - Pause, accessibility/subtitles, text speed/settings, error/asset fallback, focus/contrast and tutorial affordances;
-- Save/restore **only at the M4.6 stable scene boundary**, with a predictable visible checkpoint UI, not a mid-animation snapshot.
+- Host boundary snapshot-slot Save/Load under amended ADR-0008: copy the pre-Begin snapshot, restore ECS + continuation without old-effect replay, and provide a clear boundary UI. Current replay checkpoints must not be reused as the new host contract.
 
 Verify behavior against headless M4.5 semantics and the same authored choices, durations/cutoffs and outcomes.
 

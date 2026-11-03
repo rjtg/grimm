@@ -252,6 +252,28 @@ impl<P: WorldStateProvider> LifecycleEngine<P> {
         self.register();
         Ok(self.output())
     }
+    /// Interpret a host-detected deadline. No physical clock is read or run.
+    /// Invalid/early/stale/duplicate notifications leave state untouched. A
+    /// duplicate after an accepted timeout is rejected, never applied twice.
+    /// The existing replay checkpoint records this as an observation for now;
+    /// a host-owned semantic journal/continuation is a separate planned change.
+    pub fn deadline_reached(&mut self, input: &DeadlineReached) -> SceneResult<SceneCueSheet> {
+        let current = self.output();
+        if self.phase != ScenePhase::Active
+            || self.inner.engine().is_terminal()
+            || input.revision != self.revision
+            || input.scene_id != current.scene.scene_id
+            || input.epoch != current.scene.epoch
+            || current.plan.clock.deadline_ms != Some(input.deadline_ms)
+            || input.scene_time_ms < input.deadline_ms
+        {
+            return Err(SceneError(
+                "deadline notification is early, stale or not active".into(),
+            ));
+        }
+        self.observe(input.revision, input.scene_time_ms)
+    }
+
     pub fn observe(&mut self, revision: u64, time: u64) -> SceneResult<SceneCueSheet> {
         if self.phase != ScenePhase::Active || revision != self.revision {
             return Err(SceneError(

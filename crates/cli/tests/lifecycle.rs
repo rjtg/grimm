@@ -618,3 +618,80 @@ fn oversized_boundary_history_is_rejected_before_replay_without_mutation() {
     );
     assert_eq!(e.checkpoint().unwrap(), saved);
 }
+
+fn deadline(engine: &LifecycleEngine, time: u64) -> DeadlineReached {
+    let sheet = engine.output();
+    DeadlineReached {
+        revision: sheet.plan.revision,
+        scene_id: sheet.scene.scene_id,
+        epoch: sheet.scene.epoch,
+        deadline_ms: sheet.plan.clock.deadline_ms.unwrap(),
+        scene_time_ms: time,
+    }
+}
+#[test]
+fn host_deadline_event_resolves_once_at_or_after_expiry_without_ticks() {
+    for time in [1010, 1500] {
+        let mut engine = new();
+        room(&mut engine, 10);
+        let input = deadline(&engine, time);
+        let wire = serde_json::to_string(&input).unwrap();
+        assert_eq!(
+            serde_json::from_str::<DeadlineReached>(&wire).unwrap(),
+            input
+        );
+        let output = engine.deadline_reached(&input).unwrap();
+        assert_eq!(output.scene.phase, ScenePhase::Ending);
+        assert_eq!(output.plan.clock.elapsed_ms, 1010);
+        assert_eq!(engine.world_snapshot().globals["count"], Value::Int(-1));
+        let world = engine.world_snapshot();
+        let history = engine.engine().save();
+        assert!(engine.deadline_reached(&input).is_err());
+        assert!(
+            engine
+                .apply(&SceneAction {
+                    revision: input.revision,
+                    action_id: "room.travel".into(),
+                    scene_time_ms: time
+                })
+                .is_err()
+        );
+        assert_eq!(engine.output(), output);
+        assert_eq!(engine.world_snapshot(), world);
+        assert_eq!(engine.engine().save(), history);
+    }
+}
+#[test]
+fn deadline_event_requires_current_epoch_revision_and_exact_deadline() {
+    let mut engine = new();
+    room(&mut engine, 10);
+    let input = deadline(&engine, 1010);
+    let mut early = input.clone();
+    early.scene_time_ms = 1009;
+    let mut epoch = input.clone();
+    epoch.epoch += 1;
+    let mut scene = input.clone();
+    scene.scene_id = "other".into();
+    let mut revision = input.clone();
+    revision.revision += 1;
+    let mut timer = input.clone();
+    timer.deadline_ms += 1;
+    let before = engine.output();
+    let saved = engine.engine().save();
+    let world = engine.world_snapshot();
+    for invalid in [early, epoch, scene, revision, timer] {
+        assert!(engine.deadline_reached(&invalid).is_err());
+        assert_eq!(engine.output(), before);
+        assert_eq!(engine.engine().save(), saved);
+        assert_eq!(engine.world_snapshot(), world);
+    }
+    let mut preparing = new();
+    assert!(preparing.deadline_reached(&input).is_err());
+    // A delayed start has a different absolute deadline in the same scene/epoch.
+    let mut delayed = new();
+    room(&mut delayed, 50);
+    let mut old = input;
+    old.revision = delayed.output().plan.revision;
+    assert!(delayed.deadline_reached(&old).is_err());
+    assert_eq!(delayed.output().plan.clock.deadline_ms, Some(1050));
+}
