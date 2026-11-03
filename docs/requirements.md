@@ -1,4 +1,13 @@
-# Requirements catalog (initial)
+# Requirements catalog
+
+## Current host clarification (2026-11-03)
+
+For Bevy integration, [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md)
+and the [audit/plan](bevy-integration.md) supersede historical ownership/save
+working examples below: GRIMM owns narrative rules and effect validation; Bevy
+owns authoritative mapped ECS fields, physical timers/deadline detection and
+host saves. No mutable shadow store or engine timer loop. Older story/gameplay
+requirements remain; development-save persistence may break without migration.
 
 ## Current Cue Sheet protocol decision — full replacement and stable cue IDs (2026-10-30)
 
@@ -39,7 +48,7 @@ IDs are stable references for issues and acceptance tests. Detailed API shapes a
 ## Cross-cutting architecture
 - **ARCH-001** Headless engine; no renderer or input technology dependency.
 - **ARCH-002** Explicit semantic boundary and adapter layer in M0.
-- **ARCH-003** Engine solely owns canonical state and commits validated changes.
+- **ARCH-003** GRIMM solely interprets narrative rules and validates narrative effects. In the Bevy host, mapped ECS fields are authoritative storage; effects commit through consistent typed provider transactions/CAS, without a second independently mutable GRIMM world.
 - **ARCH-004** Presentation state belongs to adapters/renderers.
 - **ARCH-005** AI is optional and non-authoritative.
 - **ARCH-006** Static graph and dynamic features share engine action/event/state primitives.
@@ -148,8 +157,8 @@ The agent chooses precise technical representations; the **observable behavior a
 - **TIME-AUTH-05** Favor one fully resolved Cue Sheet with authorized ordered `cue` entries, allowed choices and optional timer; concrete serialization is still open. GRIMM need not send world-state variables to the M2 renderer. Renderer owns playback and its presentation state, while existing readiness/revision safety protects against premature or stale inputs.
 - **AUTH-ELSE-01** Each executable authored choice needs deterministic, unambiguous outcome coverage (an ELSE/fallback or proven exhaustive guards). Do not require a separate ELSE for every tested variable; global puzzle solvability analysis can remain bounded and may be postponed beyond M2.
 
-- **SCENE-30** For M2, `world_state` means GRIMM's authored canonical variables and current values used for rules, **not a mandatory Cue Sheet field**. A renderer may interpret `cue(cue_id)` to manage its own persistent presentation representation. Renderer-side state is never the authoritative source of `door_damage`, `drawer_open` or other game-rule facts.
-- **SCENE-31** For later graphical example games, GRIMM offers an **out-of-band host input** conceptually `saveAction` (separate from player `game_action`): it returns a serialized snapshot of GRIMM's canonical game/session state. A corresponding `restoreAction(payload)` accepts such a snapshot and reinstates that canonical state. **The game/renderer** packages this opaque GRIMM snapshot alongside its own presentation/asset state into one savegame and coordinates consistent save/restore checkpoints. Do not send save payloads via Cue Sheets or place renderer-state serialization inside GRIMM. Preserve existing M1.75/M1.8 persistence; exact command names, serialized format, checkpoint/readiness/restore response are deferred to implementation/M5.
+- **SCENE-30** For M2, `world_state` means GRIMM's authored canonical variables and current values used for rules, **not a mandatory Cue Sheet field**. A renderer may interpret `cue(cue_id)` to manage its own persistent presentation representation. Presentation-only state is not authoritative for game-rule facts. In the Bevy host, mapped ECS fields (separate from presentation state) are authoritative backing values accessed through the provider.
+- **SCENE-31** For the Bevy host, Save/Restore is a host-owned boundary snapshot/slot operation, not an engine-owned world archive. Preserve exact post-transition/pre-Begin continuation without replaying effects; no canonical world/save payload enters player Cue Sheets. Older opaque-save working examples are superseded by amended ADR-0008; no development-save migration required.
 
 ## M3 — Story Authoring & Validation Toolchain (proposed)
 
@@ -206,8 +215,8 @@ The former M3 *Inventory/Puzzles/Character State* deliverables are **cancelled**
 - **VIS-01** **Graphically render the same authored M4 adventure**, not a new unrelated demonstration story. Preserve the canonical M4 DSL-defined story rules and gameplay logic; do not duplicate or fork gameplay conditions/effects in graphical renderer code.
 - **VIS-02** The concrete graphical renderer interprets the existing `cue(cue_id)` cue IDs into appropriate game-specific graphics/animations, camera/audio and presentation changes. It owns its visual/presentation state. **Do not require `world_state` snapshots or graph node IDs in Cue Sheets.**
 - **VIS-03** Provide or generate and curate usable assets and a concrete renderer/input implementation for the M4 game, including clickable/menu choices mapped to the same offered action IDs and timer/readiness semantics. Asset generation is part of game production, not a GRIMM engine feature.
-- **VIS-04** Deliver a complete playable graphical **example application in this repository**, using GRIMM as a Rust library and loading the exact M4 authored script. This example owns the renderer, media, input and lifecycle; GRIMM owns canonical story/gameplay rules and World State. No separate repository is required.
-- **VIS-05** A concrete M5 game/renderer obtains GRIMM's serialized canonical session state using a separate `saveAction`-like host input and restores it using a `restoreAction(payload)`-like input, independent from player `game_action`. The game save integrates the opaque GRIMM payload with renderer-owned presentation data and restores both consistently. GRIMM does not manage media snapshots or the aggregate game save. Define exact API types, versioning, checkpoint safety and post-restore cue/readiness handling when implementing the example, without inventing a generic renderer-state protocol.
+- **VIS-04** Deliver a complete playable graphical **example application in this repository**, using GRIMM as a Rust library and loading the exact M4 authored script. This example owns the renderer, media, input and lifecycle; GRIMM owns canonical narrative rules and validates effects; the concrete Bevy host owns mapped authoritative ECS world fields through typed atomic provider access. No separate repository is required.
+- **VIS-05** The host automatically captures authoritative ECS world + minimal GRIMM continuation at each post-transition/pre-Begin boundary. User Save copies the immutable boundary slot; Load installs world/continuation without replaying old actions/effects or reinitializing destination locals. Semantic action/transition history is independent of world reconstruction. Existing development save formats may be replaced without migration; atomicity, valid scope/identity and fresh input/cue correlation remain required.
 - **VIS-06** Verify equivalent meaningful narrative behavior between M4's text game and M5's graphical adaptation (key offered actions, consequences, state transitions, deadlines and endings). Rendering style and animation content need not match text one-to-one.
 - **VIS-07** Use actual game implementation to identify and fix any *necessary* GRIMM/host integration seams; validate missing/unsupported cue IDs, inputs and assets within the concrete renderer or game build rather than adding a speculative generic media-mapping framework.
 - **VIS-08 (investigation only)** A minimal embedded-host interaction may be demonstrated if it naturally fits the same-repository graphical example. Do not require a standalone Bevy/3D framework or general-purpose plugin platform; external-host integration beyond the example stays an independent future question.

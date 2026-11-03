@@ -1,5 +1,21 @@
 # Open design questions
 
+## Current Bevy host decisions (2026-11-03)
+
+The [audit and implementation plan](bevy-integration.md) reconciles #63/#53 with
+#25/#36/#37. These decisions supersede older renderer-selection, opaque-save,
+replay/migration and independent narrative-storage working questions below.
+Bevy is the first graphical host; no alternate sprite-engine evaluation. Mapped
+ECS fields are authoritative. Host-owned boundary snapshot/copy/Load must not
+replay previous effects, and development-save migration is not required.
+
+Still to prove: borrow-scoped WorldStateProvider access and revisioned external
+refresh; safe ECS scheduling/atomic install; minimal pending/completed/initial
+continuation with eligibility/run-ID/correlation preservation; selected stable
+entity/field snapshot scope; exact pinned Bevy APIs and headless vs GPU CI.
+These are #53/#63 prerequisites to #37, not justification for a generic framework.
+
+
 ## M4.6 integration and M5 production review (2026-11-01)
 
 The [canonical roadmap](roadmap.md) preserves M5 as graphical WHITEOUT and uses
@@ -18,8 +34,8 @@ review of story/branch consistency is editorial, not a screenplay schema or
 coverage gate. Later content increments continue that writing. A future creative
 workflow through previsualization and polished graphics is not a requirement for
 asset tiers, interchangeable runtime layers, fallback selection or an IDE now.
-M5c still requires a measured same-scene sprite/2D versus Bevy comparison and ADR;
-no rendering engine or asset import pipeline is selected. Text resource validation
+M5c now requires the concrete Bevy slice in #37, without another engine comparison;
+Bevy is selected as first graphical host; its actual asset import integration is pending. Text resource validation
 is not evidence of graphical asset availability.
 
 ## M4.6 review follow-ups

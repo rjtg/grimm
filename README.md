@@ -324,3 +324,9 @@ lighting and sound notes for later production. It is reviewed editorially; no
 screenplay-specific CLI, schema or text-equality requirement applies. See the
 [writing scope](examples/whiteout/production/README.md). Only this scene is adapted;
 existing gameplay/prose assets and M4.6 runtime behavior are unchanged.
+
+For the first Bevy host, see the [current implementation audit and #37 plan](docs/bevy-integration.md).
+GRIMM keeps narrative rule authority; Bevy owns mapped ECS storage, physical
+timing/deadline detection and host boundary snapshots. The small correlated
+deadline input is implemented; ECS refresh, non-replay continuation and the
+graphical slice remain planned. No Bevy dependency/application is added yet.
