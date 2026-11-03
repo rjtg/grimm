@@ -61,6 +61,19 @@ pub struct SceneFeedback {
     pub epoch: u64,
     pub event: SceneEvent,
 }
+/// Host-detected expiration, not a request to tick or advance a timer.
+/// The deadline is correlated as well as the scene: extending/replacing a timer
+/// invalidates a previously queued notification even within the same epoch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeadlineReached {
+    pub revision: u64,
+    pub scene_id: String,
+    pub epoch: u64,
+    pub deadline_ms: u64,
+    pub scene_time_ms: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LifecycleInput {
