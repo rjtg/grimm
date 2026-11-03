@@ -111,18 +111,21 @@ optional journal must not change a restored boundary's world or continuation.
 
 ## Implementation status and staged change
 
-The merged M4.6 implementation still owns its provider long-term, caches defaults,
-rejects changed external snapshots and restores by replay. It does **not** yet
-implement the amended ECS refresh or host snapshot-slot contract. Its existing
-CLI/save behavior remains operational while those seams are replaced; it is not
-an alternative accepted save direction or a compatibility obligation.
+The provider foundation now offers detached `ProvidedSceneEngine<()>` and
+`LifecycleEngine<()>` runtimes initialized from authoritative host values and
+borrow-scoped `with_provider_access`. Snapshot reads are fallible. Explicit
+refresh validates type/schema/scope and storage revision, invalidates old choices
+and updates action predicates without replaying media/timer controls. Scope
+borrows retain no host references after return; candidates are private rule
+projections, not mutable backing state. See the [exact API contract](../world-state-provider.md).
 
-This preparation adds only a correlated `DeadlineReached` input and
-`LifecycleEngine::deadline_reached` using existing authored timeout rules. It has
-no physical clock/Bevy dependency and keeps current replay serialization intact.
-It does not supply the new semantic journal, external provider refresh or
-non-replay restore. Those require the ordered headless/Bevy proof in the
-[audit and #37 implementation plan](../bevy-integration.md).
+This extends the existing atomic provider/CAS rule transactions; no dependency
+boundary changes or Bevy dependency are introduced. Owned/default CLI composition
+remains available. External mode rejects old replay checkpoint APIs because
+externally supplied facts cannot be reconstructed from defaults/history.
+Non-replay host snapshot restore (#63), optional semantic journal and actual Bevy
+adapter/timing/presentation (#37) remain unimplemented. The prior correlated
+`DeadlineReached` input remains unchanged.
 
 Concrete API/format changes remain deliberately versionable through graphical
 WHITEOUT integration. Save migration tests are not required for development

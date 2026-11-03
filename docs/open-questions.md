@@ -9,8 +9,9 @@ Bevy is the first graphical host; no alternate sprite-engine evaluation. Mapped
 ECS fields are authoritative. Host-owned boundary snapshot/copy/Load must not
 replay previous effects, and development-save migration is not required.
 
-Still to prove: borrow-scoped WorldStateProvider access and revisioned external
-refresh; safe ECS scheduling/atomic install; minimal pending/completed/initial
+The [provider foundation](world-state-provider.md) implements scoped access and
+revision-aware action refresh with headless mapped fields. Still to prove: actual
+Bevy ECS scheduling and atomic snapshot install; minimal pending/completed/initial
 continuation with eligibility/run-ID/correlation preservation; selected stable
 entity/field snapshot scope; exact pinned Bevy APIs and headless vs GPU CI.
 These are #53/#63 prerequisites to #37, not justification for a generic framework.

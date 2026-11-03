@@ -328,5 +328,11 @@ existing gameplay/prose assets and M4.6 runtime behavior are unchanged.
 For the first Bevy host, see the [current implementation audit and #37 plan](docs/bevy-integration.md).
 GRIMM keeps narrative rule authority; Bevy owns mapped ECS storage, physical
 timing/deadline detection and host boundary snapshots. The small correlated
-deadline input is implemented; ECS refresh, non-replay continuation and the
-graphical slice remain planned. No Bevy dependency/application is added yet.
+deadline input and scoped external-state refresh are implemented; non-replay
+continuation and the graphical slice remain planned. No Bevy dependency/application is added yet.
+
+The [scoped WorldStateProvider foundation](docs/world-state-provider.md) now
+supports authoritative external fields and revision-aware offer refresh without
+a Bevy dependency. Reproduce the headless proof with
+`cargo test -p grimm-cli --test scoped_world --locked`. Host snapshot Load and the
+graphical adapter remain follow-up work.

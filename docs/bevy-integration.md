@@ -1,5 +1,12 @@
 # First Bevy host: audit and contract plan
 
+**Provider foundation update:** [scoped provider APIs](world-state-provider.md) now
+implement fallible reads, detached/borrowed access and explicit revisioned action
+refresh. The original audit below records the PR #64 baseline; its provider gaps
+are historical where superseded by that contract. #63 non-replay continuation
+and the actual Bevy application remain planned.
+
+
 Audited 2026-11-03 against main `6c5ab68` (merged PR #22). This is the focused
 preparation for #63/#53/#25/#36/#37, not a Bevy application or completed save rewrite.
 [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md) records the maintainer
@@ -28,14 +35,14 @@ are deliberately distinguished below.
 | Concern | Actual implementation | Gap / next contract |
 | --- | --- | --- |
 | Authored rules | `SceneEngine` conditions, effects, duration/cutoff, GOTO and outcomes are deterministic; no wall-clock/background task | Reuse these rules; do not copy them into Bevy |
-| World backing | `WorldStateProvider` has typed snapshot, atomic CAS commit/restore; `ProvidedSceneEngine::transact` evaluates a cloned candidate and publishes after commit | Provider is owned long-term, initialized at exact story defaults and `ensure_current` rejects any externally changed snapshot. It is not yet a borrow-scoped ECS integration or an external-write refresh API |
-| Evaluated state | `SceneEngine` has globals/locals, plus `committed` snapshot in the wrapper | Today these are private evaluation/cache copies, not writable through adapters. For Bevy they must become disposable immutable transaction projections read from ECS, never a competing world authority |
+| World backing | Fallible typed snapshot/CAS provider; detached runtimes can borrow provider access per scope, with explicit validated refresh | Foundation implemented; real Bevy World mapping/scheduler composition remains #37 |
+| Evaluated state | Private last-synchronized projection and transaction candidate; no independently writable host mirror | Explicit host revision refresh is implemented; inspect through the provider scope for subsequent narrative input |
 | Mutations | Ordered effects validate inside the candidate; provider receives final `Set`/`Enter` delta | Multi-field preflight/CAS/apply must be indivisible in ECS; provider validates schema, type, overflow and stable identities before any write |
 | Lifecycle | `LifecycleEngine` exposes Prepare/Ready/Begin/Ending/End/Stable, explicit scopes and correlated ACKs | Reuse. Bevy readiness means bindings/dependencies/pipelines needed for this scene are ready, not just a spawned hierarchy |
 | Transition order | GOTO initializes destination locals and effects in the same provider transaction; outgoing metadata still names the source until Begin | Capture destination continuation and destination world at Stable, not source presentation metadata. Never initialize destination locals again on restore/Begin |
 | Time | `SceneAction` carries revision and selection time; `observe` and cue ACKs can resolve due deadlines. `SceneSession::advance_to` is a CLI host scheduler | No autonomous engine timer exists. Bevy must not drive that CLI scheduler or submit frame ticks. Use host action-at-T and deadline notification, plus presentation ACKs at actual host times |
 | Timeout foundation (this PR) | `DeadlineReached` + `LifecycleEngine::deadline_reached` validate scene ID, epoch, revision, exact active deadline and observed time, then reuse timeout rules | Library-only additive input; early/stale/duplicate notifications cannot apply effects twice. No outbound Cue Sheet version or checkpoint format changed; old replay logs still record an observation. Bevy transport/journal remains pending |
-| Checkpoints | `checkpoint()` constructs world + full `LifecycleInput` history on request; `restore()` starts at defaults, replays, compares world and reserves a new revision | Not host snapshot-slot semantics. No public non-replay resume/import or coherent ECS+continuation installation exists |
+| Checkpoints | Owned default CLI retains replay checkpoints; external mode/externally refreshed sessions reject that path | Non-replay continuation and host snapshot slots still require #63; no automatic save capture implemented |
 | History | Core `ActionRecord` includes synthetic timeout records; lifecycle history mixes actions, observations, presentation ACKs and restore reservations | Need ordered semantic action/timeout/transition/entry events separate from playback and world reconstruction; current history is not that journal |
 | Host/UI | CLI backend fixes `LifecycleEngine` to InMemory, Save serializes current boundary checkpoint; TUI/pipe paths and catalogs are implemented | Keep CLI behavior working during contract work; it is not evidence that ECS, automatic snapshot slots or host-owned Load already exist |
 | Bevy | No Bevy dependency, ECS provider, graphical resources or host executable | #37 supplies these after prerequisites; no additional engine framework is needed |
@@ -46,10 +53,12 @@ Relevant files: `crates/engine/src/scene/{mod,state,lifecycle}.rs`,
 scene-timing and WHITEOUT integration tests. LSP diagnostics were requested for
 representative implementation files; timeouts are not evidence of clean code.
 
-## Smallest provider evolution (planned, not implemented here)
+## Provider evolution (foundation implemented; Bevy composition pending)
 
-Keep `Value` types, `WorldScope`, complete `WorldSnapshot` and CAS semantics.
-Refactor the provider access seam to borrow the concrete provider for a narrative
+The [provider contract](world-state-provider.md) keeps `Value`, `WorldScope`,
+fallible `WorldSnapshot` reads and CAS; implements `from_provider`,
+`with_provider_access` and explicit refresh. The original composition plan below
+now describes the remaining real Bevy proof: adapt the provider access seam to borrow the concrete provider for a narrative
 transaction instead of requiring a long-lived owned ECS World. An exclusive Bevy
 system can lend `&mut World` to a short-lived provider; runtime storage in a Bevy
 resource must be scoped so its borrow does not alias the World borrow. Prove that
@@ -76,8 +85,9 @@ must refresh GRIMM's rule projection and current eligible offers, issue a new
 input revision and invalidate queued choices, without replaying timers/media.
 A conflict with an already selected action returns a stale/conflict result; never
 silently retry at a different time. Unmapped presentation fields need no narrative
-revision. The current wrapper **does not implement this refresh**; remove its
-exact-snapshot rejection only together with this refresh/CAS test suite.
+revision. Explicit refresh is now implemented and tested for action predicates
+in existing offered sets. It does not regenerate presentation branches or replace
+materialization-time cue conditions; see the exact provider contract.
 
 For #37 map at least `global.generator_done` to a bool resource field and
 `global.latch_damage` to an i64 resource field, plus a stable crew component
@@ -214,7 +224,7 @@ may record a new session/resume marker; it does not append old effects again.
 
 | Step | Issue / prerequisite | Deliverable and tests |
 | --- | --- | --- |
-| 1 | #53 provider seam; this audit | Borrow-scoped transaction access + authoritative snapshot refresh. Headless typed field fixture: resource bool/i64, stable component identity, missing/type/duplicate mapping rejection, external write changes offers, stale CAS leaves fields/history untouched, overflow/multi-write rollback, local reset atomicity |
+| 1 | #53 provider seam; **headless foundation implemented** | Borrow-scoped transaction access + authoritative snapshot refresh. Headless typed field fixture: resource bool/i64, stable component identity, missing/type/duplicate mapping rejection, external write changes offers, stale CAS leaves fields/history untouched, overflow/multi-write rollback, local reset atomicity |
 | 2 | #63 after step 1 | Minimal boundary continuation export/import + optional semantic action/transition journal independent of replay. Host snapshot fixture tests: initialized destination locals preserved once, initial/pre-Begin, nonzero GOTO eligibility credit, reentry, completed ending, repeated Save copy, post-boundary changes excluded, journal absent, invalid/load failure atomicity, fresh-generation stale ACK/input rejection |
 | 3 | #36 + #53 time contract; steps 1–2 before full host | Freeze generator slice spec; deadline-first tests at D−1/D/D+1 including zero-cost action, late/duplicate/old events, extend/reveal/unset, pause/resume, no action, no double charged action duration; no real sleeps |
 | 4 | #37 headless Bevy 0.20.1, steps 1–3 | Actual ECS field provider and automatic boundary-slot capture/copy/load; `App::update` with controlled host time, all provider/load tests against real fields, no graphics/GPU needed |
@@ -270,8 +280,8 @@ Remaining questions requiring concrete proof, not invented abstractions:
 - Platform/package targets: start desktop; WASM/distribution support only after
   measured CI/build evidence. No portable-host or multi-renderer platform promise.
 
-**Next implementation:** #53's scoped provider/refresh prerequisite, then #63's
-non-replay continuation/snapshot tests. #37 follows those gates; this PR does not
+**Next implementation:** #63's minimal non-replay continuation/snapshot tests
+after the now-implemented #53 provider/refresh foundation. #37 follows those gates; this PR does not
 claim them complete or start the graphical application.
 
 ## Verification of this preparation

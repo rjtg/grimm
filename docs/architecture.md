@@ -14,6 +14,8 @@ Host saves copy automatically captured post-transition/pre-Begin boundary
 snapshots; Load installs world + continuation without replaying old effects.
 Development checkpoint formats may be replaced without migration. This target
 is **not yet** implemented by current M4.6 replay checkpoints/provider ownership.
+The [scoped provider API](world-state-provider.md) implements borrow-scoped access
+and explicit revisioned refresh while leaving host snapshot Load for #63.
 The [implementation audit and dependency-ordered #37 plan](bevy-integration.md)
 identify precise gaps, the small timeout-event foundation and remaining work.
 Bevy is the first graphical host, with fixed-camera point-and-click; no alternate
