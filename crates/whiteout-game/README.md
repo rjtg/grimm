@@ -77,7 +77,7 @@ See [GAMEPLAY.md](GAMEPLAY.md) for typed bindings, world-state ownership and liv
 availability/rechecks, and [SCHEDULER.md](SCHEDULER.md) for the preserved timing
 and failure contract.
 
-## Recorded desktop verification (2026-11-04)
+## Scheduler desktop verification (PR #73)
 
 Linux/X11, Bevy 0.20.1, Mesa 26.2.4 llvmpipe (LLVM 23.1.1): captured the real
 1000×700 application window with locked initial controls, the status change,
@@ -98,6 +98,21 @@ The automatic transition completed about 1.58s after entry (1500ms, on the next
 render frame); the timeout occurred about 30.02s after warning entry. The window
 closed cleanly. Exact timing/race assertions use the deterministic tests, not
 wall-clock sleep or screenshot timing.
+
+## Gameplay desktop verification (2026-11-04)
+
+Played both current routes in the real 1000×700 Bevy/X11 window on Mesa llvmpipe.
+Captured the room with the relay carried and pickup locked; the warning with
+repair available and 25s remaining; the repair transition; and the powered
+outcome with the part consumed. Restart cleared the part. A second warning
+showed repair locked; pressing its key left the warning active while the
+countdown continued. Isolation then reached the distinct unpowered safe result.
+The window closed cleanly.
+
+The actual path was supplies → room → warning → repair → repaired → reset →
+room → warning → isolation transition → decision (epochs 1–10). Exact cue timing,
+mutation and stale-input assertions are covered by fake-clock tests, not by
+screenshot timing.
 
 ## Architecture, tests and limits
 

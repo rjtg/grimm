@@ -11,7 +11,7 @@ pub(crate) fn presentation(id: &str) -> Option<Panel> {
     Some(match id {
         "generator_room" => Panel {
             title: "The generator room",
-            body: "Snow scours the station walls. Beneath your boots, the generator hums unevenly.\n\nA spare relay lies in the supply cabinet. Take it before inspecting the panel if you want to attempt a repair.",
+            body: "Snow scours the station walls. Beneath your boots, the generator hums unevenly.\n\nCheck your supplies before inspecting the panel. A spare relay may be the difference between isolation and restored power.",
             accent: [0.25, 0.65, 0.75],
             actions_open: true,
             countdown: false,
@@ -39,7 +39,7 @@ pub(crate) fn presentation(id: &str) -> Option<Panel> {
         },
         "generator_decision" => Panel {
             title: "A moment of safety",
-            body: "The breaker is open. The damaged generator is isolated.\n\nEnd of this scheduler demo. The heaters are safe for now, but power is not restored. A spare relay could have repaired the drive.",
+            body: "The breaker is open. The damaged generator is isolated.\n\nEnd of this scheduler demo. The damaged drive is safe for now, but station power is not restored. A spare relay could have repaired it.",
             accent: [0.45, 0.8, 0.55],
             actions_open: true,
             countdown: false,
