@@ -12,12 +12,16 @@ const PACKAGES: &[&str] = &[
     "grimm-adapters",
     "grimm-cli-renderer",
     "grimm-cli",
+    "whiteout-game",
 ];
 
 fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
     match (package, kind) {
         ("grimm-semantic" | "grimm-presentation", "normal") => dependency == "serde",
         ("grimm-semantic" | "grimm-presentation", "dev") => dependency == "serde_json",
+        ("whiteout-game", "normal") => {
+            matches!(dependency, "bevy" | "grimm-graph" | "serde_yaml_ng")
+        }
         ("grimm-graph", "normal") => dependency == "grimm-semantic",
         ("grimm-graph", "dev") => matches!(dependency, "serde_json" | "serde_yaml_ng"),
         ("grimm-engine", "normal") => dependency == "grimm-semantic",

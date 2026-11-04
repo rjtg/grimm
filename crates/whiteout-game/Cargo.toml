@@ -1,0 +1,21 @@
+[package]
+name = "whiteout-game"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version = "1.97.1"
+
+[dependencies]
+bevy = { version = "=0.20.1", default-features = false, features = [
+    "std", "keyboard", "async_executor", "bevy_winit", "ui_bevy_render",
+    "default_font", "multi_threaded", "x11", "wayland",
+] }
+grimm-graph = { path = "../graph" }
+serde_yaml_ng.workspace = true
+
+[[bin]]
+name = "whiteout-game"
+path = "src/main.rs"
+
+[lints]
+workspace = true

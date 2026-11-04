@@ -12,6 +12,14 @@ See [proposed ADR-0009](adr/0009-story-graph-03-foundation.md) and the
 does not declare the entire draft accepted or change the existing stateful
 engine/ADR-0008 behavior described below. PR #65 remains separate and unmerged.
 
+The [WHITEOUT bootstrap](../crates/whiteout-game/README.md) for #67 is the first
+concrete Bevy composition on this path: `whiteout-game` depends on Bevy 0.20.1
+and `grimm-graph`, owns input/UI entities, and consumes the full sheet including
+`outgoing_edges`. GRIMM retains only graph position/epoch; the cached sheet is a
+presentation projection. No universal Bevy adapter or second narrative FSM is
+introduced. The current demo supports only immediate static presentation and
+unconditional edges; #68/#69 own the later execution/rules work.
+
 ## Current Bevy host decision (2026-11-03)
 
 This section and amended [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md)
