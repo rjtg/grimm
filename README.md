@@ -7,6 +7,11 @@ cue declarations and traverses named edges immediately. Read the
 effects and cue execution. The existing scene engine and WHITEOUT remain available;
 this foundation does not require the superseded provider PR #65.
 
+WHITEOUT now also has a small [Bevy bootstrap](crates/whiteout-game/README.md)
+for #67: `CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked`.
+Press **1** to move through the generator-room proof. It embeds `grimm-graph`;
+the canonical CLI adventure remains unchanged.
+
 **Generate Real IMMersion** — a modular, headless narrative game engine in Rust.
 
 GRIMM supports authored choose-your-own-adventure graphs and, as optional extensions, free-form player actions, dynamic story events, goal-driven NPCs, narrative direction, and multiple presentation frontends.

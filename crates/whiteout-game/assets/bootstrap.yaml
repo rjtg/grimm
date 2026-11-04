@@ -1,0 +1,28 @@
+# A deliberately small WHITEOUT host proof, not the canonical adventure.
+schema_version: 1
+id: whiteout_bootstrap
+version: 1
+start: GENERATOR_ROOM
+nodes:
+- id: GENERATOR_ROOM
+  cues:
+  - cue_id: room
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_room}
+  edges:
+    inspect_panel: {target: GENERATOR_WARNING}
+    maintenance_bypass: {target: GENERATOR_DECISION, expose: false}
+- id: GENERATOR_WARNING
+  cues:
+  - cue_id: warning
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_warning}
+  edges:
+    approach_switch: {target: GENERATOR_DECISION}
+- id: GENERATOR_DECISION
+  cues:
+  - cue_id: decision
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_decision}
+  edges:
+    restart_demo: {target: GENERATOR_ROOM}

@@ -10,12 +10,18 @@ permissions:
 jobs:
   classic-cyoa:
     runs-on: ubuntu-latest
+    env:
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_BUILD_JOBS: 2
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - name: Install Linux windowing headers
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libwayland-dev libxkbcommon-dev
       - run: cargo fmt --check
+      - run: cargo build --workspace --locked
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - name: Reproduce the offline demo

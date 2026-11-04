@@ -6,9 +6,10 @@ The current assignment targets [issue #66](https://github.com/rjtg/grimm/issues/
 with an independent `grimm-graph` foundation: named nodes/edges, discovery-only
 `expose`, immediate epoch-correlated traversal, full cue declarations and minimal
 graph continuation. See the [mapping and next PRs](migrations/story-graph-03.md).
-Next: the concrete Bevy host (#67), host cue execution (#68), condition/effect
-bindings (#69) and the integration slice (#70), with coherent host snapshots
-reviewed separately. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
+The concrete [WHITEOUT Bevy bootstrap](../crates/whiteout-game/README.md) (#67)
+now embeds this core with a fixed camera, numbered keyboard interactions and
+full-sheet scene replacement. Host cue scheduling (#68), condition/effect
+bindings (#69), the full slice (#70) and coherent host snapshots remain separate. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
 into the new core. PR #65 is closed without merge and is not part of this branch;
 any later reuse of its refresh requires the reviewed completed-control regression
 fix. No whole-game migration or handler codegen is included in this first step.
