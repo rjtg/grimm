@@ -5556,6 +5556,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "grimm-graph",
+ "grimm-semantic",
  "serde_yaml_ng",
 ]
 

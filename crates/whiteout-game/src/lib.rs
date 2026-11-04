@@ -1,6 +1,7 @@
 //! The concrete WHITEOUT application. No reusable host/adapter SDK.
 mod content;
 mod game;
+mod scheduler;
 mod screen;
 
 pub fn run() {

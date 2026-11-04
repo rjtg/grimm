@@ -20,7 +20,10 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
         ("grimm-semantic" | "grimm-presentation", "normal") => dependency == "serde",
         ("grimm-semantic" | "grimm-presentation", "dev") => dependency == "serde_json",
         ("whiteout-game", "normal") => {
-            matches!(dependency, "bevy" | "grimm-graph" | "serde_yaml_ng")
+            matches!(
+                dependency,
+                "bevy" | "grimm-graph" | "grimm-semantic" | "serde_yaml_ng"
+            )
         }
         ("grimm-graph", "normal") => dependency == "grimm-semantic",
         ("grimm-graph", "dev") => matches!(dependency, "serde_json" | "serde_yaml_ng"),
@@ -125,6 +128,7 @@ fn policy_rejects_reverse_edges_and_external_engine_dependencies() {
         assert!(!allowed("grimm-adapters", "grimm-engine", kind));
         assert!(!allowed("grimm-semantic", "grimm-engine", kind));
         for dependency in [
+            "whiteout-game",
             "grimm-engine",
             "grimm-adapters",
             "grimm-presentation",

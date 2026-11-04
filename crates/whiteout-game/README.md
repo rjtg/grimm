@@ -1,6 +1,6 @@
-# WHITEOUT — Bevy bootstrap (#67)
+# WHITEOUT — Bevy scheduler demo (#67/#68)
 
-A concrete WHITEOUT game application embedding `grimm-graph`. This three-scene
+A concrete WHITEOUT game application embedding `grimm-graph`. This small
 prototype is intentionally smaller than the existing canonical CLI adventure.
 It does not provide a reusable Bevy adapter or another narrative state machine.
 
@@ -47,84 +47,48 @@ performance claim for the later graphical game.
 
 ## Play and manual smoke test
 
-1. Start the command above. A window titled **WHITEOUT — generator station**
-   shows `GENERATOR_ROOM`, entry 0, atmospheric text, a blue accent and one option.
-2. Press **1** once: `GENERATOR_WARNING`, entry 1, replaces the old text/options
-   and the accent becomes red. Holding the key must not skip the warning.
-3. Release, then press **1** again: `GENERATOR_DECISION`, entry 2, shows the
-   breaker scene with an amber accent and the demo restart option.
-4. Release and press **1** to return to the generator room at a fresh epoch.
-   Repeat as desired. Close the window to exit.
+1. Start the app and press **1** in `GENERATOR_ROOM` to inspect the panel.
+2. `GENERATOR_WARNING` starts at T=0 with controls closed. At 2 seconds the
+   generator status changes to unstable. At 5 seconds the explicit ready cue
+   opens option **1** and reveals a **25-second countdown**.
+3. Release and press **1** before zero: `GENERATOR_TRANSITION` starts immediately.
+   At 1200ms the host isolates the generator; at 1500ms an authored hidden edge
+   automatically leads to `GENERATOR_DECISION`. No second key press is required.
+4. Press **1** to restart. Inspect the panel again, then wait without choosing:
+   at scene T=30 seconds `GENERATOR_FAILED` replaces the warning and shows the
+   stopped generator. Press **1** to restart or close the window to exit.
 
-Only `outgoing_edges` from the full GRIMM sheet become numbered options. The
-hidden `maintenance_bypass` edge must never appear. The host decides to traverse
-on a fresh number-key press; it submits the epoch captured with that selection.
-Rejected old/duplicate requests are logged, leaving the current display intact.
+Holding a key must not skip scenes or become a new choice when controls open.
+The hidden `generator_exploded` and transition `continue` edges are never shown.
+The timeout wins at exactly 30000ms; the automated tests cover that boundary
+without relying on a human pressing a key at an exact instant.
 
-## Ownership and files
+## Architecture, tests and limits
 
-- `assets/bootstrap.yaml`: graph only; three ordinary nodes, immediate static
-  presentation cues and unconditional edges. No duplicate of the full WHITEOUT
-  story or alternative DSL.
-- `src/game.rs`: concrete Bevy resources, input requests and graph invocation.
-  GRIMM alone owns node/epoch. `SceneSheet` caches the complete returned packet;
-  successful traversal replaces it, never merges it. No gameplay world variables
-  exist in this bootstrap; future gameplay values belong in the host ECS.
-- `src/content.rs`: game-specific text/color and edge-label bindings.
-- `src/screen.rs`: fixed `Camera2d` and disposable UI hierarchy. Every replacement
-  despawns the old root and its children and builds the new sheet's presentation.
-- `src/lib.rs`/`main.rs`: WHITEOUT composition/entry point using Bevy DefaultPlugins.
+See the [scheduler contract](SCHEDULER.md) for node-relative Bevy real time,
+central arbitration, instance deduplication, REPLACE, failure behavior and the
+one-traversal-per-frame budget. `assets/bootstrap.yaml` is a small authored graph,
+not a full port of the existing WHITEOUT adventure.
 
-Conditions and effects are not interpreted. Startup rejects unsupported cues,
-missing bindings, conditional edges and nonzero/duration-bearing timing instead
-of pretending to execute them. No WorldStateProvider, cue ACK, timer or generic
-adapter is involved. The hidden bypass demonstrates discovery metadata, not an
-access-control policy.
-
-## Automated proof
+- `src/game.rs`: composition, asset validation and keyboard collection.
+- `src/scheduler.rs`: concrete WHITEOUT clock, arbiter and synchronous status
+  effect; GRIMM remains the sole owner of node identity/epoch.
+- `src/content.rs`: text/color bindings and explicit host input/countdown gates.
+- `src/screen.rs`: fixed camera, executed presentation, status and countdown UI.
 
 ```bash
 CARGO_PROFILE_DEV_DEBUG=0 cargo test -p whiteout-game --locked
 ```
 
-Tests run actual Bevy schedules with `MinimalPlugins` and `InputPlugin` without
-opening a window or initializing a GPU. `KeyboardInput` messages pass through
-Bevy's input system and the same WHITEOUT systems as the desktop game. They
-verify the full three-node sequence, held-key rejection, duplicate/stale requests
-(including return to a previous node), invalid IDs and hidden discovery. A UI
-entity test verifies one fixed camera, visible destination text, new options and
-destruction of the complete previous UI hierarchy. This is not a GPU screenshot
-or a real OS-input test; use the manual procedure above for graphical checks.
+Tests use Bevy MinimalPlugins/InputPlugin with a deterministic fake clock,
+without `sleep()`, a window or GPU. The manual steps above exercise actual
+window/input/rendering. No WorldStateProvider, GRIMM cue ACK or second story FSM.
 
-## Recorded desktop verification (2026-11-04)
+Effects are synchronous and limited to one status handler; execution errors are
+visible and stop the entry. `duration_ms` is metadata, not proof of actual media
+completion. Full condition/gameplay handlers (#69), complete WHITEOUT (#70),
+save/restore (#63), asset generation and codegen remain out of scope.
 
-Built and launched on Linux/X11 with Rust 1.98.1, Bevy 0.20.1 and Mesa 26.2.4
-llvmpipe (LLVM 23.1.1), after installing the software Vulkan driver. Captures of
-the application's own 1000×700 window showed the blue generator-room scene,
-red warning and amber decision scene, with each scene's distinct text and option.
-X11 key press/release events sent to that window produced these actual game logs:
-
-```text
-WHITEOUT GENERATOR_WARNING epoch=1
-WHITEOUT GENERATOR_DECISION epoch=2
-WHITEOUT GENERATOR_ROOM epoch=3
-```
-
-The restart returned to a fresh entry; window-close exited cleanly. The initial
-hardware-only launch failed to find a compatible adapter; installing the driver
-resolved that without an application backend/framework change. Headless tests
-remain the CI proof; the manual steps above reproduce the visual inspection.
-
-## Deliberate limits / follow-ups
-
-- **#68:** host cue scheduler, physical timing/deadline arbitration, timed
-  traversal/effects, asynchronous cancellation/dedup and presentation readiness.
-- **#69:** concrete conditions/effects and gameplay state/handlers.
-- **#70:** real WHITEOUT vertical slice and game-specific art/input polish.
-- **#63:** coherent host snapshots and save/restore; none here.
-
-No full game port, asset generation, authoring IDE, codegen or optional rules
-library extraction. The legacy WHITEOUT game and its rules are untouched.
-
-Architecture: [#66](https://github.com/rjtg/grimm/issues/66),
+Architecture: [#66](https://github.com/rjtg/grimm/issues/66), scheduler
+[#68](https://github.com/rjtg/grimm/issues/68),
 [ADR-0009](../../docs/adr/0009-story-graph-03-foundation.md).

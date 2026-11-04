@@ -8,8 +8,9 @@ effects and cue execution. The existing scene engine and WHITEOUT remain availab
 this foundation does not require the superseded provider PR #65.
 
 WHITEOUT now also has a small [Bevy bootstrap](crates/whiteout-game/README.md)
-for #67: `CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked`.
-Press **1** to move through the generator-room proof. It embeds `grimm-graph`;
+for #67/#68: `CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked`.
+Press **1** to inspect the generator; after five seconds choose before the
+countdown expires, or wait for the authored blackout. It embeds `grimm-graph`;
 the canonical CLI adventure remains unchanged.
 
 **Generate Real IMMersion** — a modular, headless narrative game engine in Rust.
