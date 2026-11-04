@@ -79,7 +79,10 @@ On effect/presentation/traversal execution error the instance is **not** recorde
 as successfully consumed. The host displays a specific cue error, closes input
 and stops the current entry, including pending timed traversal. It never silently
 continues or retries the effect. Earlier successful effects remain committed;
-the failed handler itself makes no partial writes. Recovery in this demo is to
+the failed handler itself makes no partial writes. A graph traversal and later
+host effects are not one transaction: if a destination T=0 effect fails, GRIMM
+has already entered that destination. The host visibly halts that entry without
+showing its later success presentation or rolling the graph back. Recovery in this demo is to
 close and restart the application. No async effects run: there is no in-flight
 work to finish/roll back or generic async execution framework.
 

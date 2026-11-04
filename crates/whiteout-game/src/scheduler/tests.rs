@@ -522,3 +522,41 @@ fn arbitration_does_not_depend_on_the_order_of_bevy_collectors() {
         }
     }
 }
+
+#[test]
+fn destination_entry_effect_failure_stays_visible_after_the_graph_has_traversed() {
+    let mut graph = authored();
+    let failed = graph
+        .nodes
+        .iter_mut()
+        .find(|node| node.id == "GENERATOR_FAILED")
+        .unwrap();
+    failed.cues[0].instruction = Instruction::Effect {
+        effect_id: "set_generator_status".into(),
+        args: Parameters::new(),
+    };
+    let mut app = app_with(graph);
+    enter_warning(&mut app);
+    advance(&mut app, 30000);
+    // Graph traversal is immediate and is not a transaction with future host
+    // effects. The destination failure must be explicit, never a success view.
+    assert_eq!(
+        app.world().resource::<Runtime>().sheet.node_id,
+        "GENERATOR_FAILED"
+    );
+    assert_eq!(
+        app.world().resource::<Generator>().status,
+        GeneratorStatus::Unstable
+    );
+    assert_eq!(app.world().resource::<Generator>().applications, 2);
+    let view = app.world().resource::<SceneView>();
+    assert!(view.failure.as_ref().unwrap().contains("stop"));
+    assert!(view.presentation.is_none());
+    assert!(!view.actions_open());
+    let stop = instance(&app, "stop");
+    assert!(!app.world().resource::<Runtime>().consumed.contains(&stop));
+    wake(&mut app, stop);
+    advance(&mut app, 0);
+    assert_eq!(app.world().resource::<Generator>().applications, 2);
+    assert!(app.world().resource::<SceneView>().presentation.is_none());
+}

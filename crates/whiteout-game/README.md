@@ -63,6 +63,28 @@ The hidden `generator_exploded` and transition `continue` edges are never shown.
 The timeout wins at exactly 30000ms; the automated tests cover that boundary
 without relying on a human pressing a key at an exact instant.
 
+## Recorded desktop verification (2026-11-04)
+
+Linux/X11, Bevy 0.20.1, Mesa 26.2.4 llvmpipe (LLVM 23.1.1): captured the real
+1000×700 application window with locked initial controls, the status change,
+ready controls with **25s** remaining, transition presentation and safe outcome.
+A second pass without selection reached the blackout. Actual key press/release
+events targeted the application window; the log showed:
+
+```text
+GENERATOR_WARNING epoch=1
+GENERATOR_TRANSITION epoch=2
+GENERATOR_DECISION epoch=3
+GENERATOR_ROOM epoch=4
+GENERATOR_WARNING epoch=5
+GENERATOR_FAILED epoch=6
+```
+
+The automatic transition completed about 1.58s after entry (1500ms, on the next
+render frame); the timeout occurred about 30.02s after warning entry. The window
+closed cleanly. Exact timing/race assertions use the deterministic tests, not
+wall-clock sleep or screenshot timing.
+
 ## Architecture, tests and limits
 
 See the [scheduler contract](SCHEDULER.md) for node-relative Bevy real time,
