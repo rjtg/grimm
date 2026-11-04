@@ -17,8 +17,11 @@ concrete Bevy composition on this path: `whiteout-game` depends on Bevy 0.20.1
 and `grimm-graph`, owns input/UI entities, and consumes the full sheet including
 `outgoing_edges`. GRIMM retains only graph position/epoch; the cached sheet is a
 presentation projection. No universal Bevy adapter or second narrative FSM is
-introduced. The current demo supports only immediate static presentation and
-unconditional edges; #68/#69 own the later execution/rules work.
+introduced. The [WHITEOUT scheduler](../crates/whiteout-game/SCHEDULER.md) (#68) now uses
+Bevy real scene time and central cue/input arbitration, full replacement and
+epoch/cue deduplication. Status effects are synchronous and failures stop the
+entry visibly; conditions/full handlers remain #69 work. No clock, callback ACK
+or execution dependency is added to the graph.
 
 ## Current Bevy host decision (2026-11-03)
 
