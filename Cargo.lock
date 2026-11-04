@@ -239,6 +239,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "grimm-graph"
+version = "0.1.0"
+dependencies = [
+ "grimm-semantic",
+ "serde_json",
+ "serde_yaml_ng",
+]
+
+[[package]]
 name = "grimm-presentation"
 version = "0.1.0"
 dependencies = [

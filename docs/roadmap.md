@@ -1,5 +1,18 @@
 # Roadmap
 
+## Draft 0.3 migration step (2026-11-04)
+
+The current assignment targets [issue #66](https://github.com/rjtg/grimm/issues/66)
+with an independent `grimm-graph` foundation: named nodes/edges, discovery-only
+`expose`, immediate epoch-correlated traversal, full cue declarations and minimal
+graph continuation. See the [mapping and next PRs](migrations/story-graph-03.md).
+Next: the concrete Bevy host (#67), host cue execution (#68), condition/effect
+bindings (#69) and the integration slice (#70), with coherent host snapshots
+reviewed separately. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
+into the new core. PR #65 is closed without merge and is not part of this branch;
+any later reuse of its refresh requires the reviewed completed-control regression
+fix. No whole-game migration or handler codegen is included in this first step.
+
 This is the canonical milestone sequence, reconciled on 2026-11-03. The
 [repository audit](milestones/production-baseline-audit.md) distinguishes shipped
 features from future production work. Historical M2 timing examples remain in

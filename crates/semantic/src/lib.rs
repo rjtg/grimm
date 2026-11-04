@@ -4,6 +4,7 @@
 
 pub mod authoring;
 pub mod flow;
+pub mod graph;
 pub mod lifecycle;
 pub mod save;
 pub mod scene;

@@ -8,6 +8,7 @@ const PACKAGES: &[&str] = &[
     "grimm-semantic",
     "grimm-presentation",
     "grimm-engine",
+    "grimm-graph",
     "grimm-adapters",
     "grimm-cli-renderer",
     "grimm-cli",
@@ -17,6 +18,8 @@ fn allowed(package: &str, dependency: &str, kind: &str) -> bool {
     match (package, kind) {
         ("grimm-semantic" | "grimm-presentation", "normal") => dependency == "serde",
         ("grimm-semantic" | "grimm-presentation", "dev") => dependency == "serde_json",
+        ("grimm-graph", "normal") => dependency == "grimm-semantic",
+        ("grimm-graph", "dev") => matches!(dependency, "serde_json" | "serde_yaml_ng"),
         ("grimm-engine", "normal") => dependency == "grimm-semantic",
         ("grimm-adapters", "normal") => {
             matches!(dependency, "grimm-semantic" | "grimm-presentation")
@@ -117,5 +120,14 @@ fn policy_rejects_reverse_edges_and_external_engine_dependencies() {
         assert!(!allowed("grimm-cli-renderer", "grimm-semantic", kind));
         assert!(!allowed("grimm-adapters", "grimm-engine", kind));
         assert!(!allowed("grimm-semantic", "grimm-engine", kind));
+        for dependency in [
+            "grimm-engine",
+            "grimm-adapters",
+            "grimm-presentation",
+            "bevy",
+            "reqwest",
+        ] {
+            assert!(!allowed("grimm-graph", dependency, kind));
+        }
     }
 }
