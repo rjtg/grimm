@@ -20,7 +20,15 @@ with `--offline`. No external images, fonts, audio or runtime network are needed
 the YAML graph is embedded and Bevy supplies its built-in default font.
 
 On Linux, use a working X11 or Wayland session and a Vulkan-capable graphics
-driver. The selected Bevy features include UI rendering, windowing, keyboard and
+driver. Native build prerequisites on Debian/Ubuntu (in addition to a C compiler
+and Rust):
+
+```bash
+sudo apt-get install pkg-config libwayland-dev libxkbcommon-dev
+```
+
+CI installs the Wayland/xkbcommon headers explicitly; it needs no display/GPU to
+build or run the tests. The selected Bevy features include UI rendering, windowing, keyboard and
 multithreading, but no audio, gamepad, PBR/3D or third-party game framework.
 The first dependency build is substantially larger than the CLI build. The CLI
 still runs independently with `cargo run -p grimm-cli --locked`.
