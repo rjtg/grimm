@@ -68,6 +68,10 @@ impl GraphEngine {
             node_id: node.id.clone(),
             epoch: self.epoch,
             cues: node.cues.clone(),
+            outgoing_edges: self
+                .exposed_edges()
+                .map(|(id, edge)| (id.to_owned(), edge.clone()))
+                .collect(),
         }
     }
 

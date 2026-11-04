@@ -86,6 +86,10 @@ pub struct CueSheet {
     pub node_id: String,
     pub epoch: u64,
     pub cues: Vec<Cue>,
+    /// Complete discovery projection for this entry, including opaque conditions.
+    /// Hidden edges are omitted but remain structurally traversable.
+    #[serde(deserialize_with = "unique_edges")]
+    pub outgoing_edges: BTreeMap<String, Edge>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -42,6 +42,92 @@ fn default_exposure_discovers_condition_data_without_evaluation() {
 }
 
 #[test]
+fn full_sheet_carries_only_current_discoverable_edges_and_opaque_conditions() {
+    let mut authored = story();
+    let break_door = authored.nodes[0].edges["break_door"].clone();
+    let host_trigger = Edge {
+        target: "CORRIDOR_SCENE".into(),
+        expose: true,
+        condition: Some(ConditionCall {
+            condition_id: "rpg_event_ready".into(),
+            args: [(
+                "combat_finished".into(),
+                grimm_semantic::story::Value::Bool(false),
+            )]
+            .into(),
+        }),
+    };
+    authored.nodes[1]
+        .edges
+        .insert("host_trigger".into(), host_trigger.clone());
+    let mut graph = GraphEngine::new(authored).unwrap();
+    let initial = graph.current();
+    assert_eq!(
+        initial.outgoing_edges,
+        [("break_door".into(), break_door)].into()
+    );
+    // A host can consume just the serialized REPLACE payload, without querying
+    // the graph again to discover edges/conditions for this node entry.
+    let decoded: CueSheet =
+        serde_json::from_str(&serde_json::to_string(&initial).unwrap()).unwrap();
+    assert_eq!(decoded, initial);
+    let mut incomplete = serde_json::to_value(&initial).unwrap();
+    incomplete.as_object_mut().unwrap().remove("outgoing_edges");
+    assert!(serde_json::from_value::<CueSheet>(incomplete).is_err());
+    assert_eq!(
+        decoded.outgoing_edges["break_door"]
+            .condition
+            .as_ref()
+            .unwrap()
+            .args["minimum_strength"],
+        grimm_semantic::story::Value::Int(3)
+    );
+    let result = graph.traverse_edge("break_door", decoded.epoch).unwrap();
+    let result: TraversalResult =
+        serde_json::from_str(&serde_json::to_string(&result).unwrap()).unwrap();
+    let sheet = result.cue_sheet;
+    assert_eq!(sheet, graph.current());
+    assert_eq!(sheet.node_id, "BREAK_OUT_SCENE");
+    assert_eq!(sheet.cues, story().nodes[1].cues);
+    assert_eq!(
+        sheet.outgoing_edges,
+        [("host_trigger".into(), host_trigger)].into()
+    );
+    assert!(!sheet.outgoing_edges.contains_key("continue"));
+    assert!(!sheet.outgoing_edges.contains_key("break_door"));
+    assert_eq!(
+        sheet
+            .outgoing_edges
+            .iter()
+            .map(|(id, edge)| (id.as_str(), edge))
+            .collect::<Vec<_>>(),
+        graph.exposed_edges().collect::<Vec<_>>()
+    );
+    // Opaque false parameters do not cause graph-side condition evaluation.
+    // Restore returns the destination's own full discovery projection, too.
+    let restored = graph.restore(graph.snapshot()).unwrap();
+    assert_eq!(restored.outgoing_edges, sheet.outgoing_edges);
+    let end = graph
+        .traverse_edge("host_trigger", restored.epoch)
+        .unwrap()
+        .cue_sheet;
+    assert!(end.outgoing_edges.is_empty());
+    // Neither a previous payload nor a subsequent replacement leaks hidden
+    // discovery. A hidden edge nevertheless uses the same traversal operation.
+    let mut hidden = new();
+    let middle = hidden.traverse_edge("break_door", 0).unwrap().cue_sheet;
+    assert!(middle.outgoing_edges.is_empty());
+    assert!(
+        hidden
+            .traverse_edge("continue", middle.epoch)
+            .unwrap()
+            .cue_sheet
+            .outgoing_edges
+            .is_empty()
+    );
+}
+
+#[test]
 fn traversal_is_current_node_scoped_atomic_and_immediately_returns_full_replace() {
     let mut graph = new();
     let initial = graph.current();

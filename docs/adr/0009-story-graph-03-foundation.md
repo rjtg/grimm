@@ -24,7 +24,10 @@ condition/effect descriptors. Host controls disclosure to players.
 - A versioned graph definition has story identity/version, start and named nodes.
   Each node holds an ordered cue list and a map of named outgoing edges.
 - `expose` defaults to true and filters discovery only. Hidden edges and edges
-  with unevaluated condition descriptors remain structurally traversable.
+  with unevaluated condition descriptors remain structurally traversable. Every
+  sheet carries a named `outgoing_edges` discovery map including opaque condition
+  IDs/args, so scheduling and discovery share one node-entry payload. Hidden edges
+  never appear in that projection; `exposed_edges()` is only a convenience API.
 - IDs are explicit, case-preserving ASCII identifiers. No automatic normalization
   or generated authored cue IDs in this first format. Duplicate IDs and invalid
   targets/traverse-cue references fail construction/parsing.

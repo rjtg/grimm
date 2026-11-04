@@ -25,8 +25,13 @@ case-preserving and independent of filenames. No normalization or generated cue
 identifiers are introduced. Edge/cue names are scoped to their source node;
 reentry is distinguished by epoch. The same edge name may occur on other nodes.
 
-`expose` defaults to true. `exposed_edges` returns discovered definitions including
-opaque condition descriptors. It does not evaluate, authorize or imply player UI.
+`expose` defaults to true. Every `CueSheet` includes a required
+`outgoing_edges: BTreeMap<String, Edge>` discovery projection with condition IDs
+and args, alongside node ID, epoch and the full cue list. Initial `current()`,
+traversal and restore all deliver this coherent node-entry payload; the map
+replaces the previous discovery set, including when empty. Hidden edges are
+omitted. `exposed_edges()` remains a convenience read of the same projection.
+This discovery metadata does not evaluate, authorize or imply player UI.
 A hidden edge is traversable exactly like a discovered one. An unknown condition
 handler is not a graph construction/traversal error; handler validation belongs
 to later tooling. A host must filter what it shows to players itself.
@@ -45,8 +50,11 @@ data for the host, not a promise of actual completion. Effects/traversal cues do
 not have implicit execution or runtime side effects when a sheet is produced.
 
 The serialized new graph definition, new sheet and graph continuation each have
-an explicit version **1** in their separate `graph` module. They are not legacy
-scene schema/protocol 1. Presentation cues use an opaque `presentation_id`;
+an explicit version **1** in their separate `graph` module. The pre-merge
+review adds required `outgoing_edges` to the new sheet contract; update draft
+host consumers/struct literals to read or populate it (no default silently
+accepts an incomplete old payload). This unreleased draft stays at version 1.
+These versions are separate from legacy scene schema/protocol 1. Presentation cues use an opaque `presentation_id`;
 effects use `effect_id + args`; traversal cues reference a named current-node
 edge. A nested `instruction` follows the existing cue DTO convention. The
 illustrative flat syntax from issue #66 is not an alternative parser here.
