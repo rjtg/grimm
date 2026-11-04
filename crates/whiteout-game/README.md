@@ -33,6 +33,18 @@ multithreading, but no audio, gamepad, PBR/3D or third-party game framework.
 The first dependency build is substantially larger than the CLI build. The CLI
 still runs independently with `cargo run -p grimm-cli --locked`.
 
+If the installed hardware Vulkan driver cannot provide a Bevy-compatible
+adapter (as with the Haswell driver on the development machine), a Mesa software
+Vulkan driver can run this small prototype. On Manjaro/Arch:
+
+```bash
+sudo pacman -Syu vulkan-swrast
+```
+
+The normal run command then works; the desktop smoke test selected llvmpipe
+automatically. Software rendering is suitable for this static UI proof, not a
+performance claim for the later graphical game.
+
 ## Play and manual smoke test
 
 1. Start the command above. A window titled **WHITEOUT — generator station**
@@ -83,6 +95,25 @@ verify the full three-node sequence, held-key rejection, duplicate/stale request
 entity test verifies one fixed camera, visible destination text, new options and
 destruction of the complete previous UI hierarchy. This is not a GPU screenshot
 or a real OS-input test; use the manual procedure above for graphical checks.
+
+## Recorded desktop verification (2026-11-04)
+
+Built and launched on Linux/X11 with Rust 1.98.1, Bevy 0.20.1 and Mesa 26.2.4
+llvmpipe (LLVM 23.1.1), after installing the software Vulkan driver. Captures of
+the application's own 1000×700 window showed the blue generator-room scene,
+red warning and amber decision scene, with each scene's distinct text and option.
+X11 key press/release events sent to that window produced these actual game logs:
+
+```text
+WHITEOUT GENERATOR_WARNING epoch=1
+WHITEOUT GENERATOR_DECISION epoch=2
+WHITEOUT GENERATOR_ROOM epoch=3
+```
+
+The restart returned to a fresh entry; window-close exited cleanly. The initial
+hardware-only launch failed to find a compatible adapter; installing the driver
+resolved that without an application backend/framework change. Headless tests
+remain the CI proof; the manual steps above reproduce the visual inspection.
 
 ## Deliberate limits / follow-ups
 

@@ -38,7 +38,7 @@ fn replace_scene(
         flex_direction: FlexDirection::Column, row_gap: px(20), ..default()
     })).with_children(|parent| {
         parent.spawn((Text::new("WHITEOUT / FIELD STATION"), TextFont { font_size: FontSize::Px(24.0), ..default() }));
-        parent.spawn((Text::new(format!("{} · entry {}", sheet.0.node_id, sheet.0.epoch)), TextFont { font_size: FontSize::Px(16.0), ..default() }));
+        parent.spawn((Text::new(format!("{} / entry {}", sheet.0.node_id, sheet.0.epoch)), TextFont { font_size: FontSize::Px(16.0), ..default() }));
         for cue in &sheet.0.cues {
             if let Instruction::Presentation { presentation_id, .. } = &cue.instruction {
                 let panel = content::presentation(presentation_id).expect("validated WHITEOUT binding");
