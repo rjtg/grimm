@@ -1,6 +1,7 @@
 //! The concrete WHITEOUT application. No reusable host/adapter SDK.
 mod content;
 mod game;
+mod gameplay;
 mod scheduler;
 mod screen;
 

@@ -51,12 +51,17 @@ fn replace_scene(
             parent.spawn((Text::new(panel.body), font(22.0)));
             if panel.countdown && view.failure.is_none() { parent.spawn((CountdownText, Text::new(""), font(24.0))); }
         }
-        parent.spawn((Text::new(format!("Generator: {}", generator.status.label())), font(20.0)));
+        parent.spawn((Text::new(format!("Generator: {} | Spare part: {}", generator.status.label(), if generator.has_spare_part { "carried" } else { "none" })), font(20.0)));
         if let Some(error) = &view.failure {
             parent.spawn((Text::new(error), font(18.0), TextColor(Color::srgb(1.0, 0.35, 0.25))));
         } else if view.actions_open() {
-            for (index, edge_id) in runtime.sheet.outgoing_edges.keys().enumerate() {
-                parent.spawn((Text::new(format!("[{}] {}", index + 1, crate::content::edge_label(edge_id).expect("validated WHITEOUT edge"))), font(22.0), TextColor(Color::srgb(0.55, 0.85, 0.95))));
+            for (index, (edge_id, edge)) in runtime.sheet.outgoing_edges.iter().enumerate() {
+                let (suffix, color) = match crate::gameplay::blocked_reason(edge, &generator) {
+                    Ok(None) => (String::new(), Color::srgb(0.55, 0.85, 0.95)),
+                    Ok(Some(reason)) => (format!(" [locked: {reason}]"), Color::srgb(0.6, 0.6, 0.6)),
+                    Err(error) => (format!(" [binding error: {error}]"), Color::srgb(1.0, 0.35, 0.25)),
+                };
+                parent.spawn((Text::new(format!("[{}] {}{suffix}", index + 1, crate::content::edge_label(edge_id).expect("validated WHITEOUT edge"))), font(22.0), TextColor(color)));
             }
         } else { parent.spawn((Text::new("Controls locked while the presentation unfolds."), font(18.0))); }
         parent.spawn((Text::new("Press a number key to act. Release before selecting again.\nClose the window to exit."), font(16.0)));
@@ -175,5 +180,66 @@ mod tests {
             1
         );
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
+    }
+}
+
+#[cfg(test)]
+mod gameplay_tests {
+    use super::*;
+    use crate::{game, scheduler};
+    use bevy::{input::InputPlugin, time::TimeUpdateStrategy};
+    use std::time::Duration;
+
+    fn text(app: &mut App) -> String {
+        let world = app.world_mut();
+        world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+    #[test]
+    fn ecs_changes_refresh_locked_options_and_keyboard_rechecks_stale_display() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, InputPlugin, game::install, install))
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        app.update();
+        scheduler::tests::key(
+            &mut app,
+            bevy::input::ButtonState::Pressed,
+            false,
+            KeyCode::Digit1,
+        );
+        scheduler::tests::key(
+            &mut app,
+            bevy::input::ButtonState::Released,
+            false,
+            KeyCode::Digit1,
+        );
+        scheduler::tests::advance(&mut app, 5000);
+        assert!(text(&mut app).contains(
+            "[2] Repair the generator with the spare relay [locked: requires a spare part]"
+        ));
+        app.world_mut().resource_mut::<Generator>().has_spare_part = true;
+        scheduler::tests::advance(&mut app, 0);
+        let current = text(&mut app);
+        assert!(current.contains("Spare part: carried"));
+        assert!(current.contains("[2] Repair the generator with the spare relay"));
+        assert!(!current.contains("requires a spare part"));
+        assert!(!current.contains("generator_exploded"));
+        app.world_mut().resource_mut::<Generator>().has_spare_part = false;
+        // The old display offered repair, but execution reads the current ECS.
+        scheduler::tests::key(
+            &mut app,
+            bevy::input::ButtonState::Pressed,
+            false,
+            KeyCode::Digit2,
+        );
+        assert_eq!(
+            app.world().resource::<Runtime>().sheet.node_id,
+            "GENERATOR_WARNING"
+        );
+        assert!(text(&mut app).contains("[locked: requires a spare part]"));
     }
 }

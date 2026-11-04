@@ -1,8 +1,14 @@
 //! WHITEOUT's synchronous cue executor. All time/ordering stays in this host.
 use std::{collections::BTreeSet, time::Duration};
 
+pub(crate) use crate::gameplay::Generator;
+#[cfg(test)]
+use crate::gameplay::GeneratorStatus;
 use bevy::prelude::*;
-use grimm_graph::{CueSheet, GraphEngine, Instruction, Parameters};
+#[cfg(test)]
+use grimm_graph::Parameters;
+use grimm_graph::{CueSheet, GraphEngine, Instruction};
+#[cfg(test)]
 use grimm_semantic::story::Value;
 
 use crate::content;
@@ -171,57 +177,6 @@ impl SceneView {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GeneratorStatus {
-    #[default]
-    Running,
-    Unstable,
-    Isolated,
-    Stopped,
-}
-impl GeneratorStatus {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Running => "Running",
-            Self::Unstable => "Warning light / unstable",
-            Self::Isolated => "Safely isolated",
-            Self::Stopped => "Stopped / station dark",
-        }
-    }
-}
-
-#[derive(Resource, Default)]
-pub(crate) struct Generator {
-    pub status: GeneratorStatus,
-    applications: u64,
-}
-impl Generator {
-    fn apply(&mut self, id: &str, args: &Parameters) -> Result<(), String> {
-        let status = match (id, args.len(), args.get("status")) {
-            ("set_generator_status", 1, Some(Value::Text(status))) => match status.as_str() {
-                "running" => GeneratorStatus::Running,
-                "unstable" => GeneratorStatus::Unstable,
-                "isolated" => GeneratorStatus::Isolated,
-                "stopped" => GeneratorStatus::Stopped,
-                _ => return Err(format!("unknown generator status '{status}'")),
-            },
-            _ => {
-                return Err(format!(
-                    "invalid effect '{id}': expected one text argument 'status'"
-                ));
-            }
-        };
-        // Preflight before either field changes. No automatic retry on failure.
-        let applications = self
-            .applications
-            .checked_add(1)
-            .ok_or("generator effect counter overflow")?;
-        self.status = status;
-        self.applications = applications;
-        Ok(())
-    }
-}
-
 // Authored order breaks cue ties; cues beat selections at equality. Selections
 // with equal timestamps use edge-ID order, never message/system arrival order.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -310,9 +265,14 @@ pub(crate) fn drive(
                 if !view.actions_open() || !runtime.sheet.outgoing_edges.contains_key(&edge) {
                     continue;
                 }
-                runtime
-                    .traverse(&edge, event.epoch, now, &mut view)
-                    .map(|()| true)
+                let discovered = &runtime.sheet.outgoing_edges[&edge];
+                match crate::gameplay::blocked_reason(discovered, &generator) {
+                    Ok(Some(_)) => continue,
+                    Err(error) => Err(error),
+                    Ok(None) => runtime
+                        .traverse(&edge, event.epoch, now, &mut view)
+                        .map(|()| true),
+                }
             }
         };
         match result {

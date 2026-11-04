@@ -10,8 +10,9 @@ The concrete [WHITEOUT Bevy bootstrap](../crates/whiteout-game/README.md) (#67)
 now embeds this core with a fixed camera, numbered keyboard interactions and
 full-sheet scene replacement. [Host cue scheduling](../crates/whiteout-game/SCHEDULER.md)
 (#68) adds physical scene time, deterministic arbitration, synchronous status
-effects and the 5s/30s generator demo. Full gameplay/condition bindings (#69),
-the full slice (#70) and coherent host snapshots remain separate. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
+effects and the 5s/30s generator demo. [Typed gameplay bindings](../crates/whiteout-game/GAMEPLAY.md)
+(#69) now demonstrate spare-part pickup, live conditions and repair versus
+isolation/timeout. The full slice (#70) and coherent host snapshots remain separate. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
 into the new core. PR #65 is closed without merge and is not part of this branch;
 any later reuse of its refresh requires the reviewed completed-control regression
 fix. No whole-game migration or handler codegen is included in this first step.

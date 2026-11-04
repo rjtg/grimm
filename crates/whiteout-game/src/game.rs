@@ -3,6 +3,7 @@ use grimm_graph::{GraphEngine, Instruction, StoryGraph};
 
 use crate::{
     content,
+    gameplay::{Condition, Effect},
     scheduler::{self, Generator, HostRequest, Runtime, SceneView},
 };
 
@@ -32,6 +33,11 @@ pub(crate) fn install(app: &mut App) {
 
 fn load_graph() -> Result<GraphEngine, Box<dyn std::error::Error>> {
     let graph: StoryGraph = serde_yaml_ng::from_str(include_str!("../assets/bootstrap.yaml"))?;
+    validate_bindings(&graph)?;
+    Ok(GraphEngine::new(graph)?)
+}
+
+pub(crate) fn validate_bindings(graph: &StoryGraph) -> Result<(), String> {
     for node in &graph.nodes {
         for cue in &node.cues {
             match &cue.instruction {
@@ -40,22 +46,30 @@ fn load_graph() -> Result<GraphEngine, Box<dyn std::error::Error>> {
                     args,
                     ..
                 } if args.is_empty() && content::presentation(presentation_id).is_some() => {}
-                Instruction::Effect { effect_id, .. } if effect_id == "set_generator_status" => {}
+                Instruction::Effect { effect_id, args } => {
+                    Effect::parse(effect_id, args)
+                        .map_err(|error| format!("{}.{}: {error}", node.id, cue.cue_id))?;
+                }
                 Instruction::TraverseEdge { .. } => {}
                 _ => {
-                    return Err(
-                        format!("unsupported WHITEOUT cue '{}.{}'", node.id, cue.cue_id).into(),
-                    );
+                    return Err(format!(
+                        "unsupported WHITEOUT cue '{}.{}'",
+                        node.id, cue.cue_id
+                    ));
                 }
             }
         }
         for (id, edge) in &node.edges {
-            if edge.condition.is_some() || (edge.expose && content::edge_label(id).is_none()) {
-                return Err(format!("unsupported WHITEOUT edge '{}.{id}'", node.id).into());
+            if let Some(condition) = &edge.condition {
+                Condition::parse(condition)
+                    .map_err(|error| format!("{}.{id}: {error}", node.id))?;
+            }
+            if edge.expose && content::edge_label(id).is_none() {
+                return Err(format!("unsupported WHITEOUT edge '{}.{id}'", node.id));
             }
         }
     }
-    Ok(GraphEngine::new(graph)?)
+    Ok(())
 }
 
 fn keyboard_input(

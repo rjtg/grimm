@@ -20,7 +20,9 @@ presentation projection. No universal Bevy adapter or second narrative FSM is
 introduced. The [WHITEOUT scheduler](../crates/whiteout-game/SCHEDULER.md) (#68) now uses
 Bevy real scene time and central cue/input arbitration, full replacement and
 epoch/cue deduplication. Status effects are synchronous and failures stop the
-entry visibly; conditions/full handlers remain #69 work. No clock, callback ACK
+entry visibly. [WHITEOUT gameplay bindings](../crates/whiteout-game/GAMEPLAY.md)
+(#69) evaluate typed conditions on the actual generator resource and recheck
+them at selection, with scheduled pickup/repair effects. No clock, callback ACK
 or execution dependency is added to the graph.
 
 ## Current Bevy host decision (2026-11-03)
