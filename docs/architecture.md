@@ -1,5 +1,17 @@
 # Architecture — boundary contract
 
+## Draft 0.3 migration foundation (2026-11-04)
+
+[Issue #66](https://github.com/rjtg/grimm/issues/66) defines the target for this
+new migration slice: a world/rules-independent Story Graph with immediate named
+edge traversal and complete cue declarations. `grimm-graph` depends only on
+semantic DTOs; hosts interpret condition/effect descriptors and own execution.
+It has no WorldStateProvider, rule callback, timer, cue ACK or deferred entry FSM.
+See [proposed ADR-0009](adr/0009-story-graph-03-foundation.md) and the
+[current-to-target mapping](migrations/story-graph-03.md). This additive prototype
+does not declare the entire draft accepted or change the existing stateful
+engine/ADR-0008 behavior described below. PR #65 remains separate and unmerged.
+
 ## Current Bevy host decision (2026-11-03)
 
 This section and amended [ADR-0008](adr/0008-m46-versioned-lifecycle-and-storage.md)

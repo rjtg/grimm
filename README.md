@@ -1,5 +1,12 @@
 # GRIMM
 
+Draft 0.3 first migration step: the independent `grimm-graph` crate produces full
+cue declarations and traverses named edges immediately. Read the
+[API and migration mapping](docs/migrations/story-graph-03.md) or run
+`cargo run -p grimm-graph --example locked_in --locked`. Host code owns conditions,
+effects and cue execution. The existing scene engine and WHITEOUT remain available;
+this foundation does not require the superseded provider PR #65.
+
 **Generate Real IMMersion** — a modular, headless narrative game engine in Rust.
 
 GRIMM supports authored choose-your-own-adventure graphs and, as optional extensions, free-form player actions, dynamic story events, goal-driven NPCs, narrative direction, and multiple presentation frontends.

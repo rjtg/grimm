@@ -1,0 +1,34 @@
+# Draft 0.3 graph declarations. No world variables, interpreted conditions or
+# action effects. Millisecond cue execution belongs to the host.
+schema_version: 1
+id: locked_in
+version: 1
+start: LOCKED_IN_SCENE
+nodes:
+- id: LOCKED_IN_SCENE
+  cues:
+  - cue_id: room_intro
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: locked_room_intro}
+  edges:
+    break_door:
+      target: BREAK_OUT_SCENE
+      condition: {condition_id: can_break_door, args: {door: north_door, minimum_strength: 3}}
+- id: BREAK_OUT_SCENE
+  cues:
+  - cue_id: smash
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: break_door, duration_ms: 1200}
+  - cue_id: door_broken
+    at_ms: 1200
+    instruction: {kind: effect, effect_id: set_door_state, args: {door: north_door, state: broken}}
+  - cue_id: onward
+    at_ms: 1500
+    instruction: {kind: traverse_edge, edge_id: continue}
+  edges:
+    continue: {target: CORRIDOR_SCENE, expose: false}
+- id: CORRIDOR_SCENE
+  cues:
+  - cue_id: corridor_intro
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: corridor_arrival}
