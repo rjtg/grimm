@@ -11,7 +11,10 @@ use grimm_graph::{CueSheet, GraphEngine, Instruction};
 #[cfg(test)]
 use grimm_semantic::story::Value;
 
-use crate::content;
+use crate::{
+    content,
+    cueables::{self, Binding, Catalog},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct CueInstance {
@@ -134,13 +137,17 @@ impl Runtime {
                 duration_ms,
                 ..
             } => {
-                content::presentation(presentation_id)
-                    .ok_or_else(|| format!("unknown presentation '{presentation_id}'"))?;
-                view.presentation = Some(Presented {
+                let binding = cueables::resolve(presentation_id, &Catalog::default())?;
+                let presented = Presented {
                     instance: instance.clone(),
                     id: presentation_id.clone(),
+                    at_ms: cue.at_ms,
                     duration_ms: *duration_ms,
-                });
+                };
+                if matches!(binding, Binding::Panel) {
+                    view.presentation = Some(presented.clone());
+                }
+                view.active.push(presented);
             }
             Instruction::Effect { effect_id, args } => generator.apply(effect_id, args)?,
             Instruction::TraverseEdge { edge_id } => {
@@ -159,10 +166,12 @@ pub(crate) struct Presented {
     pub instance: CueInstance,
     pub id: String,
     pub duration_ms: Option<u64>,
+    pub at_ms: u64,
 }
 
 #[derive(Resource, Default)]
 pub(crate) struct SceneView {
+    pub active: Vec<Presented>,
     pub presentation: Option<Presented>,
     pub failure: Option<String>,
 }

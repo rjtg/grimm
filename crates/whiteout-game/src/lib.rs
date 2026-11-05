@@ -1,9 +1,11 @@
 //! The concrete WHITEOUT application. No reusable host/adapter SDK.
 mod content;
+mod cueables;
 mod game;
 mod gameplay;
 mod scheduler;
 mod screen;
+mod stage;
 
 pub fn run() {
     use bevy::prelude::*;
@@ -16,6 +18,6 @@ pub fn run() {
             }),
             ..default()
         }))
-        .add_plugins((game::install, screen::install))
+        .add_plugins((game::install, stage::install, screen::install))
         .run();
 }

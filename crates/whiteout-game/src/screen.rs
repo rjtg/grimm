@@ -26,7 +26,7 @@ pub(crate) fn install(app: &mut App) {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, crate::cueables::Object::Camera));
 }
 
 fn replace_scene(
@@ -39,29 +39,35 @@ fn replace_scene(
     for root in &roots {
         commands.entity(root).despawn();
     }
+    let canonical = view
+        .presentation
+        .as_ref()
+        .is_some_and(|p| p.id.starts_with("canon."));
     commands.spawn((SceneRoot, Node {
-        width: percent(100), height: percent(100), padding: UiRect::all(px(30)),
-        flex_direction: FlexDirection::Column, row_gap: px(14), ..default()
-    })).with_children(|parent| {
-        parent.spawn((Text::new("WHITEOUT / FIELD STATION"), font(24.0)));
-        parent.spawn((Text::new(format!("{} / entry {}", runtime.sheet.node_id, runtime.sheet.epoch)), font(16.0)));
+        width: percent(100), position_type:PositionType::Absolute, bottom:px(0), padding: UiRect::all(px(16)),
+        flex_direction: FlexDirection::Column, row_gap: px(7), ..default()
+    },BackgroundColor(Color::srgba(0.025,0.04,0.06,0.92)))).with_children(|parent| {
+        parent.spawn((Text::new("WHITEOUT / FIELD STATION"), font(20.0)));
+        if !canonical {parent.spawn((Text::new(format!("{} / entry {}", runtime.sheet.node_id, runtime.sheet.epoch)), font(16.0)));}
         if let Some(panel) = view.panel() {
             parent.spawn((Node { width: percent(100), height: px(8), ..default() }, BackgroundColor(Color::srgb(panel.accent[0], panel.accent[1], panel.accent[2]))));
-            parent.spawn((Text::new(panel.title), font(32.0)));
-            parent.spawn((Text::new(panel.body), font(22.0)));
-            if panel.countdown && view.failure.is_none() { parent.spawn((CountdownText, Text::new(""), font(24.0))); }
+            parent.spawn((Text::new(panel.title), font(24.0)));
+            parent.spawn((Text::new(panel.body), font(19.0)));
+            if panel.countdown && view.failure.is_none() { parent.spawn((CountdownText, Text::new(""), font(20.0))); }
         }
-        parent.spawn((Text::new(format!("Generator: {} | Spare part: {}", generator.status.label(), if generator.has_spare_part { "carried" } else { "none" })), font(20.0)));
+        let status=if canonical {format!("Generator: {} | De-icer: {} | Annex: {}",generator.status.label(),if generator.deicer_isolated {"isolated"}else{"shorted"},if generator.engineering_lost {"sealed"}else{"open"})}else{format!("Generator: {} | Spare part: {}",generator.status.label(),if generator.has_spare_part {"carried"}else{"none"})};
+        parent.spawn((Text::new(status),font(17.0)));
         if let Some(error) = &view.failure {
             parent.spawn((Text::new(error), font(18.0), TextColor(Color::srgb(1.0, 0.35, 0.25))));
-        } else if view.actions_open() {
+        } else if view.actions_open() || canonical {
             for (index, (edge_id, edge)) in runtime.sheet.outgoing_edges.iter().enumerate() {
                 let (suffix, color) = match crate::gameplay::blocked_reason(edge, &generator) {
-                    Ok(None) => (String::new(), Color::srgb(0.55, 0.85, 0.95)),
+                    Ok(None) if view.actions_open() => (String::new(), Color::srgb(0.55,0.85,0.95)),
+                    Ok(None) => (" [locked: listen to the crew]".into(),Color::srgb(0.6,0.6,0.6)),
                     Ok(Some(reason)) => (format!(" [locked: {reason}]"), Color::srgb(0.6, 0.6, 0.6)),
                     Err(error) => (format!(" [binding error: {error}]"), Color::srgb(1.0, 0.35, 0.25)),
                 };
-                parent.spawn((Text::new(format!("[{}] {}{suffix}", index + 1, crate::content::edge_label(edge_id).expect("validated WHITEOUT edge"))), font(22.0), TextColor(color)));
+                parent.spawn((Text::new(format!("[{}] {}{suffix}", index + 1, crate::content::edge_label(edge_id).expect("validated WHITEOUT edge"))), font(19.0), TextColor(color)));
             }
         } else { parent.spawn((Text::new("Controls locked while the presentation unfolds."), font(18.0))); }
         parent.spawn((Text::new("Press a number key to act. Release before selecting again.\nClose the window to exit."), font(16.0)));
@@ -117,6 +123,13 @@ mod tests {
         let mut app = App::new();
         app.add_plugins((MinimalPlugins, InputPlugin, game::install, install))
             .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        app.insert_resource(Runtime::new(
+            grimm_graph::GraphEngine::new(
+                serde_yaml_ng::from_str(include_str!("gameplay/fixtures/gameplay-v3.yaml"))
+                    .unwrap(),
+            )
+            .unwrap(),
+        ));
         app.update();
         let world = app.world_mut();
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
@@ -204,6 +217,13 @@ mod gameplay_tests {
         let mut app = App::new();
         app.add_plugins((MinimalPlugins, InputPlugin, game::install, install))
             .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        app.insert_resource(Runtime::new(
+            grimm_graph::GraphEngine::new(
+                serde_yaml_ng::from_str(include_str!("gameplay/fixtures/gameplay-v3.yaml"))
+                    .unwrap(),
+            )
+            .unwrap(),
+        ));
         app.update();
         scheduler::tests::key(
             &mut app,

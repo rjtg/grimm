@@ -1,5 +1,14 @@
 # WHITEOUT gameplay bindings (#69)
 
+**Current default (#70):** the canonical [generator-annex excerpt](SCREENPLAY.md)
+replaces the old relay demo. The contracts and old regression fixtures below
+remain supported. Concurrent presentation instances live in `SceneView.active`;
+the latest caption alone remains in `SceneView.presentation`. The actual Bevy
+resource also owns `deicer_isolated`, `engineering_lost` and `powered` status.
+New typed effects are `prepare_annex`, `isolate_deicer`, `start_generator` and
+`seal_annex`; `can_start_generator` requires isolated de-icer and open access.
+REPLACE cancels all cue-owned sound/motion entities. No graph-core API changes.
+
 Based on main `87db412` (PR #73). Architectural authority:
 [#66](https://github.com/rjtg/grimm/issues/66), assignment
 [#69](https://github.com/rjtg/grimm/issues/69). This is a small extension of the

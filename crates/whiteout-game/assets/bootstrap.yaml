@@ -1,112 +1,97 @@
-# A small WHITEOUT scheduler proof, not the canonical adventure.
+# Canonical WHITEOUT engineering excerpt; see SCREENPLAY.md for parity/fixtures.
 schema_version: 1
-id: whiteout_bootstrap
-version: 3
-start: GENERATOR_ROOM
+id: whiteout_engineering_slice
+version: 4
+start: DISPATCH_APPROACH
 nodes:
-- id: GENERATOR_ROOM
+- id: DISPATCH_APPROACH
   cues:
-  - cue_id: room
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_room}
+  - {cue_id: setup, at_ms: 0, instruction: {kind: effect, effect_id: prepare_annex}}
+  - {cue_id: exterior, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.wide, duration_ms: 0}}
+  - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: approach, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.approach}}
+  - {cue_id: jonas_moves, at_ms: 4000, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 6000}}
+  - {cue_id: mara_moves, at_ms: 6000, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 4000}}
+  - {cue_id: diagram_shot, at_ms: 12000, instruction: {kind: presentation, presentation_id: shot.controls, duration_ms: 1600}}
+  - {cue_id: diagram, at_ms: 12000, instruction: {kind: presentation, presentation_id: canon.diagram}}
+  - {cue_id: enter, at_ms: 18000, instruction: {kind: traverse_edge, edge_id: enter_annex}}
   edges:
-    inspect_panel: {target: GENERATOR_WARNING}
-    take_spare_part:
-      target: GENERATOR_SUPPLIES
-      condition: {condition_id: can_take_spare_part}
-- id: GENERATOR_WARNING
+    enter_annex: {target: GENERATOR_ANNEX, expose: false}
+- id: GENERATOR_ANNEX
   cues:
-  - cue_id: warning
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_warning, duration_ms: 5000}
-  - cue_id: warning_lamp
-    at_ms: 2000
-    instruction: {kind: effect, effect_id: set_generator_status, args: {status: unstable}}
-  - cue_id: enable_interaction
-    at_ms: 5000
-    instruction: {kind: presentation, presentation_id: generator_ready, duration_ms: 25000}
-  - cue_id: deadline
-    at_ms: 30000
-    instruction: {kind: traverse_edge, edge_id: generator_exploded}
+  - {cue_id: jonas_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 0}}
+  - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
+  - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.wide, duration_ms: 0}}
+  - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: arrival, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.arrival, duration_ms: 4000}}
+  - {cue_id: fuse_motion, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 2000}}
+  - {cue_id: isolate, at_ms: 2000, instruction: {kind: effect, effect_id: isolate_deicer}}
+  - {cue_id: isolated, at_ms: 2000, instruction: {kind: presentation, presentation_id: canon.isolated}}
+  - {cue_id: ready, at_ms: 4000, instruction: {kind: presentation, presentation_id: canon.ready}}
+  - {cue_id: radio, at_ms: 10000, instruction: {kind: presentation, presentation_id: canon.radio, duration_ms: 2200}}
+  - {cue_id: alarm, at_ms: 10000, instruction: {kind: presentation, presentation_id: sound.alarm}}
+  - {cue_id: closeup, at_ms: 10000, instruction: {kind: presentation, presentation_id: shot.controls, duration_ms: 1500}}
+  - {cue_id: timeout, at_ms: 30000, instruction: {kind: traverse_edge, edge_id: coil_expired}}
   edges:
-    isolate_generator: {target: GENERATOR_TRANSITION}
-    repair_generator:
-      target: GENERATOR_REPAIR
-      condition: {condition_id: can_repair_generator, args: {required_item: spare_part}}
-    generator_exploded: {target: GENERATOR_FAILED, expose: false}
-- id: GENERATOR_TRANSITION
+    start_generator:
+      target: GENERATOR_STARTUP
+      condition: {condition_id: can_start_generator}
+    abandon: {target: DISPATCH_COLD}
+    coil_expired: {target: ANNEX_SEALED, expose: false}
+- id: GENERATOR_STARTUP
   cues:
-  - cue_id: breaker_presentation
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_transition, duration_ms: 1500}
-  - cue_id: isolate
-    at_ms: 1200
-    instruction: {kind: effect, effect_id: set_generator_status, args: {status: isolated}}
-  - cue_id: onward
-    at_ms: 1500
-    instruction: {kind: traverse_edge, edge_id: continue}
+  - {cue_id: fuse_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 0}}
+  - {cue_id: jonas_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 0}}
+  - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
+  - {cue_id: closeup, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.starter, duration_ms: 500}}
+  - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: prime, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.prime, duration_ms: 1200}}
+  - {cue_id: lever, at_ms: 0, instruction: {kind: presentation, presentation_id: move.starter, duration_ms: 1200}}
+  - {cue_id: ignition, at_ms: 1200, instruction: {kind: presentation, presentation_id: canon.ignition, duration_ms: 1500}}
+  - {cue_id: motor_sound, at_ms: 1200, instruction: {kind: presentation, presentation_id: sound.motor}}
+  - {cue_id: flywheel, at_ms: 1200, instruction: {kind: presentation, presentation_id: motor.spin}}
+  - {cue_id: heat, at_ms: 2700, instruction: {kind: presentation, presentation_id: canon.heat, duration_ms: 1800}}
+  - {cue_id: stable_power, at_ms: 4000, instruction: {kind: effect, effect_id: start_generator}}
+  - {cue_id: return, at_ms: 4500, instruction: {kind: traverse_edge, edge_id: return_hall}}
   edges:
-    continue: {target: GENERATOR_DECISION, expose: false}
-- id: GENERATOR_DECISION
+    return_hall: {target: DISPATCH_WARM, expose: false}
+- id: DISPATCH_WARM
   cues:
-  - cue_id: safe
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_decision}
+  - {cue_id: fuse_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 0}}
+  - {cue_id: jonas_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 0}}
+  - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
+  - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.hall, duration_ms: 900}}
+  - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: motor, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.motor}}
+  - {cue_id: wheel, at_ms: 0, instruction: {kind: presentation, presentation_id: motor.spin}}
+  - {cue_id: return, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.warm}}
+  - {cue_id: settled, at_ms: 6000, instruction: {kind: presentation, presentation_id: canon.warm_end}}
   edges:
-    restart_demo: {target: GENERATOR_RESET}
-- id: GENERATOR_FAILED
+    restart_slice: {target: DISPATCH_APPROACH}
+- id: DISPATCH_COLD
   cues:
-  - cue_id: stop
-    at_ms: 0
-    instruction: {kind: effect, effect_id: set_generator_status, args: {status: stopped}}
-  - cue_id: blackout
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_failed}
+  - {cue_id: fuse_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 0}}
+  - {cue_id: seal, at_ms: 0, instruction: {kind: effect, effect_id: seal_annex}}
+  - {cue_id: jonas_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 0}}
+  - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
+  - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.hall, duration_ms: 900}}
+  - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: shutter, at_ms: 0, instruction: {kind: presentation, presentation_id: move.shutter, duration_ms: 1800}}
+  - {cue_id: return, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.abandon}}
+  - {cue_id: settled, at_ms: 9000, instruction: {kind: presentation, presentation_id: canon.cold_end}}
   edges:
-    restart_demo: {target: GENERATOR_RESET}
-- id: GENERATOR_SUPPLIES
+    restart_slice: {target: DISPATCH_APPROACH}
+- id: ANNEX_SEALED
   cues:
-  - cue_id: supplies
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_supplies, duration_ms: 900}
-  - cue_id: take_part
-    at_ms: 600
-    instruction: {kind: effect, effect_id: take_item, args: {item: spare_part}}
-  - cue_id: return
-    at_ms: 900
-    instruction: {kind: traverse_edge, edge_id: continue}
+  - {cue_id: fuse_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 0}}
+  - {cue_id: seal, at_ms: 0, instruction: {kind: effect, effect_id: seal_annex}}
+  - {cue_id: jonas_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 0}}
+  - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
+  - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.hall, duration_ms: 900}}
+  - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: shutter, at_ms: 0, instruction: {kind: presentation, presentation_id: move.shutter, duration_ms: 1800}}
+  - {cue_id: alarm, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.alarm}}
+  - {cue_id: timeout, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.timeout}}
+  - {cue_id: settled, at_ms: 9000, instruction: {kind: presentation, presentation_id: canon.cold_end}}
   edges:
-    continue: {target: GENERATOR_ROOM, expose: false}
-- id: GENERATOR_REPAIR
-  cues:
-  - cue_id: repair_presentation
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_repair, duration_ms: 1500}
-  - cue_id: repair
-    at_ms: 1200
-    instruction: {kind: effect, effect_id: repair_generator, args: {required_item: spare_part}}
-  - cue_id: repaired
-    at_ms: 1500
-    instruction: {kind: traverse_edge, edge_id: continue}
-  edges:
-    continue: {target: GENERATOR_REPAIRED, expose: false}
-- id: GENERATOR_REPAIRED
-  cues:
-  - cue_id: restored_power
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_repaired}
-  edges:
-    restart_demo: {target: GENERATOR_RESET}
-- id: GENERATOR_RESET
-  cues:
-  - cue_id: reset_view
-    at_ms: 0
-    instruction: {kind: presentation, presentation_id: generator_reset}
-  - cue_id: reset_state
-    at_ms: 0
-    instruction: {kind: effect, effect_id: reset_demo}
-  - cue_id: reset_return
-    at_ms: 1
-    instruction: {kind: traverse_edge, edge_id: continue}
-  edges:
-    continue: {target: GENERATOR_ROOM, expose: false}
+    restart_slice: {target: DISPATCH_APPROACH}

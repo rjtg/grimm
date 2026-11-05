@@ -1,0 +1,112 @@
+# A small WHITEOUT scheduler proof, not the canonical adventure.
+schema_version: 1
+id: whiteout_bootstrap
+version: 3
+start: GENERATOR_ROOM
+nodes:
+- id: GENERATOR_ROOM
+  cues:
+  - cue_id: room
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_room}
+  edges:
+    inspect_panel: {target: GENERATOR_WARNING}
+    take_spare_part:
+      target: GENERATOR_SUPPLIES
+      condition: {condition_id: can_take_spare_part}
+- id: GENERATOR_WARNING
+  cues:
+  - cue_id: warning
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_warning, duration_ms: 5000}
+  - cue_id: warning_lamp
+    at_ms: 2000
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: unstable}}
+  - cue_id: enable_interaction
+    at_ms: 5000
+    instruction: {kind: presentation, presentation_id: generator_ready, duration_ms: 25000}
+  - cue_id: deadline
+    at_ms: 30000
+    instruction: {kind: traverse_edge, edge_id: generator_exploded}
+  edges:
+    isolate_generator: {target: GENERATOR_TRANSITION}
+    repair_generator:
+      target: GENERATOR_REPAIR
+      condition: {condition_id: can_repair_generator, args: {required_item: spare_part}}
+    generator_exploded: {target: GENERATOR_FAILED, expose: false}
+- id: GENERATOR_TRANSITION
+  cues:
+  - cue_id: breaker_presentation
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_transition, duration_ms: 1500}
+  - cue_id: isolate
+    at_ms: 1200
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: isolated}}
+  - cue_id: onward
+    at_ms: 1500
+    instruction: {kind: traverse_edge, edge_id: continue}
+  edges:
+    continue: {target: GENERATOR_DECISION, expose: false}
+- id: GENERATOR_DECISION
+  cues:
+  - cue_id: safe
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_decision}
+  edges:
+    restart_demo: {target: GENERATOR_RESET}
+- id: GENERATOR_FAILED
+  cues:
+  - cue_id: stop
+    at_ms: 0
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: stopped}}
+  - cue_id: blackout
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_failed}
+  edges:
+    restart_demo: {target: GENERATOR_RESET}
+- id: GENERATOR_SUPPLIES
+  cues:
+  - cue_id: supplies
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_supplies, duration_ms: 900}
+  - cue_id: take_part
+    at_ms: 600
+    instruction: {kind: effect, effect_id: take_item, args: {item: spare_part}}
+  - cue_id: return
+    at_ms: 900
+    instruction: {kind: traverse_edge, edge_id: continue}
+  edges:
+    continue: {target: GENERATOR_ROOM, expose: false}
+- id: GENERATOR_REPAIR
+  cues:
+  - cue_id: repair_presentation
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_repair, duration_ms: 1500}
+  - cue_id: repair
+    at_ms: 1200
+    instruction: {kind: effect, effect_id: repair_generator, args: {required_item: spare_part}}
+  - cue_id: repaired
+    at_ms: 1500
+    instruction: {kind: traverse_edge, edge_id: continue}
+  edges:
+    continue: {target: GENERATOR_REPAIRED, expose: false}
+- id: GENERATOR_REPAIRED
+  cues:
+  - cue_id: restored_power
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_repaired}
+  edges:
+    restart_demo: {target: GENERATOR_RESET}
+- id: GENERATOR_RESET
+  cues:
+  - cue_id: reset_view
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_reset}
+  - cue_id: reset_state
+    at_ms: 0
+    instruction: {kind: effect, effect_id: reset_demo}
+  - cue_id: reset_return
+    at_ms: 1
+    instruction: {kind: traverse_edge, edge_id: continue}
+  edges:
+    continue: {target: GENERATOR_ROOM, expose: false}

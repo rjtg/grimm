@@ -3,6 +3,7 @@ use grimm_graph::{GraphEngine, Instruction, StoryGraph};
 
 use crate::{
     content,
+    cueables::{self, Catalog},
     gameplay::{Condition, Effect},
     scheduler::{self, Generator, HostRequest, Runtime, SceneView},
 };
@@ -38,6 +39,10 @@ fn load_graph() -> Result<GraphEngine, Box<dyn std::error::Error>> {
 }
 
 pub(crate) fn validate_bindings(graph: &StoryGraph) -> Result<(), String> {
+    validate_with_catalog(graph, &Catalog::default())
+}
+
+pub(crate) fn validate_with_catalog(graph: &StoryGraph, catalog: &Catalog) -> Result<(), String> {
     for node in &graph.nodes {
         for cue in &node.cues {
             match &cue.instruction {
@@ -45,7 +50,10 @@ pub(crate) fn validate_bindings(graph: &StoryGraph) -> Result<(), String> {
                     presentation_id,
                     args,
                     ..
-                } if args.is_empty() && content::presentation(presentation_id).is_some() => {}
+                } if args.is_empty() => {
+                    cueables::resolve(presentation_id, catalog)
+                        .map_err(|error| format!("{}.{}: {error}", node.id, cue.cue_id))?;
+                }
                 Instruction::Effect { effect_id, args } => {
                     Effect::parse(effect_id, args)
                         .map_err(|error| format!("{}.{}: {error}", node.id, cue.cue_id))?;

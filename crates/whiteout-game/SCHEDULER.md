@@ -1,5 +1,14 @@
 # WHITEOUT host cue scheduler (#68)
 
+**Current default (#70):** the canonical [generator-annex excerpt](SCREENPLAY.md)
+replaces the old relay demo. The contracts and old regression fixtures below
+remain supported. Concurrent presentation instances live in `SceneView.active`;
+the latest caption alone remains in `SceneView.presentation`. The actual Bevy
+resource also owns `deicer_isolated`, `engineering_lost` and `powered` status.
+New typed effects are `prepare_annex`, `isolate_deicer`, `start_generator` and
+`seal_annex`; `can_start_generator` requires isolated de-icer and open access.
+REPLACE cancels all cue-owned sound/motion entities. No graph-core API changes.
+
 Authority: [#68](https://github.com/rjtg/grimm/issues/68),
 [architecture #66](https://github.com/rjtg/grimm/issues/66). Based on main `7f22db2`
 (merged PR #72). All execution lives in the concrete WHITEOUT application;
