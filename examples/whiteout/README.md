@@ -83,3 +83,12 @@ M4.5 uses scene/checkpoint schema 2. Original schema-1 stories and bindings rema
 in `legacy-v1/`; use those files when loading an older checkpoint. See the
 [migration guide](../../docs/migrations/m4-5-scenes.md) and the real-session
 [text captures](captures/README.md).
+
+
+## Production screenplay
+
+The [complete interactive screenplay](production/screenplay/README.md) covers all
+canonical scenes, branches and endings with dialogue, blocking, camera, sound,
+production inventories and a source parity matrix. It is a human-editable
+production document, not another executable story format. The shipped YAML and
+CLI behavior are unchanged; the smaller Bevy excerpt remains a reference.

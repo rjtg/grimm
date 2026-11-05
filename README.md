@@ -343,3 +343,9 @@ GRIMM keeps narrative rule authority; Bevy owns mapped ECS storage, physical
 timing/deadline detection and host boundary snapshots. The small correlated
 deadline input is implemented; ECS refresh, non-replay continuation and the
 graphical slice remain planned. No Bevy dependency/application is added yet.
+
+
+The [complete WHITEOUT production screenplay](examples/whiteout/production/screenplay/README.md)
+adapts the full canonical adventure into cinematic, interactive scenes with cast,
+location/asset inventories and exact rule parity references. It is editorial
+source for later Bevy production; it changes no executable game rules.
