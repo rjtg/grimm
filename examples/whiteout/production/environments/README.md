@@ -42,6 +42,14 @@ count and exact named absence; no new survivor or location puzzle.
 
 ## Production recommendations
 
+This is a **provisional environment/cinematography bible**, not completed art
+sign-off, a drawn storyboard or final metric level specification. See the
+[maintainer review and next gates](VALIDATION.md#maintainer-review--next-production-gates).
+
+- Before detailed stage assets/animation, create a **separate visual storyboard /
+  animatic**: generator first, then radio/ridge. Draw actors, POV/edit order,
+  hand/prop inserts, actual bottom UI and alternate outcomes per screenplay
+  beat/cue/camera ID. The concept sheets and top-down plans here do not do that.
 - First rehearse module scale, registered thresholds, carry/brace/wheel contacts
   and the longest actual GUI panel using the existing cast placeholders. Verify
   door/hand/ankle/target visibility before commissioning polished environments.

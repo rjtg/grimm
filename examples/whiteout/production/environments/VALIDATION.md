@@ -119,3 +119,38 @@ claimed: the runtime is unchanged, and this task excludes screenshot automation.
 apply to this Markdown/text/PNG-only task; no new compiler, art test gate,
 authoring schema or runtime code is added. Image consistency is agent visual
 inspection, not something a hash/count script can prove.
+
+
+<a id="maintainer-review--next-production-gates"></a>
+## Maintainer review / next production gates
+
+[Maintainer review on PR #79](https://github.com/rjtg/grimm/pull/79#pullrequestreview-5789463171)
+reviewed head `61572ac` and found no blocking defect **in this documentation /
+concept-art scope**. It supports a provisional bible, not final art approval,
+metric level specification or completed storyboards. Its three nonblocking
+handoff items are accepted in the production order below, not claimed delivered:
+
+1. **Separate drawn storyboard/animatic gate before detailed assets.** Start with
+   generator G01/G03/G06/G07/G08: hidden coil, work/warning overlap, start failure
+   versus success sequence, timeout/return. Then radio R02–R05/R07 for jumper,
+   manual duty, gust, cold failure and actual call; ridge C01–C06 and ending
+   count/absence variants. Each drawn panel should identify canonical context,
+   screenplay beat, existing cue/action association and camera ID; POV, edit
+   order, actor/prop/hand pose, state branch and actual UI layer must be visible.
+   These are editorial panel notes, not a new protocol/schema or runtime tool.
+   Empty-set art, top-down diagrams and camera tables do **not** pass this gate.
+2. **Actual-viewport composition gate.** Test panels/mock-ups at current 1000×700
+   and longest actual variable-height Bevy text/choice panel, with the existing
+   cast silhouettes, injury and action props. Check active hand/target/timer
+   legibility, 64px-scale intent and greyscale separation. Record the crop or UI
+   adjustment rather than treating normalized upper-half targets as measured
+   proof. No screenshot automation is implemented by this bible.
+3. **Contact/metric rehearsal gate.** Use actual actor silhouettes/rig contacts
+   for hall↔annex/radio rotated threshold turns, supported Jonas/ankle space,
+   handwheel/lever/primer reach and partner carry. Measure resulting clearances
+   before accepting the proposed 2m dimensions as geometry. Record anatomical
+   injury side and frame joins; don't fix clipping by changing story predicates.
+
+Only after these reviews should final stage/animation assets be commissioned.
+No new Save/Restore gate is added. Source rules, current runtime and this PR's
+scope remain unchanged; subsequent production needs its own assigned work.

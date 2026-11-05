@@ -55,3 +55,9 @@ pass; new sounds aren't produced here.
 No renderer components, scene loader, asset pipeline, generic adapter, API,
 new protocol type, screenshot automation, codegen (#75), Save/Restore (#63),
 final mesh/sprite or executable graph change is delivered by this handoff.
+
+
+The [maintainer handoff gates](VALIDATION.md#maintainer-review--next-production-gates)
+explicitly require drawn storyboard/animatic, actual-viewport composition and
+contact/metric rehearsal before detailed assets. This bible contains none of
+those completed proofs; its plans/concepts remain provisional production input.
