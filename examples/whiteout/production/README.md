@@ -26,3 +26,10 @@ The [Character Bible](characters/README.md) (#34) develops the four persistent
 cast identities with [C]/[A]/[O] provenance, coherent concept sheets, exact prompts,
 wardrobe/injury continuity, performance planning and a cast-side handoff to #35.
 All art remains proposal material pending review, not final models or casting.
+
+
+The [Environment and Cinematography Bible](environments/README.md) (#35) covers
+all existing location IDs, fixed floor plans/thresholds, cast blocking, camera
+and light/weather continuity, actual concept references and the Bevy production
+handoff. All geometry/art remains proposed pending review; no level or new game
+rule is implemented.

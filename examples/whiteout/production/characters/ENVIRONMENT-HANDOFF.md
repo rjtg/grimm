@@ -40,3 +40,9 @@ Return unresolved contact/scale/lighting decisions to the character bible before
 commissioning final assets. Do not alter guards, work times or casualty facts to
 make a composition easier. #35 owns set/camera elaboration; #34 supplies cast
 constraints only.
+
+
+The [Environment and Cinematography Bible](../environments/README.md) now provides
+concrete layout/camera proposals against these requirements, with inspection
+findings and remaining contact/UI rehearsal gates. It does not lock open casting
+or injury-side decisions from this Character Bible.
