@@ -6,11 +6,12 @@ use crate::{
 use grimm_graph::{GraphEngine, StoryGraph};
 
 fn authored() -> StoryGraph {
-    serde_yaml_ng::from_str(include_str!("../../assets/bootstrap.yaml")).unwrap()
+    serde_yaml_ng::from_str(include_str!("fixtures/gameplay-v3.yaml")).unwrap()
 }
 fn app() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, bevy::input::InputPlugin, game::install));
+    app.insert_resource(Runtime::new(GraphEngine::new(authored()).unwrap()));
     scheduler::tests::advance(&mut app, 0);
     app
 }
@@ -264,6 +265,7 @@ fn typed_effects_reject_bad_arguments_and_overflow_without_partial_writes() {
         status: GeneratorStatus::Unstable,
         has_spare_part: true,
         applications: 4,
+        ..default()
     };
     for (id, args) in [
         ("unknown", Parameters::new()),
@@ -303,7 +305,7 @@ fn typed_effects_reject_bad_arguments_and_overflow_without_partial_writes() {
 #[test]
 fn manifest_signatures_and_domain_values_match_the_rust_bindings_and_authored_references() {
     let manifest: serde_yaml_ng::Value =
-        serde_yaml_ng::from_str(include_str!("../../assets/handlers.yaml")).unwrap();
+        serde_yaml_ng::from_str(include_str!("fixtures/handlers-v1.yaml")).unwrap();
     assert_eq!(manifest["schema_version"].as_u64(), Some(1));
     fn parses(group: &str, id: &str, args: Parameters) -> bool {
         match group {

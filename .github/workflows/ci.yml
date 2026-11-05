@@ -19,7 +19,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Install Linux windowing headers
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libwayland-dev libxkbcommon-dev
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libwayland-dev libxkbcommon-dev libasound2-dev
       - run: cargo fmt --check
       - run: cargo build --workspace --locked
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings

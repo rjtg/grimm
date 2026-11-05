@@ -12,7 +12,10 @@ full-sheet scene replacement. [Host cue scheduling](../crates/whiteout-game/SCHE
 (#68) adds physical scene time, deterministic arbitration, synchronous status
 effects and the 5s/30s generator demo. [Typed gameplay bindings](../crates/whiteout-game/GAMEPLAY.md)
 (#69) now demonstrate spare-part pickup, live conditions and repair versus
-isolation/timeout. The full slice (#70) and coherent host snapshots remain separate. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
+isolation/timeout. The canonical [generator-annex slice](../crates/whiteout-game/SCREENPLAY.md)
+(#70) adds overlapping camera/character/audio cues, a 30-second decision, powered
+and cold outcomes, and bounded replacement cleanup. It is a prepared excerpt,
+not full canonical gameplay parity; host snapshots (#63) remain deferred. The older stateful-host sequencing below records the implemented baseline; it must not force WorldState/rules/ACKs
 into the new core. PR #65 is closed without merge and is not part of this branch;
 any later reuse of its refresh requires the reviewed completed-control regression
 fix. No whole-game migration or handler codegen is included in this first step.

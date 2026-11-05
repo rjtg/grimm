@@ -3,13 +3,23 @@
 schema_version: 1
 types:
   ItemId: [spare_part]
-  GeneratorStatus: [running, unstable, isolated, stopped, repaired]
+  GeneratorStatus: [running, unstable, isolated, stopped, repaired, powered]
 conditions:
+  can_start_generator:
+    args: {}
   can_repair_generator:
     args: {required_item: ItemId}
   can_take_spare_part:
     args: {}
 effects:
+  prepare_annex:
+    args: {}
+  isolate_deicer:
+    args: {}
+  start_generator:
+    args: {}
+  seal_annex:
+    args: {}
   set_generator_status:
     args: {status: GeneratorStatus}
   take_item:

@@ -1,144 +1,91 @@
-# WHITEOUT — Bevy gameplay demo (#67–#69)
+# WHITEOUT — playable Bevy vertical slice (#67–#70)
 
-A concrete WHITEOUT game application embedding `grimm-graph`. This small
-prototype is intentionally smaller than the existing canonical CLI adventure.
-It does not provide a reusable Bevy adapter or another narrative state machine.
+A concrete WHITEOUT game using `grimm-graph` as a library. The generator-annex
+excerpt adapts the existing canonical text adventure: prepare the damaged
+de-icer, start the generator before access locks, or return without power.
+There is no universal adapter, second story FSM or rule evaluation in GRIMM.
 
 ## Build and run
 
-Rust **1.97.1 or newer**; Bevy is pinned to **0.20.1**. The verified toolchain is
-Rust/Cargo 1.98.1. From the repository root:
+Rust **1.97.1+**, verified with 1.98.1; Bevy pinned to **0.20.1**.
+From the repository root:
 
 ```bash
 CARGO_PROFILE_DEV_DEBUG=0 cargo build -p whiteout-game --locked
 CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked
 ```
 
-Disabling development debug symbols reduces Bevy's disk/memory requirements; it
-changes no game rules. After dependencies are downloaded the same commands work
-with `--offline`. No external images, fonts, audio or runtime network are needed:
-the YAML graph is embedded and Bevy supplies its built-in default font.
-
-On Linux, use a working X11 or Wayland session and a Vulkan-capable graphics
-driver. Native build prerequisites on Debian/Ubuntu (in addition to a C compiler
-and Rust):
+Debug symbols are disabled to reduce Bevy build size. Once dependencies are
+cached, `--offline` works. Graph, placeholder WAVs and font are embedded; there
+are no runtime network downloads. Linux needs an X11/Wayland session, Vulkan
+support and an audio output for sound. Debian/Ubuntu build prerequisites:
 
 ```bash
-sudo apt-get install pkg-config libwayland-dev libxkbcommon-dev
+sudo apt-get install pkg-config libwayland-dev libxkbcommon-dev libasound2-dev
 ```
 
-CI installs the Wayland/xkbcommon headers explicitly; it needs no display/GPU to
-build or run the tests. The selected Bevy features include UI rendering, windowing, keyboard and
-multithreading, but no audio, gamepad, PBR/3D or third-party game framework.
-The first dependency build is substantially larger than the CLI build. The CLI
-still runs independently with `cargo run -p grimm-cli --locked`.
-
-If the installed hardware Vulkan driver cannot provide a Bevy-compatible
-adapter (as with the Haswell driver on the development machine), a Mesa software
-Vulkan driver can run this small prototype. On Manjaro/Arch:
+CI installs these headers but opens no window/audio device. With unsupported
+hardware Vulkan, Mesa's software driver can run this small scene. On Arch/Manjaro:
 
 ```bash
 sudo pacman -Syu vulkan-swrast
 ```
 
-The normal run command then works; the desktop smoke test selected llvmpipe
-automatically. Software rendering is suitable for this static UI proof, not a
-performance claim for the later graphical game.
+The normal run command then works with llvmpipe. This is no performance claim
+for a full game. The CLI remains independent: `cargo run -p grimm-cli --locked`.
 
-## Play and manual smoke test
+## Play
 
-**Repair / restored power**:
+1. Watch the 18-second approach: Jonas and Mara move towards the generator;
+   the camera shows the de-icer diagram.
+2. The annex clock starts automatically. At two seconds the fuse is isolated;
+   at four seconds choices unlock. **1** leaves the annex; **2** starts the
+   generator. Gray choices explain their lock. Release keys between selections.
+3. Wait ten seconds into the annex to hear Lea's warning and see **20 seconds**
+   remaining. This reveals the running clock; it does not start a new countdown.
+4. **2** enters the animated 4.5-second startup. Power commits after four seconds;
+   the hall then warms. Alternatively, **1** leaves with no power, or silence
+   through 30 seconds seals the annex automatically. Timeout wins at equality.
+5. Outcomes settle for six seconds (warm) or nine (cold), then **1** replays.
+   Holding a key does not carry an action into the next scene. Close to exit.
 
-1. In `GENERATOR_ROOM`, press **2** to take the spare relay. At 600ms the
-   inventory display changes; after 900ms you return to the room. Taking another
-   part is now shown as locked.
-2. Release and press **1** to inspect the panel. At 2s the generator becomes
-   unstable; at 5s controls open with 25s left.
-3. Press **2** to repair. The repair transition starts immediately, but the part
-   is consumed and status becomes repaired only at 1200ms. At 1500ms the scene
-   advances automatically to **Power restored**.
+A full route takes roughly 31–57 seconds plus decision/outcome waiting. Keyboard
+input is implemented; there are no clickable choices. The side-on annex,
+characters, moving levers, flywheel, shutter, camera shots, snow and three sounds
+are intentionally simple [original placeholders](assets/audio/README.md).
 
-**Isolation / no restored power**:
+The separate [SCREENPLAY.md](SCREENPLAY.md) specifies each authored beat, cue,
+asset/handler mapping, canonical source and **gameplay simplifications**, including
+the prepared latch/warm hands and protected startup after timely selection.
+This is not the entire WHITEOUT adventure.
 
-1. Skip the relay: press **1** from the room. After 5s, repair is shown as locked
-   with a missing-part reason.
-2. Press **1** to isolate the generator. At 1200ms status becomes isolated; at
-   1500ms the safe outcome appears, with power still unavailable.
+## Architecture and verification
 
-**Timeout / blackout**: inspect the panel and leave it unanswered. At scene time
-30000ms the hidden timeout edge reaches the blackout. It wins at equality.
+- `src/game.rs`: composition, binding validation, keyboard collection.
+- `src/scheduler.rs`: host clock, cue/input arbitration, epoch deduplication and REPLACE.
+- `src/gameplay.rs`: actual Bevy generator state and typed conditions/effects.
+- `src/content.rs`: text and explicit host input/countdown gates.
+- `src/cueables.rs`, `src/stage.rs`: concrete sprite/camera/audio bindings and lifecycle.
+- `src/screen.rs`: current captions, conditions, status and countdown.
 
-Each outcome offers **1** to restart through an authored reset cue, clearing the
-part and returning to a running generator. Release keys between selections.
-Holding a key never skips a scene or auto-selects when controls open. Close the
-window to exit. Hidden `continue`/timeout edges never appear as numbered choices.
-
-See [GAMEPLAY.md](GAMEPLAY.md) for typed bindings, world-state ownership and live
-availability/rechecks, and [SCHEDULER.md](SCHEDULER.md) for the preserved timing
-and failure contract.
-
-## Scheduler desktop verification (PR #73)
-
-Linux/X11, Bevy 0.20.1, Mesa 26.2.4 llvmpipe (LLVM 23.1.1): captured the real
-1000×700 application window with locked initial controls, the status change,
-ready controls with **25s** remaining, transition presentation and safe outcome.
-A second pass without selection reached the blackout. Actual key press/release
-events targeted the application window; the log showed:
-
-```text
-GENERATOR_WARNING epoch=1
-GENERATOR_TRANSITION epoch=2
-GENERATOR_DECISION epoch=3
-GENERATOR_ROOM epoch=4
-GENERATOR_WARNING epoch=5
-GENERATOR_FAILED epoch=6
-```
-
-The automatic transition completed about 1.58s after entry (1500ms, on the next
-render frame); the timeout occurred about 30.02s after warning entry. The window
-closed cleanly. Exact timing/race assertions use the deterministic tests, not
-wall-clock sleep or screenshot timing.
-
-## Gameplay desktop verification (2026-11-04)
-
-Played both current routes in the real 1000×700 Bevy/X11 window on Mesa llvmpipe.
-Captured the room with the relay carried and pickup locked; the warning with
-repair available and 25s remaining; the repair transition; and the powered
-outcome with the part consumed. Restart cleared the part. A second warning
-showed repair locked; pressing its key left the warning active while the
-countdown continued. Isolation then reached the distinct unpowered safe result.
-The window closed cleanly.
-
-The actual path was supplies → room → warning → repair → repaired → reset →
-room → warning → isolation transition → decision (epochs 1–10). Exact cue timing,
-mutation and stale-input assertions are covered by fake-clock tests, not by
-screenshot timing.
-
-## Architecture, tests and limits
-
-See the [scheduler contract](SCHEDULER.md) for node-relative Bevy real time,
-central arbitration, instance deduplication, REPLACE, failure behavior and the
-one-traversal-per-frame budget. `assets/bootstrap.yaml` is a small authored graph,
-not a full port of the existing WHITEOUT adventure.
-
-- `src/game.rs`: composition, asset validation and keyboard collection.
-- `src/scheduler.rs`: WHITEOUT clock/arbiter; GRIMM owns node identity/epoch.
-- `src/gameplay.rs`: typed conditions/effects over the actual generator resource.
-- `src/content.rs`: text/color bindings and explicit host input/countdown gates.
-- `src/screen.rs`: fixed camera, executed presentation, status and countdown UI.
+See [SCHEDULER.md](SCHEDULER.md) and [GAMEPLAY.md](GAMEPLAY.md). Presentation
+instances can overlap. A declared duration is not proof of completed playback.
+Missing bindings/resources visibly stop the entry. REPLACE despawns old audio
+and motion work while retaining the bounded fixed set and three source assets.
+No change to `grimm-graph`, cue ACK, provider, save system or generic media layer.
 
 ```bash
 CARGO_PROFILE_DEV_DEBUG=0 cargo test -p whiteout-game --locked
 ```
 
-Tests use Bevy MinimalPlugins/InputPlugin with a deterministic fake clock,
-without `sleep()`, a window or GPU. The manual steps above exercise actual
-window/input/rendering. No WorldStateProvider, GRIMM cue ACK or second story FSM.
+Tests use deterministic Bevy time, no sleeps, window, GPU or audio output. The
+original #67–#69 fixtures remain tested unchanged alongside canonical success,
+abandonment, timeout, timed effects, overlapping cues, current conditions,
+deadline equality, cleanup, missing assets and actual WAV decoding.
+Desktop verification is recorded separately in [PLAYTEST.md](PLAYTEST.md).
 
-Effects remain synchronous and game-specific; execution errors are visible and
-stop the entry. `duration_ms` is metadata, not media completion. Full WHITEOUT
-(#70), save/restore (#63), asset generation and codegen remain out of scope.
-
-Architecture: [#66](https://github.com/rjtg/grimm/issues/66), scheduler
-[#68](https://github.com/rjtg/grimm/issues/68),
+Save/Restore (#63), codegen (#75), finished art/voice, mouse controls and the
+remaining canonical locations/routes are outside this slice.
+Architecture: [#66](https://github.com/rjtg/grimm/issues/66), slice
+[#70](https://github.com/rjtg/grimm/issues/70),
 [ADR-0009](../../docs/adr/0009-story-graph-03-foundation.md).

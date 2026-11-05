@@ -23,7 +23,10 @@ epoch/cue deduplication. Status effects are synchronous and failures stop the
 entry visibly. [WHITEOUT gameplay bindings](../crates/whiteout-game/GAMEPLAY.md)
 (#69) evaluate typed conditions on the actual generator resource and recheck
 them at selection, with scheduled pickup/repair effects. No clock, callback ACK
-or execution dependency is added to the graph.
+or execution dependency is added to the graph. The [canonical generator slice](../crates/whiteout-game/SCREENPLAY.md)
+(#70) adds concurrent WHITEOUT sprite/camera/audio instances. Full replacement
+despawns obsolete media/motion entities; declared durations never imply gameplay
+success. This remains concrete game code, with no graph-core changes.
 
 ## Current Bevy host decision (2026-11-03)
 

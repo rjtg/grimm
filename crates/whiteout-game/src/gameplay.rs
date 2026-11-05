@@ -11,6 +11,7 @@ pub(crate) enum GeneratorStatus {
     Isolated,
     Stopped,
     Repaired,
+    Powered,
 }
 impl GeneratorStatus {
     pub fn label(self) -> &'static str {
@@ -20,6 +21,7 @@ impl GeneratorStatus {
             Self::Isolated => "Safely isolated",
             Self::Stopped => "Stopped / station dark",
             Self::Repaired => "Repaired / station powered",
+            Self::Powered => "Power stable",
         }
     }
     fn parse(value: &str) -> Result<Self, String> {
@@ -29,6 +31,7 @@ impl GeneratorStatus {
             "isolated" => Ok(Self::Isolated),
             "stopped" => Ok(Self::Stopped),
             "repaired" => Ok(Self::Repaired),
+            "powered" => Ok(Self::Powered),
             _ => Err(format!("unknown generator status '{value}'")),
         }
     }
@@ -51,23 +54,30 @@ impl ItemId {
 pub(crate) struct Generator {
     pub status: GeneratorStatus,
     pub has_spare_part: bool,
+    pub deicer_isolated: bool,
+    pub engineering_lost: bool,
     pub applications: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Condition {
-    CanRepair { required_item: ItemId },
-    CanTakeSparePart,
+    Repair { required_item: ItemId },
+    TakeSparePart,
+    StartGenerator,
 }
 impl Condition {
     pub fn parse(call: &ConditionCall) -> Result<Self, String> {
         match call.condition_id.as_str() {
-            "can_repair_generator" => Ok(Self::CanRepair {
+            "can_repair_generator" => Ok(Self::Repair {
                 required_item: ItemId::parse(one_text(&call.args, "required_item")?)?,
             }),
+            "can_start_generator" => {
+                no_args(&call.args)?;
+                Ok(Self::StartGenerator)
+            }
             "can_take_spare_part" => {
                 no_args(&call.args)?;
-                Ok(Self::CanTakeSparePart)
+                Ok(Self::TakeSparePart)
             }
             id => Err(format!("unknown WHITEOUT condition '{id}'")),
         }
@@ -75,15 +85,27 @@ impl Condition {
 
     fn blocked_reason(self, state: &Generator) -> Option<&'static str> {
         match self {
-            Self::CanRepair {
+            Self::Repair {
                 required_item: ItemId::SparePart,
             } if !state.has_spare_part => Some("requires a spare part"),
-            Self::CanRepair { .. } if state.status != GeneratorStatus::Unstable => {
+            Self::Repair { .. } if state.status != GeneratorStatus::Unstable => {
                 Some("requires an unstable generator")
             }
-            Self::CanTakeSparePart if state.has_spare_part => Some("spare part already carried"),
-            Self::CanTakeSparePart if state.status != GeneratorStatus::Running => {
+            Self::TakeSparePart if state.has_spare_part => Some("spare part already carried"),
+            Self::TakeSparePart if state.status != GeneratorStatus::Running => {
                 Some("supplies require a safe generator room")
+            }
+            Self::StartGenerator if state.engineering_lost => Some("annex access is sealed"),
+            Self::StartGenerator if !state.deicer_isolated => {
+                Some("isolate the overloaded de-icer first")
+            }
+            Self::StartGenerator
+                if matches!(
+                    state.status,
+                    GeneratorStatus::Repaired | GeneratorStatus::Powered
+                ) =>
+            {
+                Some("generator is already supplying power")
             }
             _ => None,
         }
@@ -107,6 +129,10 @@ pub(crate) enum Effect {
     TakeItem(ItemId),
     RepairGenerator { required_item: ItemId },
     ResetDemo,
+    PrepareAnnex,
+    IsolateDeicer,
+    StartGenerator,
+    SealAnnex,
 }
 impl Effect {
     pub fn parse(id: &str, args: &Parameters) -> Result<Self, String> {
@@ -118,6 +144,22 @@ impl Effect {
             "repair_generator" => Ok(Self::RepairGenerator {
                 required_item: ItemId::parse(one_text(args, "required_item")?)?,
             }),
+            "prepare_annex" => {
+                no_args(args)?;
+                Ok(Self::PrepareAnnex)
+            }
+            "isolate_deicer" => {
+                no_args(args)?;
+                Ok(Self::IsolateDeicer)
+            }
+            "start_generator" => {
+                no_args(args)?;
+                Ok(Self::StartGenerator)
+            }
+            "seal_annex" => {
+                no_args(args)?;
+                Ok(Self::SealAnnex)
+            }
             "reset_demo" => {
                 no_args(args)?;
                 Ok(Self::ResetDemo)
@@ -131,6 +173,8 @@ impl Generator {
     pub fn apply(&mut self, id: &str, args: &Parameters) -> Result<(), String> {
         let effect = Effect::parse(id, args)?;
         // Compute and validate every value before touching actual ECS fields.
+        let mut isolated = self.deicer_isolated;
+        let mut lost = self.engineering_lost;
         let (status, has_spare_part) = match effect {
             Effect::SetGeneratorStatus(status) => (status, self.has_spare_part),
             Effect::TakeItem(ItemId::SparePart) => {
@@ -140,13 +184,35 @@ impl Generator {
                 (self.status, true)
             }
             Effect::RepairGenerator { required_item } => {
-                if let Some(reason) = (Condition::CanRepair { required_item }).blocked_reason(self)
-                {
+                if let Some(reason) = (Condition::Repair { required_item }).blocked_reason(self) {
                     return Err(format!("cannot repair generator: {reason}"));
                 }
                 (GeneratorStatus::Repaired, false)
             }
-            Effect::ResetDemo => (GeneratorStatus::Running, false),
+            Effect::ResetDemo => {
+                isolated = false;
+                lost = false;
+                (GeneratorStatus::Running, false)
+            }
+            Effect::PrepareAnnex => {
+                isolated = false;
+                lost = false;
+                (GeneratorStatus::Stopped, false)
+            }
+            Effect::IsolateDeicer => {
+                isolated = true;
+                (self.status, self.has_spare_part)
+            }
+            Effect::StartGenerator => {
+                if let Some(reason) = Condition::StartGenerator.blocked_reason(self) {
+                    return Err(format!("cannot start generator: {reason}"));
+                }
+                (GeneratorStatus::Powered, self.has_spare_part)
+            }
+            Effect::SealAnnex => {
+                lost = true;
+                (self.status, self.has_spare_part)
+            }
         };
         let applications = self
             .applications
@@ -154,6 +220,8 @@ impl Generator {
             .ok_or("generator effect counter overflow")?;
         self.status = status;
         self.has_spare_part = has_spare_part;
+        self.deicer_isolated = isolated;
+        self.engineering_lost = lost;
         self.applications = applications;
         Ok(())
     }
