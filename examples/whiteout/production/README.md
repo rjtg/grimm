@@ -1,30 +1,22 @@
-# WHITEOUT screenplay writing
+# WHITEOUT production writing
 
-Read the [blackout screenplay sample](blackout.screenplay.md). It is an alternative
-screenplay-style text asset associated with the existing `blackout.arrival`
-presentation, analogous to the prose in `text.yaml`. Its dialogue, action,
-blocking, shots, lighting and sound notes help later visual production.
+The [complete interactive screenplay](screenplay/README.md) adapts all nine
+canonical contexts, decisions and endings. Start there for production: it defines
+the readable editorial format, cinematic beats, exact source-rule ledger, cast,
+locations, stable asset/cueable inventory, parity evidence and production order.
 
-Write and review it as text. There is no screenplay schema, compiler, runtime,
-`check-screenplay` command or automated coverage/text-equality gate. Prose may be
-freely adapted into dialogue and visible action. Optional semantic-ID notes help
-associate a passage with the existing presentation; they do not define another
-story graph or execution layer. The sample is not wired into the CLI, which keeps
-using its existing prose assets and lookup behavior.
+The earlier [blackout sample](blackout.screenplay.md) remains an editorial source
+and historical standalone draft. Its note that only one scene is adapted applies
+to that old increment; the full screenplay now supersedes that scope. The new
+opening uses its four-face composition, repeated radio breath and injury blocking
+while fitting the canonical opening budget. The Bevy [generator excerpt](../../../crates/whiteout-game/SCREENPLAY.md)
+provides an actual staging reference; its prepared-route simplifications do not
+limit the full adaptation.
 
-Human editorial review should consider whether the scene communicates its facts,
-characters, clues and decision clearly, preserves branch/outcome meaning and
-avoids revealing information too early. Creative pacing and later production
-needs can be discussed without a parser restricting the writing. The canonical
-`story.yaml` rules, prose bindings, authored durations and outcomes are unchanged.
-
-This increment covers one readable scene. Next, adapt the generator's warning
-and startup sequence in another content increment, including alternative repair
-feedback and its dramatic timing. Technical completeness checks against actual
-renderer-exported assets and cue bindings remain a separate later production gate.
-The existing M4.6 text-resource checks are unchanged.
-
-A possible long-term progression from descriptions through screenplay and
-previsualization to polished graphics is a creative workflow vision. It does not
-require an asset-tier/version framework, interchangeable runtime layers, fallback
-selection, a screenplay-specific validator or an authoring studio now.
+These are human-editable documents. There is no screenplay schema, compiler,
+runtime, code generator, new protocol or `check-screenplay` command. [C] facts and
+exact rule references remain distinct from [A] proposed dialogue/staging and [R]
+cue associations. Coverage checks documented in the validation report support
+editorial review; they cannot judge performance quality or prove every state path.
+Existing runnable YAML, CLI text and game behavior remain unchanged. No assets
+are generated and no new Bevy application behavior is implemented here.
