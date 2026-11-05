@@ -60,7 +60,10 @@ central x=2..4 lane kept clear for supported/carry movement. South camera C0
 at (3,0.5,z1.6) looks towards (3,4,z1.1); dialogue positions A(3,2.6),
 M(2,4.6), J(1,5.8). Support approaches seat from east/south, leaves extended ankle
 space, then moves via central lane to a selected door. No costume/seat teleports.
-Eye/interaction axis is A↔M/J; keep initial coverage on the southern side.
+A proposed warm-hand mark (.5,5.0) faces a duct outlet at (0,5.0), north
+of the west radio opening. Keep Jonas's protected foot zone around (1,5.0)
+clear; the warming stance is beside it, not across it. Eye/interaction axis is
+A↔M/J; keep initial coverage on the southern side.
 
 ## Stores — one threshold, accessible preparation
 
@@ -81,7 +84,8 @@ same access; no rear aisle route escapes it.
 Jonas faces east; protected ankle extends into x≈1.3 space, away from central
 carry lane x=3..5. Mara kneels near (1.1,2.2), Alex treats from (1.8,2.1).
 Tool tray top z≈0.85; log/control z≈1.15; pickup shelf range z≈0.8..1.4.
-Alex moves to each station rather than reaching 2m from one mark. Clear proposed
+Alex moves to each station rather than reaching 2m from one mark: tray work
+mark about (2.1,2.8), rack (5.0,2.4), terminal (4.6,3.0). Clear proposed
 2m transfer lane reaches 2m threshold; bench/gear must not project into it.
 Camera south (3,.5,z1.6), tool/log inserts from same southern half-plane. On
 accepted exit, support rises/repositions, clears the door, **then** shutter seals.
@@ -114,7 +118,7 @@ looks north-east; technical coverage stays south of the engine face.
 Mara/Jonas start sheltered southwest (about .7,.8), not blocking the central
 retreat. If the assisted performance applies, Mara supports a short move to
 low rail (1.2,2.2), leaving the proposed injured leg unloaded; Alex approaches
-latch from (2.2,1.7). Operator can shift east to fuse without crossing engine
+latch from (2.2,1.9). Operator can shift east to fuse without crossing engine
 geometry. Control heights z≈.9..1.2; proposed 2m door and clear 2m threshold
 zone. Support/carry contacts and rail dimensions still require rig rehearsal.
 Timeout staging gets people clear before closure; it does not trap/kill a new
@@ -130,8 +134,7 @@ connected north extension x3.5..5.5, y4..6, not a new choice node.
                       [wheel (4.5,5)]
                          L / A
  +--- sealed window --- open mast working threshold ---+
- | transmitter/                                           
- | bracket + mug          clear visual axis              |
+ | transmitter / bracket + mug    clear visual axis     |
  | (1.8..2.3,2.8)         north-east                     |
  |                                                      |
  +---------------- SOUTH (3,0) --------------------------+
