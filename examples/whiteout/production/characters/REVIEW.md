@@ -47,8 +47,29 @@ The four sheets and detailed briefs are reviewable authoring artifacts.
 
 ## Verification
 
-Documentation/reference audit and required native workspace checks are being
-run before final PR readiness; final results will replace this paragraph.
+Local verification on 2026-11-05, Rust/Cargo 1.98.1:
+
+- `cargo fmt --all --check`: passed.
+- `cargo build --workspace --locked`: passed.
+- `cargo clippy --workspace --all-targets --locked -- -D warnings`: passed.
+- `cargo test --workspace --locked`: **258 passed**, zero failed.
+
+Build/test/Clippy used `CARGO_PROFILE_DEV_DEBUG=0 CARGO_BUILD_JOBS=2`.
+The one-off documentation/reference audit verified four inherited root IDs,
+C/A/O markers on all four specifications, catalogue coverage of derived IDs,
+four valid PNGs with provenance hashes and four exact prompt files, local links,
+and byte-for-byte preservation of canonical YAML/text/scopes from `09273b1`.
+It is a local audit, not a new repository compiler or required authoring gate.
+
+Qualitative camera/pose review: the neutral images show complete silhouettes
+and consistent clothing across views; Mara's low kneel and Jonas's rail brace
+leave the proposed injured ankle protected; Lea's handwheel study shows the
+needed two-hand/shoulder acting intent. These are plausible contact/layout briefs,
+not validated real-world dimensions or a completed rig. Alex's device study is a
+control surrogate, not additional canonical equipment. Separate hood, short teal
+mass, protected long orange torso and cap/long blue-grey coat support silhouette
+separation. Actual 64px/greyscale game-window readability and measured set contact
+checks remain explicit downstream gates for #35, not results claimed here.
 No source-file LSP diagnostics apply to Markdown/text/PNG-only changes. Existing
 Rust tests remain appropriate regression evidence; no tests assert exact artwork
 or dictate the author's dialogue/face choices.

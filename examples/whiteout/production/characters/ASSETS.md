@@ -20,7 +20,7 @@ No model/texture/rig/animation files exist under these planned IDs yet.
 
 Reference artifacts: `actor.alex.reference.v1`, `actor.mara.reference.v1`,
 `actor.jonas.reference.v1`, `actor.lea.reference.v1` map to the corresponding
-`references/*-v1.png` **only when actually delivered**, with status/provenance in
+`references/*-v1.png`, all four delivered, with status/provenance in
 REFERENCES.md. Prompts are supporting briefs, not proof of exact pixel reproduction.
 
 ## Model / texture handoff content [A], decisions still open
