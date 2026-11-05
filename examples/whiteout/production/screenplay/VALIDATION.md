@@ -20,6 +20,9 @@ WALKTHROUGH, the original blackout draft and the real Bevy excerpt. Historical
 | Original content integrity | `story.yaml`, `text.yaml`, `scenes.yaml` byte-identical to baseline; SHA-256 in PARITY. Original playthrough files and Rust implementation also unchanged. |
 | Existing slice | SLICE-COMPARISON maps all six prototype nodes and its protected startup/preparation assumptions to full canonical requirements. |
 
+The local correspondence audit confirmed **115** distinct referenced production
+IDs, all inventoried, and resolved local document links/beat anchors.
+
 A one-off local audit read the YAML and documents, checked counts/qualified
 references, chapter-to-inventory references, source hashes and relative links.
 RULES/PARITY are checked-in static reference documents, **not generated runtime
@@ -110,5 +113,34 @@ Full Rust formatting/build/lint/tests and actual existing CLI routes are recorde
 here when complete. No new runtime feature, story format, screenshot automation,
 asset generation or generic authoring framework is introduced by validation.
 
-Current verification: in progress; final commands/results will replace this line
-before the PR is marked ready for review.
+Local results on 2026-11-05, Rust/Cargo 1.98.1:
+
+| Check | Result |
+| --- | --- |
+| `cargo fmt --all --check` | Passed. |
+| `cargo build --workspace --locked` | Passed. |
+| `cargo clippy --workspace --all-targets --locked -- -D warnings` | Passed, no warnings. |
+| `cargo test --workspace --locked` | 258 passed, zero failed, including 37 WHITEOUT Bevy tests and the existing canonical CLI tests. |
+| `cargo run -p grimm-cli --locked --offline -- check-scene examples/whiteout/story.yaml` | Valid. Existing informational notices for state-dependent stores/dispatch/generator/radio/crisis; not an exhaustive reachability proof. |
+| `cargo run -p grimm-cli --locked --offline -- index-scene examples/whiteout/story.yaml` | Exported 9 contexts, 35 actions, 95 cues, agreeing with PARITY. |
+| Four existing CLI playthroughs | Full rescue and lever rescue → FOUR NAMES ON THE MANIFEST; partial survival → THE EMPTY PLACE; station lost → WHITEOUT. |
+| Source integrity / references | Canonical files unchanged, hashes match; all qualified action and narrative references occur in cinematic chapters; all referenced production IDs inventoried; local links resolve. |
+
+Build/test/Clippy used `CARGO_PROFILE_DEV_DEBUG=0 CARGO_BUILD_JOBS=2`. No Rust
+source changed, so no source-file LSP diagnostics or new Rust tests were needed.
+The required existing workspace checks still ran in full. The screenplay itself
+is not a test asserting exact dialogue equality or an executable schema.
+
+To repeat each actual native playthrough after the workspace build:
+
+```bash
+target/debug/grimm-cli play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml --manual-clock < examples/whiteout/playthroughs/full-rescue.input
+target/debug/grimm-cli play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml --manual-clock < examples/whiteout/playthroughs/lever-rescue.input
+target/debug/grimm-cli play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml --manual-clock < examples/whiteout/playthroughs/partial-survival.input
+target/debug/grimm-cli play-scene examples/whiteout/story.yaml examples/whiteout/text.yaml --manual-clock < examples/whiteout/playthroughs/station-lost.input
+```
+
+No new graphical smoke is claimed: the Bevy code/assets are unchanged. PR #76's
+recorded desktop evidence is compared in SLICE-COMPARISON. Future table-read,
+layout rehearsal and listening remain the next production gates, not claims
+made by a Markdown coverage check.

@@ -27,6 +27,9 @@ Each beat separates:
   reusable content, not instance identity. For action outcomes use
   `ACTION context.action / outcome N / cue_id`; N is the authored ordered branch,
   starting at 1. Complete paths and predicates are in [RULES.md](RULES.md).
+The canonical M2 story has context/action IDs rather than separate named graph
+edges. A future graph adaptation must map these explicitly; this script does not
+invent replacement edge IDs.
 
 Scene choice tables show every authored action, work duration and branch
 meaning. Exact guards, assignments and **first-matching outcome order** live in
