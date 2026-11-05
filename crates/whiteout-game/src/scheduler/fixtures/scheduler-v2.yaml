@@ -1,0 +1,63 @@
+# A small WHITEOUT scheduler proof, not the canonical adventure.
+schema_version: 1
+id: whiteout_bootstrap
+version: 2
+start: GENERATOR_ROOM
+nodes:
+- id: GENERATOR_ROOM
+  cues:
+  - cue_id: room
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_room}
+  - cue_id: reset_generator
+    at_ms: 0
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: running}}
+  edges:
+    inspect_panel: {target: GENERATOR_WARNING}
+- id: GENERATOR_WARNING
+  cues:
+  - cue_id: warning
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_warning, duration_ms: 5000}
+  - cue_id: warning_lamp
+    at_ms: 2000
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: unstable}}
+  - cue_id: enable_interaction
+    at_ms: 5000
+    instruction: {kind: presentation, presentation_id: generator_ready, duration_ms: 25000}
+  - cue_id: deadline
+    at_ms: 30000
+    instruction: {kind: traverse_edge, edge_id: generator_exploded}
+  edges:
+    isolate_generator: {target: GENERATOR_TRANSITION}
+    generator_exploded: {target: GENERATOR_FAILED, expose: false}
+- id: GENERATOR_TRANSITION
+  cues:
+  - cue_id: breaker_presentation
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_transition, duration_ms: 1500}
+  - cue_id: isolate
+    at_ms: 1200
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: isolated}}
+  - cue_id: onward
+    at_ms: 1500
+    instruction: {kind: traverse_edge, edge_id: continue}
+  edges:
+    continue: {target: GENERATOR_DECISION, expose: false}
+- id: GENERATOR_DECISION
+  cues:
+  - cue_id: safe
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_decision}
+  edges:
+    restart_demo: {target: GENERATOR_ROOM}
+- id: GENERATOR_FAILED
+  cues:
+  - cue_id: stop
+    at_ms: 0
+    instruction: {kind: effect, effect_id: set_generator_status, args: {status: stopped}}
+  - cue_id: blackout
+    at_ms: 0
+    instruction: {kind: presentation, presentation_id: generator_failed}
+  edges:
+    restart_demo: {target: GENERATOR_ROOM}

@@ -1,4 +1,4 @@
-# WHITEOUT — Bevy scheduler demo (#67/#68)
+# WHITEOUT — Bevy gameplay demo (#67–#69)
 
 A concrete WHITEOUT game application embedding `grimm-graph`. This small
 prototype is intentionally smaller than the existing canonical CLI adventure.
@@ -47,23 +47,37 @@ performance claim for the later graphical game.
 
 ## Play and manual smoke test
 
-1. Start the app and press **1** in `GENERATOR_ROOM` to inspect the panel.
-2. `GENERATOR_WARNING` starts at T=0 with controls closed. At 2 seconds the
-   generator status changes to unstable. At 5 seconds the explicit ready cue
-   opens option **1** and reveals a **25-second countdown**.
-3. Release and press **1** before zero: `GENERATOR_TRANSITION` starts immediately.
-   At 1200ms the host isolates the generator; at 1500ms an authored hidden edge
-   automatically leads to `GENERATOR_DECISION`. No second key press is required.
-4. Press **1** to restart. Inspect the panel again, then wait without choosing:
-   at scene T=30 seconds `GENERATOR_FAILED` replaces the warning and shows the
-   stopped generator. Press **1** to restart or close the window to exit.
+**Repair / restored power**:
 
-Holding a key must not skip scenes or become a new choice when controls open.
-The hidden `generator_exploded` and transition `continue` edges are never shown.
-The timeout wins at exactly 30000ms; the automated tests cover that boundary
-without relying on a human pressing a key at an exact instant.
+1. In `GENERATOR_ROOM`, press **2** to take the spare relay. At 600ms the
+   inventory display changes; after 900ms you return to the room. Taking another
+   part is now shown as locked.
+2. Release and press **1** to inspect the panel. At 2s the generator becomes
+   unstable; at 5s controls open with 25s left.
+3. Press **2** to repair. The repair transition starts immediately, but the part
+   is consumed and status becomes repaired only at 1200ms. At 1500ms the scene
+   advances automatically to **Power restored**.
 
-## Recorded desktop verification (2026-11-04)
+**Isolation / no restored power**:
+
+1. Skip the relay: press **1** from the room. After 5s, repair is shown as locked
+   with a missing-part reason.
+2. Press **1** to isolate the generator. At 1200ms status becomes isolated; at
+   1500ms the safe outcome appears, with power still unavailable.
+
+**Timeout / blackout**: inspect the panel and leave it unanswered. At scene time
+30000ms the hidden timeout edge reaches the blackout. It wins at equality.
+
+Each outcome offers **1** to restart through an authored reset cue, clearing the
+part and returning to a running generator. Release keys between selections.
+Holding a key never skips a scene or auto-selects when controls open. Close the
+window to exit. Hidden `continue`/timeout edges never appear as numbered choices.
+
+See [GAMEPLAY.md](GAMEPLAY.md) for typed bindings, world-state ownership and live
+availability/rechecks, and [SCHEDULER.md](SCHEDULER.md) for the preserved timing
+and failure contract.
+
+## Scheduler desktop verification (PR #73)
 
 Linux/X11, Bevy 0.20.1, Mesa 26.2.4 llvmpipe (LLVM 23.1.1): captured the real
 1000×700 application window with locked initial controls, the status change,
@@ -85,6 +99,21 @@ render frame); the timeout occurred about 30.02s after warning entry. The window
 closed cleanly. Exact timing/race assertions use the deterministic tests, not
 wall-clock sleep or screenshot timing.
 
+## Gameplay desktop verification (2026-11-04)
+
+Played both current routes in the real 1000×700 Bevy/X11 window on Mesa llvmpipe.
+Captured the room with the relay carried and pickup locked; the warning with
+repair available and 25s remaining; the repair transition; and the powered
+outcome with the part consumed. Restart cleared the part. A second warning
+showed repair locked; pressing its key left the warning active while the
+countdown continued. Isolation then reached the distinct unpowered safe result.
+The window closed cleanly.
+
+The actual path was supplies → room → warning → repair → repaired → reset →
+room → warning → isolation transition → decision (epochs 1–10). Exact cue timing,
+mutation and stale-input assertions are covered by fake-clock tests, not by
+screenshot timing.
+
 ## Architecture, tests and limits
 
 See the [scheduler contract](SCHEDULER.md) for node-relative Bevy real time,
@@ -93,8 +122,8 @@ one-traversal-per-frame budget. `assets/bootstrap.yaml` is a small authored grap
 not a full port of the existing WHITEOUT adventure.
 
 - `src/game.rs`: composition, asset validation and keyboard collection.
-- `src/scheduler.rs`: concrete WHITEOUT clock, arbiter and synchronous status
-  effect; GRIMM remains the sole owner of node identity/epoch.
+- `src/scheduler.rs`: WHITEOUT clock/arbiter; GRIMM owns node identity/epoch.
+- `src/gameplay.rs`: typed conditions/effects over the actual generator resource.
 - `src/content.rs`: text/color bindings and explicit host input/countdown gates.
 - `src/screen.rs`: fixed camera, executed presentation, status and countdown UI.
 
@@ -106,10 +135,9 @@ Tests use Bevy MinimalPlugins/InputPlugin with a deterministic fake clock,
 without `sleep()`, a window or GPU. The manual steps above exercise actual
 window/input/rendering. No WorldStateProvider, GRIMM cue ACK or second story FSM.
 
-Effects are synchronous and limited to one status handler; execution errors are
-visible and stop the entry. `duration_ms` is metadata, not proof of actual media
-completion. Full condition/gameplay handlers (#69), complete WHITEOUT (#70),
-save/restore (#63), asset generation and codegen remain out of scope.
+Effects remain synchronous and game-specific; execution errors are visible and
+stop the entry. `duration_ms` is metadata, not media completion. Full WHITEOUT
+(#70), save/restore (#63), asset generation and codegen remain out of scope.
 
 Architecture: [#66](https://github.com/rjtg/grimm/issues/66), scheduler
 [#68](https://github.com/rjtg/grimm/issues/68),

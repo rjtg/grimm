@@ -68,12 +68,12 @@ creates fresh epochs, so an old callback cannot act on a new visit with the same
 cue/edge ID. These queues belong to one Bevy App; no saved/restored runtime or
 cross-session callback support is claimed here.
 
-`set_generator_status {status: running|unstable|isolated|stopped}` is the one
-WHITEOUT-specific synchronous effect. It validates exactly one text argument and
-preflights its application counter before changing either field of the
-`Generator` resource. This is a small demonstration handler, not #69's general
-handler/condition architecture. The direct `grimm-semantic` dependency supplies
-only the existing scalar parameter DTO; no interpreter or provider is imported.
+`set_generator_status` remains the original WHITEOUT synchronous effect.
+[Gameplay bindings](GAMEPLAY.md) now add typed pickup, repair and reset handlers.
+Each validates its exact arguments and preflights prerequisites and the checked
+application counter before assigning any resource field. These are concrete game
+handlers, not a general rules engine. The direct `grimm-semantic` dependency
+supplies only scalar parameter DTOs; no interpreter or provider is imported.
 
 On effect/presentation/traversal execution error the instance is **not** recorded
 as successfully consumed. The host displays a specific cue error, closes input
@@ -120,6 +120,6 @@ delivery and timeout without a window/GPU. Cargo metadata boundary tests still
 allow only `grimm-semantic` as the graph's runtime dependency and explicitly
 reject graph → WHITEOUT/Bevy/legacy-engine dependencies.
 
-#69 (conditions/gameplay handlers), #70 (full WHITEOUT slice), #63 (host saves),
+#69 gameplay bindings are implemented in the game; #70 (full WHITEOUT slice), #63 (host saves),
 assets/animation, codegen and optional rules extraction remain separate. No
 canonical CLI WHITEOUT rules or legacy scene/lifecycle interpreters are changed.

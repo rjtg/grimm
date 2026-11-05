@@ -1,0 +1,20 @@
+# Explicit WHITEOUT handler signatures. Documentation/validation input for later
+# codegen, not a rules DSL or a second runtime registry.
+schema_version: 1
+types:
+  ItemId: [spare_part]
+  GeneratorStatus: [running, unstable, isolated, stopped, repaired]
+conditions:
+  can_repair_generator:
+    args: {required_item: ItemId}
+  can_take_spare_part:
+    args: {}
+effects:
+  set_generator_status:
+    args: {status: GeneratorStatus}
+  take_item:
+    args: {item: ItemId}
+  repair_generator:
+    args: {required_item: ItemId}
+  reset_demo:
+    args: {}

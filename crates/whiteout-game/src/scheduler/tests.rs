@@ -9,7 +9,7 @@ use bevy::{
 use grimm_graph::{Cue, StoryGraph};
 
 fn authored() -> StoryGraph {
-    serde_yaml_ng::from_str(include_str!("../../assets/bootstrap.yaml")).unwrap()
+    serde_yaml_ng::from_str(include_str!("fixtures/scheduler-v2.yaml")).unwrap()
 }
 
 pub(crate) fn app() -> App {
