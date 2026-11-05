@@ -20,3 +20,9 @@ cue associations. Coverage checks documented in the validation report support
 editorial review; they cannot judge performance quality or prove every state path.
 Existing runnable YAML, CLI text and game behavior remain unchanged. No assets
 are generated and no new Bevy application behavior is implemented here.
+
+
+The [Character Bible](characters/README.md) (#34) develops the four persistent
+cast identities with [C]/[A]/[O] provenance, coherent concept sheets, exact prompts,
+wardrobe/injury continuity, performance planning and a cast-side handoff to #35.
+All art remains proposal material pending review, not final models or casting.

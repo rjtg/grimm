@@ -94,3 +94,8 @@ This is a dependency order for future concrete game work, not authorization to
 implement it here. Save/Restore (#63), codegen (#75), IDE, screenshot automation,
 asset generation and engine changes are excluded. Existing CLI remains the
 playable rules reference; the graphical excerpt remains intentionally smaller.
+
+
+For the next cast-production step, see the [Character Bible](../characters/README.md)
+(#34). Its explicit proposals/reference images expand the actor inventory without
+changing this screenplay's canonical rules or treating concept casting as canon.
