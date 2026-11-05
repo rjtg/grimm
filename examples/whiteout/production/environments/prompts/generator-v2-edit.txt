@@ -1,0 +1,6 @@
+Edit target: supplied WHITEOUT GENERATOR ANNEX concept. Preserve the exact same room, camera, engine housing, front-right EXTERNAL de-icer panel and diagram, front starter cover, rail on left, sealed window, floor, material palette, typography and empty set.
+Correct gameplay-significant invented details ONLY:
+1. Remove the PADLOCK on the starter-cover latch. Replace it with a plain mechanical pull latch jammed by the existing blue-white ice bridge at its hinge/pin. There is no key puzzle. Keep cover shut by ice, not a lock. Do not add keys or any new tool.
+2. Ensure the tagged external de-icer fuse has an ordinary accessible hand-operated pull/handle, no keyhole/padlock, independent of the starter cover. Preserve its position on the right portion of the front face and the visible tag/diagram.
+3. Turn OFF the overhead cage lamp for this initial station-power-outage state. Keep the tiny amber gauge/local reserve indicator and cool snow/window fill, enough to read objects. Do not create warm restored-power illumination, motor motion or exhaust plume. Preserve the lamp housing as reusable geometry, only illumination off.
+Everything else unchanged. No new doors, actor figures, extra gear, sci-fi machinery or new lighting fixtures. Same neutral/cool practical environment, one corrected whole image, no watermark.
