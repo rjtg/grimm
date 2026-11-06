@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Object {
     Camera,
+    Alex,
     Jonas,
     Mara,
     Starter,
@@ -38,6 +39,7 @@ impl Sound {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Binding {
     Panel,
+    Artwork,
     Camera { position: Vec2, scale: f32 },
     Move { object: Object, position: Vec2 },
     Rotate { object: Object, radians: f32 },
@@ -55,6 +57,7 @@ impl Default for Catalog {
             sounds: Sound::ALL.into(),
             objects: [
                 Object::Camera,
+                Object::Alex,
                 Object::Jonas,
                 Object::Mara,
                 Object::Starter,
@@ -71,12 +74,15 @@ pub(crate) fn resolve(id: &str, catalog: &Catalog) -> Result<Binding, String> {
         Binding::Panel
     } else {
         match id {
+            "art.open" | "art.controls" | "art.latch_crack" | "art.latch_nearly"
+            | "art.latch_open" | "art.primer" | "art.wide" | "art.retreat" | "art.warm_reveal"
+            | "pose.alex.work" | "pose.mara.support" | "pose.jonas.brace" => Binding::Artwork,
             "shot.wide" => Binding::Camera {
                 position: Vec2::new(0., 100.),
                 scale: 1.,
             },
             "shot.hall" => Binding::Camera {
-                position: Vec2::new(-120.0, 0.0),
+                position: Vec2::new(-50.0, 110.0),
                 scale: 1.0,
             },
             "shot.controls" => Binding::Camera {
@@ -89,15 +95,15 @@ pub(crate) fn resolve(id: &str, catalog: &Catalog) -> Result<Binding, String> {
             },
             "move.jonas" => Binding::Move {
                 object: Object::Jonas,
-                position: Vec2::new(-210., 70.),
+                position: Vec2::new(-210., 140.),
             },
             "move.mara" => Binding::Move {
                 object: Object::Mara,
-                position: Vec2::new(-285., 65.),
+                position: Vec2::new(-285., 135.),
             },
             "move.shutter" => Binding::Move {
                 object: Object::Shutter,
-                position: Vec2::new(310., 65.),
+                position: Vec2::new(0., 220.),
             },
             "move.deicer" => Binding::Rotate {
                 object: Object::Deicer,

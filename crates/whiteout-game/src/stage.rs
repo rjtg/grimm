@@ -1,8 +1,9 @@
 //! WHITEOUT's annex set and cue-owned audio/motion instances.
+#[cfg(test)]
+use crate::gameplay::{Generator, GeneratorStatus};
 use crate::{
     cueables::{self, Binding, Catalog, Object, Sound},
     game::FrameSet,
-    gameplay::{Generator, GeneratorStatus},
     scheduler::{CueInstance, Runtime, SceneView},
 };
 use bevy::{
@@ -31,21 +32,22 @@ struct Motion {
 #[derive(Component)]
 struct Home(Transform);
 #[derive(Component)]
-struct Lamp;
-#[derive(Component)]
 struct Snow(u32);
 
 pub(crate) fn install(app: &mut App) {
     app.init_resource::<Assets<AudioSource>>()
         .init_resource::<Staged>()
         .init_resource::<Catalog>()
+        .init_resource::<Assets<Image>>()
+        .init_resource::<crate::art::GraphicMode>()
         .add_systems(Startup, setup)
         .add_systems(PostStartup, remember_homes)
+        .add_systems(Update, crate::art::check_loaded.before(FrameSet::Collect))
         .add_systems(Update, audit_assets.in_set(FrameSet::Collect))
         .add_systems(Update, report_audio_started.in_set(FrameSet::Present))
         .add_systems(
             Update,
-            (reset_entry, sync_cues, animate, paint)
+            (reset_entry, sync_cues, animate, crate::art::paint)
                 .chain()
                 .in_set(FrameSet::Present),
         );
@@ -58,7 +60,11 @@ fn rect(commands: &mut Commands, color: Color, size: Vec2, position: Vec3) -> En
         ))
         .id()
 }
-fn setup(mut commands: Commands, mut audio: ResMut<Assets<AudioSource>>) {
+fn setup(
+    mut commands: Commands,
+    mut audio: ResMut<Assets<AudioSource>>,
+    server: Option<Res<AssetServer>>,
+) {
     let bank = Sound::ALL
         .into_iter()
         .map(|s| {
@@ -71,161 +77,56 @@ fn setup(mut commands: Commands, mut audio: ResMut<Assets<AudioSource>>) {
         })
         .collect();
     commands.insert_resource(AudioBank(bank));
-    rect(
-        &mut commands,
-        Color::srgb(0.035, 0.07, 0.11),
-        Vec2::new(1400., 900.),
-        Vec3::new(0., 80., -20.),
-    );
-    rect(
-        &mut commands,
-        Color::srgb(0.12, 0.2, 0.26),
-        Vec2::new(940., 350.),
-        Vec3::new(0., 130., -15.),
-    );
-    for x in [-400., -200., 0., 200., 400.] {
-        rect(
-            &mut commands,
-            Color::srgb(0.17, 0.27, 0.32),
-            Vec2::new(6., 340.),
-            Vec3::new(x, 130., -14.),
-        );
-    }
-    rect(
-        &mut commands,
-        Color::srgb(0.08, 0.1, 0.12),
-        Vec2::new(1200., 90.),
-        Vec3::new(0., -70., -10.),
-    );
-    // Generator casing, cooling fins, flywheel, exhaust and tagged fuse panel.
-    rect(
-        &mut commands,
-        Color::srgb(0.22, 0.31, 0.3),
-        Vec2::new(210., 150.),
-        Vec3::new(50., 70., 0.),
-    );
-    for x in [-20., 0., 20., 40., 60.] {
-        rect(
-            &mut commands,
-            Color::srgb(0.08, 0.12, 0.14),
-            Vec2::new(6., 100.),
-            Vec3::new(x, 80., 1.),
-        );
-    }
-    rect(
-        &mut commands,
-        Color::srgb(0.25, 0.28, 0.3),
-        Vec2::new(30., 140.),
-        Vec3::new(20., 210., 0.),
-    );
-    let wheel = commands
-        .spawn((
-            Object::Wheel,
-            Transform::from_xyz(140., 60., 3.),
-            Visibility::default(),
-        ))
-        .id();
-    for rotation in [0., std::f32::consts::FRAC_PI_2] {
-        let child = commands
-            .spawn((
-                Sprite::from_color(Color::srgb(0.45, 0.5, 0.48), Vec2::new(78., 12.)),
-                Transform::from_rotation(Quat::from_rotation_z(rotation)),
-            ))
-            .id();
-        commands.entity(wheel).add_child(child);
-    }
-    for (object, x, color) in [
-        (Object::Starter, 225., Color::srgb(0.9, 0.6, 0.2)),
-        (Object::Deicer, 185., Color::srgb(0.8, 0.18, 0.12)),
+    commands.insert_resource(crate::art::Paintings::load(server.as_deref()));
+    crate::art::spawn_set(&mut commands);
+    for (object, position) in [
+        (Object::Jonas, Vec3::new(-340., 140., 5.)),
+        (Object::Mara, Vec3::new(-420., 140., 5.)),
+        (Object::Alex, Vec3::new(65., 115., 5.)),
     ] {
-        rect(
-            &mut commands,
-            Color::srgb(0.07, 0.11, 0.13),
-            Vec2::new(24., 55.),
-            Vec3::new(x, 140., 1.),
-        );
-        let id = rect(
-            &mut commands,
-            color,
-            Vec2::new(8., 38.),
-            Vec3::new(x, 145., 2.),
-        );
-        commands.entity(id).insert(object);
-    }
-    let lamp = rect(
-        &mut commands,
-        Color::srgb(0.9, 0.2, 0.15),
-        Vec2::new(26., 15.),
-        Vec3::new(75., 165., 4.),
-    );
-    commands.entity(lamp).insert(Lamp);
-    let shutter = rect(
-        &mut commands,
-        Color::srgb(0.3, 0.38, 0.4),
-        Vec2::new(120., 280.),
-        Vec3::new(310., 400., 6.),
-    );
-    commands.entity(shutter).insert(Object::Shutter);
-    for (object, x, color) in [
-        (Object::Jonas, -340., Color::srgb(0.75, 0.48, 0.24)),
-        (Object::Mara, -420., Color::srgb(0.28, 0.58, 0.66)),
-    ] {
-        let person = commands
+        let parent = commands
             .spawn((
                 object,
-                Transform::from_xyz(x, 70., 5.),
+                Transform::from_translation(position),
                 Visibility::default(),
             ))
             .id();
-        let coat = commands
-            .spawn((
-                Sprite::from_color(color, Vec2::new(36., 70.)),
-                Transform::default(),
-            ))
-            .id();
-        let head = commands
-            .spawn((
-                Sprite::from_color(Color::srgb(0.75, 0.66, 0.56), Vec2::splat(24.)),
-                Transform::from_xyz(0., 48., 0.),
-            ))
-            .id();
-        let legs = commands
-            .spawn((
-                Sprite::from_color(Color::srgb(0.12, 0.16, 0.2), Vec2::new(24., 32.)),
-                Transform::from_xyz(0., -48., 0.),
-            ))
-            .id();
-        let label = commands
-            .spawn((
-                Text2d::new(if object == Object::Jonas {
-                    "JONAS"
-                } else {
-                    "MARA"
-                }),
-                TextFont {
-                    font_size: bevy::text::FontSize::Px(14.0),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 75.0, 1.0),
-            ))
-            .id();
-        commands
-            .entity(person)
-            .add_children(&[coat, head, legs, label]);
+        crate::art::spawn_actor(&mut commands, parent, object);
     }
-    // Deterministic snow outside the annex, no random/time-dependent test setup.
-    for i in 0..50 {
-        let e = rect(
+    // Physical presentation anchors remain the existing cue targets. The inked
+    // cel variants show their state; no geometric placeholder is rendered.
+    for (object, position) in [
+        (Object::Wheel, Vec3::new(140., 150., 3.)),
+        (Object::Starter, Vec3::new(225., 230., 2.)),
+        (Object::Deicer, Vec3::new(270., 230., 2.)),
+    ] {
+        commands.spawn((
+            object,
+            Transform::from_translation(position),
+            Visibility::default(),
+        ));
+    }
+    let shutter = commands
+        .spawn((
+            Object::Shutter,
+            Transform::from_xyz(0., 930., 6.),
+            Visibility::default(),
+        ))
+        .id();
+    crate::art::spawn_shutter(&mut commands, shutter);
+    // Small drawn snow streaks stay inside the sealed west window, not indoors.
+    for i in 0..24 {
+        let entity = rect(
             &mut commands,
-            Color::srgba(0.7, 0.85, 0.95, 0.4),
-            Vec2::new(12., 2.),
+            Color::srgba(0.8, 0.9, 0.95, 0.18),
+            Vec2::new(6., 1.),
             Vec3::new(
-                (i * 71 % 1100) as f32 - 550.,
-                (i * 31 % 230) as f32 + 240.,
-                10.,
+                -525. + (i * 17 % 200) as f32,
+                280. + (i * 19 % 100) as f32,
+                -15.,
             ),
         );
-        commands.entity(e).insert(Snow(i));
+        commands.entity(entity).insert(Snow(i));
     }
 }
 
@@ -249,7 +150,7 @@ fn audit_assets(
         };
         let result = (|| -> Result<(), String> {
             match cueables::resolve(presentation_id, &catalog)? {
-                Binding::Panel => {}
+                Binding::Panel | Binding::Artwork => {}
                 Binding::Audio { sound, .. } => {
                     let handle = bank
                         .0
@@ -328,7 +229,7 @@ fn sync_cues(
         let result = (|| -> Result<(), String> {
             let binding = cueables::resolve(&cue.id, &catalog)?;
             match binding {
-                Binding::Panel => {}
+                Binding::Panel | Binding::Artwork => {}
                 Binding::Audio { sound, looping } => {
                     let source = bank
                         .0
@@ -446,26 +347,8 @@ fn animate(
     }
     for (flake, mut transform) in &mut snow {
         let t = runtime.elapsed_ms as f32 / 1000.;
-        transform.translation.x = ((flake.0 * 71) as f32 - t * 65.).rem_euclid(1100.) - 550.;
-        transform.translation.y = (flake.0 * 31 % 230) as f32 + 240. - (t * 10.).rem_euclid(100.);
-    }
-}
-fn paint(
-    generator: Res<Generator>,
-    runtime: Res<Runtime>,
-    mut lamps: Query<&mut Sprite, With<Lamp>>,
-) {
-    let stable = matches!(
-        generator.status,
-        GeneratorStatus::Repaired | GeneratorStatus::Powered
-    );
-    let pulse = 0.45 + 0.45 * (runtime.elapsed_ms as f32 * 0.008).sin().abs();
-    for mut lamp in &mut lamps {
-        lamp.color = if stable {
-            Color::srgb(0.2, 0.9, 0.35)
-        } else {
-            Color::srgb(pulse, 0.12, 0.08)
-        };
+        transform.translation.x = -525. + ((flake.0 * 17) as f32 - t * 7.).rem_euclid(200.);
+        transform.translation.y = 280. + ((flake.0 * 19) as f32 - t * 3.).rem_euclid(100.);
     }
 }
 

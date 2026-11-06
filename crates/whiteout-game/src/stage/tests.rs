@@ -183,7 +183,7 @@ fn replace_despawns_old_audio_motion_and_rejects_stale_wakes_with_bounded_assets
         select(&mut app, "abandon");
         advance(&mut app, 9000);
     }
-    assert_eq!(entity_count::<Object>(&mut app), 7);
+    assert_eq!(entity_count::<Object>(&mut app), 8);
     assert_eq!(app.world().resource::<Assets<AudioSource>>().len(), 3);
     assert!(entity_count::<CueEntity>(&mut app) < 10);
 }
@@ -383,4 +383,62 @@ fn losing_a_live_stage_object_stops_progress_and_cleans_up_instances() {
     );
     advance(&mut app, 0);
     assert_eq!(entity_count::<CueEntity>(&mut app), 0);
+}
+
+#[test]
+fn graphic_mode_switch_preserves_epoch_timer_effects_and_active_cues() {
+    let mut app = app();
+    annex(&mut app);
+    advance(&mut app, 11000);
+    let sheet = app.world().resource::<Runtime>().sheet.clone();
+    let time = app.world().resource::<Runtime>().elapsed_ms;
+    let active = app.world().resource::<SceneView>().active.clone();
+    let status = app.world().resource::<Generator>().status;
+    scheduler::tests::key(
+        &mut app,
+        bevy::input::ButtonState::Pressed,
+        false,
+        KeyCode::F2,
+    );
+    advance(&mut app, 0);
+    assert_eq!(
+        *app.world().resource::<crate::art::GraphicMode>(),
+        crate::art::GraphicMode::Layered
+    );
+    let runtime = app.world().resource::<Runtime>();
+    assert_eq!(runtime.sheet, sheet);
+    assert_eq!(runtime.elapsed_ms, time);
+    assert_eq!(app.world().resource::<SceneView>().active, active);
+    assert_eq!(app.world().resource::<Generator>().status, status);
+    assert!(app.world().resource::<Generator>().deicer_isolated);
+}
+
+#[test]
+fn pending_artwork_does_not_start_or_spend_the_authored_scene_clock() {
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        InputPlugin,
+        game::install,
+        crate::screen::install,
+        install,
+    ));
+    app.add_systems(
+        PostStartup,
+        |mut paintings: ResMut<crate::art::Paintings>| paintings.ready = false,
+    );
+    advance(&mut app, 0);
+    advance(&mut app, 60000);
+    assert_eq!(
+        app.world().resource::<Runtime>().sheet.node_id,
+        "DISPATCH_APPROACH"
+    );
+    assert_eq!(app.world().resource::<Runtime>().elapsed_ms, 0);
+    app.world_mut()
+        .resource_mut::<crate::art::Paintings>()
+        .ready = true;
+    advance(&mut app, 0);
+    assert_eq!(app.world().resource::<Runtime>().elapsed_ms, 0);
+    advance(&mut app, 1000);
+    assert_eq!(app.world().resource::<Runtime>().elapsed_ms, 1000);
 }

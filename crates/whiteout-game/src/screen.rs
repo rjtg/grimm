@@ -16,8 +16,11 @@ pub(crate) fn install(app: &mut App) {
         .add_systems(
             Update,
             (
-                replace_scene
-                    .run_if(resource_changed::<SceneView>.or_eager(resource_changed::<Generator>)),
+                replace_scene.run_if(
+                    resource_changed::<SceneView>
+                        .or_eager(resource_changed::<Generator>)
+                        .or_eager(resource_changed::<crate::art::GraphicMode>),
+                ),
                 update_countdown,
             )
                 .chain()
@@ -34,6 +37,8 @@ fn replace_scene(
     runtime: Res<Runtime>,
     view: Res<SceneView>,
     generator: Res<Generator>,
+    mode: Res<crate::art::GraphicMode>,
+    paintings: Option<Res<crate::art::Paintings>>,
     roots: Query<Entity, With<SceneRoot>>,
 ) {
     for root in &roots {
@@ -48,6 +53,7 @@ fn replace_scene(
         flex_direction: FlexDirection::Column, row_gap: px(7), ..default()
     },BackgroundColor(Color::srgba(0.025,0.04,0.06,0.92)))).with_children(|parent| {
         parent.spawn((Text::new("WHITEOUT / FIELD STATION"), font(20.0)));
+        if paintings.as_ref().is_some_and(|p|!p.ready) && view.failure.is_none() { parent.spawn((Text::new("Loading illustrations…"),font(19.0))); }
         if !canonical {parent.spawn((Text::new(format!("{} / entry {}", runtime.sheet.node_id, runtime.sheet.epoch)), font(16.0)));}
         if let Some(panel) = view.panel() {
             parent.spawn((Node { width: percent(100), height: px(8), ..default() }, BackgroundColor(Color::srgb(panel.accent[0], panel.accent[1], panel.accent[2]))));
@@ -70,7 +76,8 @@ fn replace_scene(
                 parent.spawn((Text::new(format!("[{}] {}{suffix}", index + 1, crate::content::edge_label(edge_id).expect("validated WHITEOUT edge"))), font(19.0), TextColor(color)));
             }
         } else { parent.spawn((Text::new("Controls locked while the presentation unfolds."), font(18.0))); }
-        parent.spawn((Text::new("Press a number key to act. Release before selecting again.\nClose the window to exit."), font(16.0)));
+        let staging=match *mode {crate::art::GraphicMode::Staged=>"A · Staged 2D",crate::art::GraphicMode::Layered=>"B · Layered 2.5D"};
+        parent.spawn((Text::new(format!("{staging} · F2: compare staging depth\nNumber key: act · Release before selecting again · Close window: exit")),font(16.0)));
     });
 }
 

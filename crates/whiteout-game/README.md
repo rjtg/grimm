@@ -16,7 +16,8 @@ CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked
 ```
 
 Debug symbols are disabled to reduce Bevy build size. Once dependencies are
-cached, `--offline` works. Graph, placeholder WAVs and font are embedded; there
+cached, `--offline` works. Graph, placeholder WAVs and font are embedded; illustrated PNG layers are
+loaded from the crate asset directory. There
 are no runtime network downloads. Linux needs an X11/Wayland session, Vulkan
 support and an audio output for sound. Debian/Ubuntu build prerequisites:
 
@@ -51,8 +52,12 @@ for a full game. The CLI remains independent: `cargo run -p grimm-cli --locked`.
 
 A full route takes roughly 31–57 seconds plus decision/outcome waiting. Keyboard
 input is implemented; there are no clickable choices. The side-on annex,
-characters, moving levers, flywheel, shutter, camera shots, snow and three sounds
-are intentionally simple [original placeholders](assets/audio/README.md).
+characters, mechanical inserts, state variants, shutter and camera shots now use
+the [graphic-novel pilot assets](assets/graphic-novel/README.md). **F2** compares
+staged 2D (default) and bounded layered 2.5D without restarting the scene. Start
+with `-- --layered` to select B; `-- --mute` disables audio-device playback while
+preserving authored timing. The three sounds remain
+[original placeholders](assets/audio/README.md).
 
 The separate [SCREENPLAY.md](SCREENPLAY.md) specifies each authored beat, cue,
 asset/handler mapping, canonical source and **gameplay simplifications**, including
@@ -67,11 +72,12 @@ This is not the entire WHITEOUT adventure.
 - `src/content.rs`: text and explicit host input/countdown gates.
 - `src/cueables.rs`, `src/stage.rs`: concrete sprite/camera/audio bindings and lifecycle.
 - `src/screen.rs`: current captions, conditions, status and countdown.
+- `src/art.rs`: concrete illustrated assets, atlas poses, fades and bounded depth.
 
 See [SCHEDULER.md](SCHEDULER.md) and [GAMEPLAY.md](GAMEPLAY.md). Presentation
 instances can overlap. A declared duration is not proof of completed playback.
 Missing bindings/resources visibly stop the entry. REPLACE despawns old audio
-and motion work while retaining the bounded fixed set and three source assets.
+and motion work while retaining the bounded fixed set, nine illustrated images and three sound assets.
 No change to `grimm-graph`, cue ACK, provider, save system or generic media layer.
 
 ```bash
