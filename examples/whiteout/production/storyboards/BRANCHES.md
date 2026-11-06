@@ -11,8 +11,8 @@ flowchart TD
  G --> D
  R --> D
  D --> C["C01–C15 ridge"]
- C --> F["E01–E02 full"]
- C --> P["E03–E07 partial"]
+ C --> F["E01–E02/E11 full"]
+ C --> P["E03–E07/E12 partial"]
  C --> L["E10 → E08 → E09 lost"]
 ```
 
@@ -151,8 +151,8 @@ flowchart TD
  C02 -->|coordinate succeeds auto| C15["C15 → E01"]
  C02 -->|help Lea full| C06["C06 → E01"]
  C02 -->|help Lea partial| C07["C07 → E03 → E04"]
- C02 -->|help Jonas full| C08["C08 / C14 → E01"]
- C02 -->|help Jonas partial| C09["C09 → E05 → E06"]
+ C02 -->|help Jonas full| C08["C08 → E01 / C14 → E11"]
+ C02 -->|help Jonas partial| C09["C09 → E05 or E12 → E06"]
  C02 -->|flare held| C10["C10 → E03 → E04"]
  C02 -->|stay| C11["C11 → E10 → E08 → E09"]
  C02 -->|deadline| C12["C12 → C13 → E10"]
@@ -162,3 +162,7 @@ flowchart TD
  E04["E04 Jonas tag"] -->|log read| E07["E07 truth with loss"]
  E06["E06 Lea handset"] -->|log read| E07
 ```
+
+E11 and E12 retain the same rescue camera with untreated Jonas and no fitted
+splint. They are state-dependent picture variants, not new outcomes or actions.
+E11 continues to E02 only if the log was read; E12 continues to E06 then optional E07.

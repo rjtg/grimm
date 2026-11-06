@@ -94,7 +94,7 @@ Canonical source: `examples/whiteout/story.yaml`; staging reference: the five sc
 | `crisis/cues/2` / `choices` | `actions` | [C03](panels/c03.png), [C06](panels/c06.png), [C08](panels/c08.png), [C10](panels/c10.png), [C11](panels/c11.png) |
 | `crisis/actions/0/outcomes/1/cues/0` / `missing_preparation` | `crisis.missing_preparation` | [C03](panels/c03.png) |
 | `crisis/timeout/cues/0` / `timeout` | `crisis.timeout` | [C12](panels/c12.png) |
-| `ending_full/cues/0` / `arrival` | `ending_full.arrival` | [E01](panels/e01.png) |
+| `ending_full/cues/0` / `arrival` | `ending_full.arrival` | [E01](panels/e01.png), [E11](panels/e11.png) |
 | `ending_full/cues/1` / `truth` | `ending_full.truth` | [E02](panels/e02.png) |
 | `ending_partial/cues/0` / `arrival` | `ending_partial.arrival` | [E03](panels/e03.png) |
 | `ending_partial/cues/1` / `jonas` | `ending_partial.jonas` | [E04](panels/e04.png) |

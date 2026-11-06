@@ -25,7 +25,7 @@ python3 examples/whiteout/production/storyboards/sources/publish_pages.py
 python3 examples/whiteout/production/storyboards/sources/audit.py
 ```
 
-Native SVG raster export succeeds for all 105 panels and 21 sheets. The audit
+Native SVG raster export succeeds for all 107 panels and 21 sheets. The audit
 checks unique shot IDs, required metadata, actual SVG XML/PNG integrity and
 1600×900 panel dimensions, local Markdown links, all nine contexts, all 57
 narrative bindings and all 35 actions. COVERAGE lists all 95 authored cue instances.

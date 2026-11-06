@@ -103,10 +103,12 @@ Follow BRANCHES for the actual interactive sequence.
 | [C12](panels/c12.png) — Marked crossing erased START | `crisis` / `loc.ridge_crossing` | `cam.ridge_two_targets` | C06 | D=45000 timeout; feedback 1800 |
 | [C13](panels/c13.png) — No crossing END | `crisis` / `loc.ridge_crossing` | `cam.ridge_two_targets` | C06 | end of timeout beat |
 | [E01](panels/e01.png) — Four names / occupied seats | `ending_full` / `loc.rescue_cabin` | `cam.manifest_four` | E01 | arrival 1800; no choices |
+| [E11](panels/e11.png) — Four names / occupied seats / untreated Jonas | `ending_full` / `loc.rescue_cabin` | `cam.manifest_four` | E01 | arrival 1800; no choices |
 | [E02](panels/e02.png) — Truth / optional daylight | `ending_full` / `loc.daylight_report` | `cam.report_insert` | E02 | truth 1800 if log_read |
 | [E03](panels/e03.png) — Empty Jonas place | `ending_partial` / `loc.rescue_cabin` | `cam.manifest_empty` | E03 | arrival 1800; terminal |
 | [E04](panels/e04.png) — Mara glove / Jonas tag | `ending_partial` / `loc.rescue_cabin` | `cam.tag_insert` | E04 | conditional coda 1800 |
 | [E05](panels/e05.png) — Empty Lea place | `ending_partial` / `loc.rescue_cabin` | `cam.manifest_empty` | E03 | arrival 1800; terminal |
+| [E12](panels/e12.png) — Empty Lea place / untreated Jonas | `ending_partial` / `loc.rescue_cabin` | `cam.manifest_empty` | E03 | arrival 1800; terminal |
 | [E06](panels/e06.png) — Handset / missing operator | `ending_partial` / `loc.rescue_cabin` | `cam.empty_handset` | E04 | conditional coda 1800 |
 | [E07](panels/e07.png) — Truth cannot undo loss | `ending_partial` / `loc.daylight_report` | `cam.report_insert` | E04 | 1800 only if log_read |
 | [E10](panels/e10.png) — Lost station / pull-away START | `ending_lost` / `loc.aurora_exterior` | `cam.station_lost` | E05 | arrival 1800; terminal |

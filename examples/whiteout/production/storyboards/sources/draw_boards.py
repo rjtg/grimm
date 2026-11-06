@@ -159,7 +159,7 @@ def room(scene,view):
   p=[rect(0,0,1000,700,'#d7d5cd'),rect(80,95,840,480,'#b4b9b8')]
   for i,n in enumerate(['A','M','J','L']):
    x=190+i*200;p.append(rect(x-70,280,145,210,'#888'))
-   if not ((view in ['partial_jonas','tag']and n=='J')or(view in ['partial_lea','handset']and n=='L')):p.append(actor(n,x,480,225,'sit',treated=True))
+   if not ((view in ['partial_jonas','tag']and n=='J')or(view in ['partial_lea','partial_lea_untreated','handset']and n=='L')):p.append(actor(n,x,480,225,'sit',treated=view not in ['full_untreated','partial_lea_untreated']))
   if view in ['lost','lost_near','names']:
    p=[rect(0,0,1000,700,'#bbb'),poly([(100,430),(150,260),(750,260),(900,450)],'#666'),rect(250,335,400,135,'#777'),text(500,590,'FOUR NAMES. NO ANSWERS.',28,anchor='middle'),line(190,285,190,95,w=9),line(150,285,190,95,w=4),line(230,285,190,95,w=4),ellipse(200,180,40,55,'#888'),line(780,300,780,160,w=17),line(750,160,810,160,w=10)]
  if view=='lost_near':p=['<g transform="translate(-400,-170) scale(1.8)">'+''.join(p)+'</g>',arrow(800,250,900,400,'CAM PULL BACK') ]

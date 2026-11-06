@@ -1,6 +1,6 @@
 # Drawing sources and provenance
 
-The 105 indexed panels are original programmatically drawn WHITEOUT blocking
+The 107 indexed panels are original programmatically drawn WHITEOUT blocking
 sketches. `sources/draw_boards.py` constructs perspective rooms, cast silhouettes,
 props, pose variants, arrows, camera plans and decision overlays as editable SVG.
 `rsvg-convert` exports PNGs. No screenshots or extracted third-party art were used.

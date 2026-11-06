@@ -19,13 +19,30 @@ All imagery is [A] blocking/art, with [C] rule associations and [O] final approv
 
 **Time:** arrival 1800; no choices.
 
-**Condition / variant:** [C] all four alive, same injury and actual gear.
+**Condition / variant:** [C] all four alive, same injury and actual gear; [A] treated profile, E11 shows untreated.
 
 **Audio/dialogue:** Alex, Mara, Jonas, Lea: four answers.
 
 **Motion/edit:** Match opening count; no healed ankle. **Next:** E02 if log, else END.
 
 [Editable SVG](../panels/e01.svg) · [Source metadata](../sources/shots.json)
+
+<a id="e11"></a>
+## E11 — Four names / occupied seats / untreated Jonas
+
+![E11 actual drawn shot](../panels/e11.png)
+
+**Scene:** `ending_full` · **Location:** `loc.rescue_cabin` · **Camera:** `cam.manifest_four` · **Beat:** `E01`.
+
+**Time:** arrival 1800; no choices.
+
+**Condition / variant:** [C] all four alive, same injury and actual gear; jonas_treated=false, no fitted splint.
+
+**Audio/dialogue:** Alex, Mara, Jonas, Lea: four answers.
+
+**Motion/edit:** Match opening count; no healed ankle. **Next:** E02 if log, else END.
+
+[Editable SVG](../panels/e11.svg) · [Source metadata](../sources/shots.json)
 
 <a id="e02"></a>
 ## E02 — Truth / optional daylight

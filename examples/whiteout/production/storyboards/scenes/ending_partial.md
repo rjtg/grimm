@@ -53,13 +53,30 @@ All imagery is [A] blocking/art, with [C] rule associations and [O] final approv
 
 **Time:** arrival 1800; terminal.
 
-**Condition / variant:** [C] lea_alive=false; Jonas actually survives.
+**Condition / variant:** [C] lea_alive=false; Jonas actually survives; [A] treated profile, E12 shows untreated.
 
 **Audio/dialogue:** Her last transmission was the bearing.
 
 **Motion/edit:** Match E03 composition, DIFFERENT empty seat. **Next:** E06/E07.
 
 [Editable SVG](../panels/e05.svg) · [Source metadata](../sources/shots.json)
+
+<a id="e12"></a>
+## E12 — Empty Lea place / untreated Jonas
+
+![E12 actual drawn shot](../panels/e12.png)
+
+**Scene:** `ending_partial` · **Location:** `loc.rescue_cabin` · **Camera:** `cam.manifest_empty` · **Beat:** `E03`.
+
+**Time:** arrival 1800; terminal.
+
+**Condition / variant:** [C] lea_alive=false; Jonas actually survives; jonas_treated=false, no fitted splint.
+
+**Audio/dialogue:** Her last transmission was the bearing.
+
+**Motion/edit:** Match E03 composition, DIFFERENT empty seat. **Next:** E06/E07.
+
+[Editable SVG](../panels/e12.svg) · [Source metadata](../sources/shots.json)
 
 <a id="e06"></a>
 ## E06 — Handset / missing operator

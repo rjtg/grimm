@@ -18,8 +18,8 @@ is separate from this visual assessment.
 | Generator 01–05, G01–G29 | Engine north, working strip centre, Mara/Jonas left, external fuse right, same hinge and threshold; cover progression | Tightened partner reaction; removed engine-mounted coil claim; unsafe start remains offered; warning keeps input locked while latch media overlaps |
 | Radio 01–04, R01–R21 | Desk left, connected wheel bay right, one Lea; manual hands held vs automatic release | Added adapter start/end, cold slip, powered/unpowered/consumed-braid UI and call-acknowledged deadline removal |
 | Ridge 01–03, C01–C15 | Lea west/left, Jonas east/right, common markers and snowfield; specific person lost | Added actual carry pose, untreated full rescue, auto route without invented rope, erased-crossing end frame |
-| Full ending 01, E01–E02 | Four occupied places, same gear/injury; truth conditional on log | No healed ankle or fifth cast member |
-| Partial ending 01, E03–E07 | Correct named empty place, Jonas tag versus Lea handset; truth does not undo loss | Separate casualty compositions rather than generic empty seat |
+| Full ending 01, E01–E02/E11 | Four occupied places, same gear/injury; truth conditional on log | E11 retains untreated ankle without invented splint; no fifth cast member |
+| Partial ending 01, E03–E07/E12 | Correct named empty place, Jonas tag versus Lea handset; truth does not undo loss | Separate casualty compositions; E12 retains untreated Jonas without fitted splint |
 | Lost ending 01, E10/E08/E09 | Same mast/exhaust silhouette, pullback start/end, four names at same ridge door in spring | Names are on metal beside door, not a report; no living crew after lost outcome |
 
 ## Axis, eyelines, motion and camera identity

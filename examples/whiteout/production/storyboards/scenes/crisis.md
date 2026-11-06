@@ -184,7 +184,7 @@ All imagery is [A] blocking/art, with [C] rule associations and [O] final approv
 
 **Audio/dialogue:** Carry with Mara; Lea can leave jumper.
 
-**Motion/edit:** Move RIGHT then crossing END. **Next:** E01.
+**Motion/edit:** Move RIGHT then crossing END. **Next:** E11 (untreated); E02 only if log.
 
 [Editable SVG](../panels/c14.svg) · [Source metadata](../sources/shots.json)
 
@@ -201,7 +201,7 @@ All imagery is [A] blocking/art, with [C] rule associations and [O] final approv
 
 **Audio/dialogue:** Lea final bearing, shelter disappears.
 
-**Motion/edit:** Carry RIGHT; HOLD LEFT handwheel; no silent line rescue. **Next:** E05/E06; no call/flare => E08.
+**Motion/edit:** Carry RIGHT; HOLD LEFT handwheel; no silent line rescue. **Next:** E05/E06 treated or E12/E06 untreated; no call/flare => E10.
 
 [Editable SVG](../panels/c09.svg) · [Source metadata](../sources/shots.json)
 
