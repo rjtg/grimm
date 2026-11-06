@@ -24,6 +24,14 @@ nodes:
   - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.wide, duration_ms: 0}}
   - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
   - {cue_id: arrival, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.arrival, duration_ms: 4000}}
+  - {cue_id: fuse_closeup, at_ms: 500, instruction: {kind: presentation, presentation_id: shot.controls, duration_ms: 600}}
+  - {cue_id: alex_fuse, at_ms: 0, instruction: {kind: presentation, presentation_id: move.alex_fuse, duration_ms: 1000}}
+  - {cue_id: fuse_sound, at_ms: 1000, instruction: {kind: presentation, presentation_id: sound.mechanism}}
+  - {cue_id: latch_closeup, at_ms: 2500, instruction: {kind: presentation, presentation_id: shot.latch, duration_ms: 400}}
+  - {cue_id: alex_work, at_ms: 2000, instruction: {kind: presentation, presentation_id: move.alex, duration_ms: 500}}
+  - {cue_id: latch_work, at_ms: 2500, instruction: {kind: presentation, presentation_id: move.latch, duration_ms: 1500}}
+  - {cue_id: latch_sound, at_ms: 2500, instruction: {kind: presentation, presentation_id: sound.latch}}
+  - {cue_id: decision_wide, at_ms: 4000, instruction: {kind: presentation, presentation_id: shot.wide, duration_ms: 350}}
   - {cue_id: fuse_motion, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 2000}}
   - {cue_id: isolate, at_ms: 2000, instruction: {kind: effect, effect_id: isolate_deicer}}
   - {cue_id: isolated, at_ms: 2000, instruction: {kind: presentation, presentation_id: canon.isolated}}
@@ -45,6 +53,9 @@ nodes:
   - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
   - {cue_id: closeup, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.starter, duration_ms: 500}}
   - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
+  - {cue_id: alex_work, at_ms: 0, instruction: {kind: presentation, presentation_id: move.alex, duration_ms: 300}}
+  - {cue_id: open_cover, at_ms: 0, instruction: {kind: presentation, presentation_id: move.latch, duration_ms: 0}}
+  - {cue_id: ignition_sound, at_ms: 1200, instruction: {kind: presentation, presentation_id: sound.ignition}}
   - {cue_id: prime, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.prime, duration_ms: 1200}}
   - {cue_id: lever, at_ms: 0, instruction: {kind: presentation, presentation_id: move.starter, duration_ms: 1200}}
   - {cue_id: ignition, at_ms: 1200, instruction: {kind: presentation, presentation_id: canon.ignition, duration_ms: 1500}}
@@ -57,9 +68,13 @@ nodes:
     return_hall: {target: DISPATCH_WARM, expose: false}
 - id: DISPATCH_WARM
   cues:
+  - {cue_id: open_cover, at_ms: 0, instruction: {kind: presentation, presentation_id: move.latch, duration_ms: 0}}
   - {cue_id: fuse_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.deicer, duration_ms: 0}}
   - {cue_id: jonas_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas, duration_ms: 0}}
   - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
+  - {cue_id: alex_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.retreat, duration_ms: 1200}}
+  - {cue_id: mara_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara_retreat, duration_ms: 1200}}
+  - {cue_id: jonas_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas_retreat, duration_ms: 1200}}
   - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.hall, duration_ms: 900}}
   - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
   - {cue_id: motor, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.motor}}
@@ -76,7 +91,11 @@ nodes:
   - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
   - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.hall, duration_ms: 900}}
   - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
-  - {cue_id: shutter, at_ms: 0, instruction: {kind: presentation, presentation_id: move.shutter, duration_ms: 1800}}
+  - {cue_id: alex_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.retreat, duration_ms: 1200}}
+  - {cue_id: mara_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara_retreat, duration_ms: 1200}}
+  - {cue_id: jonas_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas_retreat, duration_ms: 1200}}
+  - {cue_id: failure_sound, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.overload}}
+  - {cue_id: shutter, at_ms: 1200, instruction: {kind: presentation, presentation_id: move.shutter, duration_ms: 1800}}
   - {cue_id: return, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.abandon}}
   - {cue_id: settled, at_ms: 9000, instruction: {kind: presentation, presentation_id: canon.cold_end}}
   edges:
@@ -89,7 +108,11 @@ nodes:
   - {cue_id: mara_pose, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara, duration_ms: 0}}
   - {cue_id: wide, at_ms: 0, instruction: {kind: presentation, presentation_id: shot.hall, duration_ms: 900}}
   - {cue_id: wind, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.wind}}
-  - {cue_id: shutter, at_ms: 0, instruction: {kind: presentation, presentation_id: move.shutter, duration_ms: 1800}}
+  - {cue_id: alex_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.retreat, duration_ms: 1200}}
+  - {cue_id: mara_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.mara_retreat, duration_ms: 1200}}
+  - {cue_id: jonas_retreat, at_ms: 0, instruction: {kind: presentation, presentation_id: move.jonas_retreat, duration_ms: 1200}}
+  - {cue_id: failure_sound, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.overload}}
+  - {cue_id: shutter, at_ms: 1200, instruction: {kind: presentation, presentation_id: move.shutter, duration_ms: 1800}}
   - {cue_id: alarm, at_ms: 0, instruction: {kind: presentation, presentation_id: sound.alarm}}
   - {cue_id: timeout, at_ms: 0, instruction: {kind: presentation, presentation_id: canon.timeout}}
   - {cue_id: settled, at_ms: 9000, instruction: {kind: presentation, presentation_id: canon.cold_end}}

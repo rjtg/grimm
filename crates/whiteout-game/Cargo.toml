@@ -10,6 +10,7 @@ bevy = { version = "=0.20.1", default-features = false, features = [
     "std", "keyboard", "async_executor", "bevy_winit", "ui_bevy_render",
     "default_font", "multi_threaded", "x11", "wayland",
     "bevy_sprite_render", "bevy_audio", "wav",
+    "bevy_gltf", "bevy_pbr", "scene", "png",
 ] }
 grimm-semantic.workspace = true
 grimm-graph = { path = "../graph" }

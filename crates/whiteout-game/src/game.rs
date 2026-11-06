@@ -25,6 +25,10 @@ pub(crate) fn install(app: &mut App) {
             Update,
             (FrameSet::Collect, FrameSet::Execute, FrameSet::Present).chain(),
         )
+        .configure_sets(
+            Update,
+            (FrameSet::Collect, FrameSet::Execute).run_if(crate::stage::assets_ready),
+        )
         .add_systems(
             Update,
             (keyboard_input, scheduler::queue_cues).in_set(FrameSet::Collect),

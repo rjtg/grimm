@@ -32,200 +32,245 @@ struct Motion {
 struct Home(Transform);
 #[derive(Component)]
 struct Lamp;
-#[derive(Component)]
-struct Snow(u32);
 
 pub(crate) fn install(app: &mut App) {
     app.init_resource::<Assets<AudioSource>>()
         .init_resource::<Staged>()
         .init_resource::<Catalog>()
+        .init_resource::<Loading>()
         .add_systems(Startup, setup)
         .add_systems(PostStartup, remember_homes)
+        .add_systems(Update, check_loading.before(FrameSet::Collect))
         .add_systems(Update, audit_assets.in_set(FrameSet::Collect))
         .add_systems(Update, report_audio_started.in_set(FrameSet::Present))
         .add_systems(
             Update,
-            (reset_entry, sync_cues, animate, paint)
-                .chain()
-                .in_set(FrameSet::Present),
-        );
-}
-fn rect(commands: &mut Commands, color: Color, size: Vec2, position: Vec3) -> Entity {
-    commands
-        .spawn((
-            Sprite::from_color(color, size),
-            Transform::from_translation(position),
-        ))
-        .id()
-}
-fn setup(mut commands: Commands, mut audio: ResMut<Assets<AudioSource>>) {
-    let bank = Sound::ALL
-        .into_iter()
-        .map(|s| {
             (
-                s,
-                audio.add(AudioSource {
-                    bytes: s.bytes().into(),
-                }),
+                reset_entry,
+                sync_cues,
+                animate,
+                update_frost,
+                pose_limbs,
+                paint,
             )
-        })
-        .collect();
-    commands.insert_resource(AudioBank(bank));
-    rect(
-        &mut commands,
-        Color::srgb(0.035, 0.07, 0.11),
-        Vec2::new(1400., 900.),
-        Vec3::new(0., 80., -20.),
-    );
-    rect(
-        &mut commands,
-        Color::srgb(0.12, 0.2, 0.26),
-        Vec2::new(940., 350.),
-        Vec3::new(0., 130., -15.),
-    );
-    for x in [-400., -200., 0., 200., 400.] {
-        rect(
-            &mut commands,
-            Color::srgb(0.17, 0.27, 0.32),
-            Vec2::new(6., 340.),
-            Vec3::new(x, 130., -14.),
+                .chain()
+                .in_set(FrameSet::Present)
+                .run_if(assets_ready),
         );
+}
+#[derive(Resource, Default)]
+pub(crate) struct Loading {
+    pub pending: usize,
+    handles: Vec<Handle<bevy::world_serialization::WorldAsset>>,
+}
+pub(crate) fn assets_ready(loading: Option<Res<Loading>>) -> bool {
+    loading.is_none_or(|loading| loading.pending == 0)
+}
+#[derive(Component)]
+struct ModelRoot(Option<Object>);
+#[derive(Component)]
+struct Limb {
+    actor: Object,
+    kind: String,
+    rest: Transform,
+}
+#[derive(Component)]
+struct WarmLight;
+#[derive(Component)]
+struct Frost;
+
+const ROOM_OBJECTS: [(&str, Object, Vec3); 5] = [
+    (
+        "prop.generator_starter",
+        Object::Starter,
+        Vec3::new(0.58, 1.12, -0.86),
+    ),
+    (
+        "prop.deicer_fuse",
+        Object::Deicer,
+        Vec3::new(1.65, 1.2, -0.94),
+    ),
+    (
+        "prop.annex_shutter",
+        Object::Shutter,
+        Vec3::new(0., 4.1, 2.48),
+    ),
+    (
+        "prop.generator_wheel",
+        Object::Wheel,
+        Vec3::new(0.1, 0.8, -0.92),
+    ),
+    (
+        "prop.generator_latch",
+        Object::Latch,
+        Vec3::new(-0.55, 0.35, -0.965),
+    ),
+];
+fn setup(
+    mut commands: Commands,
+    mut audio: ResMut<Assets<AudioSource>>,
+    server: Option<Res<AssetServer>>,
+) {
+    commands.insert_resource(AudioBank(
+        Sound::ALL
+            .into_iter()
+            .map(|s| {
+                (
+                    s,
+                    audio.add(AudioSource {
+                        bytes: s.bytes().into(),
+                    }),
+                )
+            })
+            .collect(),
+    ));
+    let mut loading = Loading::default();
+    let actor_placements = [
+        (
+            Object::Alex,
+            "alex.glb",
+            Vec3::new(0.2, 0., 1.15),
+            std::f32::consts::PI,
+        ),
+        (Object::Mara, "mara.glb", Vec3::new(-1.85, 0., 1.15), 0.7),
+        (Object::Jonas, "jonas.glb", Vec3::new(-1.7, 0., 1.0), 0.25),
+    ];
+    for (object, file, position, angle) in actor_placements {
+        let home =
+            Transform::from_translation(position).with_rotation(Quat::from_rotation_y(angle));
+        let mut entity = commands.spawn((object, home, Home(home), Visibility::default()));
+        if let Some(server) = &server {
+            let handle = server
+                .load(GltfAssetLabel::Scene(0).from_asset(format!("production/models/{file}")));
+            loading.handles.push(handle.clone());
+            loading.pending += 1;
+            entity
+                .insert((WorldAssetRoot(handle), ModelRoot(Some(object))))
+                .observe(model_ready);
+        }
     }
-    rect(
-        &mut commands,
-        Color::srgb(0.08, 0.1, 0.12),
-        Vec2::new(1200., 90.),
-        Vec3::new(0., -70., -10.),
-    );
-    // Generator casing, cooling fins, flywheel, exhaust and tagged fuse panel.
-    rect(
-        &mut commands,
-        Color::srgb(0.22, 0.31, 0.3),
-        Vec2::new(210., 150.),
-        Vec3::new(50., 70., 0.),
-    );
-    for x in [-20., 0., 20., 40., 60.] {
-        rect(
-            &mut commands,
-            Color::srgb(0.08, 0.12, 0.14),
-            Vec2::new(6., 100.),
-            Vec3::new(x, 80., 1.),
-        );
-    }
-    rect(
-        &mut commands,
-        Color::srgb(0.25, 0.28, 0.3),
-        Vec2::new(30., 140.),
-        Vec3::new(20., 210., 0.),
-    );
-    let wheel = commands
-        .spawn((
-            Object::Wheel,
-            Transform::from_xyz(140., 60., 3.),
-            Visibility::default(),
-        ))
-        .id();
-    for rotation in [0., std::f32::consts::FRAC_PI_2] {
-        let child = commands
-            .spawn((
-                Sprite::from_color(Color::srgb(0.45, 0.5, 0.48), Vec2::new(78., 12.)),
-                Transform::from_rotation(Quat::from_rotation_z(rotation)),
-            ))
-            .id();
-        commands.entity(wheel).add_child(child);
-    }
-    for (object, x, color) in [
-        (Object::Starter, 225., Color::srgb(0.9, 0.6, 0.2)),
-        (Object::Deicer, 185., Color::srgb(0.8, 0.18, 0.12)),
-    ] {
-        rect(
-            &mut commands,
-            Color::srgb(0.07, 0.11, 0.13),
-            Vec2::new(24., 55.),
-            Vec3::new(x, 140., 1.),
-        );
-        let id = rect(
-            &mut commands,
-            color,
-            Vec2::new(8., 38.),
-            Vec3::new(x, 145., 2.),
-        );
-        commands.entity(id).insert(object);
-    }
-    let lamp = rect(
-        &mut commands,
-        Color::srgb(0.9, 0.2, 0.15),
-        Vec2::new(26., 15.),
-        Vec3::new(75., 165., 4.),
-    );
-    commands.entity(lamp).insert(Lamp);
-    let shutter = rect(
-        &mut commands,
-        Color::srgb(0.3, 0.38, 0.4),
-        Vec2::new(120., 280.),
-        Vec3::new(310., 400., 6.),
-    );
-    commands.entity(shutter).insert(Object::Shutter);
-    for (object, x, color) in [
-        (Object::Jonas, -340., Color::srgb(0.75, 0.48, 0.24)),
-        (Object::Mara, -420., Color::srgb(0.28, 0.58, 0.66)),
-    ] {
-        let person = commands
-            .spawn((
-                object,
-                Transform::from_xyz(x, 70., 5.),
-                Visibility::default(),
-            ))
-            .id();
-        let coat = commands
-            .spawn((
-                Sprite::from_color(color, Vec2::new(36., 70.)),
-                Transform::default(),
-            ))
-            .id();
-        let head = commands
-            .spawn((
-                Sprite::from_color(Color::srgb(0.75, 0.66, 0.56), Vec2::splat(24.)),
-                Transform::from_xyz(0., 48., 0.),
-            ))
-            .id();
-        let legs = commands
-            .spawn((
-                Sprite::from_color(Color::srgb(0.12, 0.16, 0.2), Vec2::new(24., 32.)),
-                Transform::from_xyz(0., -48., 0.),
-            ))
-            .id();
-        let label = commands
-            .spawn((
-                Text2d::new(if object == Object::Jonas {
-                    "JONAS"
-                } else {
-                    "MARA"
-                }),
-                TextFont {
-                    font_size: bevy::text::FontSize::Px(14.0),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 75.0, 1.0),
-            ))
-            .id();
+    if let Some(server) = server {
+        let handle = server
+            .load(GltfAssetLabel::Scene(0).from_asset("production/models/generator-annex.glb"));
+        loading.handles.push(handle.clone());
+        loading.pending += 1;
         commands
-            .entity(person)
-            .add_children(&[coat, head, legs, label]);
+            .spawn((WorldAssetRoot(handle), ModelRoot(None)))
+            .observe(model_ready);
+        commands.insert_resource(GlobalAmbientLight {
+            color: Color::srgb(0.55, 0.7, 0.85),
+            brightness: 160.,
+            ..default()
+        });
+        commands.insert_resource(bevy::light::DirectionalLightShadowMap { size: 1024 });
+        commands.spawn((
+            bevy::light::CascadeShadowConfigBuilder {
+                num_cascades: 1,
+                maximum_distance: 12.,
+                ..default()
+            }
+            .build(),
+            DirectionalLight {
+                illuminance: 1200.,
+                shadow_maps_enabled: true,
+                color: Color::srgb(0.65, 0.8, 1.),
+                ..default()
+            },
+            Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.9, -0.6, 0.)),
+        ));
+        commands.spawn((
+            PointLight {
+                intensity: 35000.,
+                range: 7.,
+                color: Color::srgb(0.55, 0.75, 1.),
+                shadow_maps_enabled: false,
+                ..default()
+            },
+            Transform::from_xyz(-0.6, 2.65, 0.),
+        ));
+        commands.spawn((
+            PointLight {
+                intensity: 350.,
+                range: 4.,
+                color: Color::srgb(1., 0.12, 0.04),
+                ..default()
+            },
+            Transform::from_xyz(1., 1.8, -0.4),
+            Lamp,
+        ));
+        commands.spawn((
+            PointLight {
+                intensity: 0.,
+                range: 6.,
+                color: Color::srgb(1., 0.64, 0.3),
+                ..default()
+            },
+            Transform::from_xyz(0.5, 2.25, -0.4),
+            WarmLight,
+        ));
+    } else {
+        // Deterministic host tests have no renderer/asset server. These are the
+        // same physical pivots, never a second gameplay state or fallback art.
+        for (_, object, position) in ROOM_OBJECTS {
+            let home = Transform::from_translation(position);
+            commands.spawn((object, home, Home(home)));
+        }
     }
-    // Deterministic snow outside the annex, no random/time-dependent test setup.
-    for i in 0..50 {
-        let e = rect(
-            &mut commands,
-            Color::srgba(0.7, 0.85, 0.95, 0.4),
-            Vec2::new(12., 2.),
-            Vec3::new(
-                (i * 71 % 1100) as f32 - 550.,
-                (i * 31 % 230) as f32 + 240.,
-                10.,
-            ),
-        );
-        commands.entity(e).insert(Snow(i));
+    commands.insert_resource(loading);
+}
+fn model_ready(
+    ready: On<bevy::world_serialization::WorldInstanceReady>,
+    mut commands: Commands,
+    roots: Query<&ModelRoot>,
+    children: Query<&Children>,
+    nodes: Query<(&Name, &Transform)>,
+    mut loading: ResMut<Loading>,
+    mut view: ResMut<SceneView>,
+) {
+    let Ok(root) = roots.get(ready.entity) else {
+        return;
+    };
+    let mut count = 0;
+    for child in children.iter_descendants(ready.entity) {
+        if let Ok((name, transform)) = nodes.get(child) {
+            count += 1;
+            if name.as_str() == "prop.latch_ice" {
+                commands.entity(child).insert(Frost);
+            }
+            if let Some((_, object, _)) =
+                ROOM_OBJECTS.iter().find(|(id, _, _)| *id == name.as_str())
+            {
+                commands.entity(child).insert((*object, Home(*transform)));
+            }
+            if let Some(actor) = root.0
+                && name.starts_with("bone.")
+            {
+                commands.entity(child).insert(Limb {
+                    actor,
+                    kind: name.to_string(),
+                    rest: *transform,
+                });
+            }
+        }
+    }
+    loading.pending = loading.pending.saturating_sub(1);
+    view.set_changed();
+    info!(
+        "WHITEOUT imported GLB {:?}: {count} named nodes; {} models pending",
+        root.0, loading.pending
+    );
+}
+fn check_loading(
+    server: Option<Res<AssetServer>>,
+    loading: Res<Loading>,
+    mut view: ResMut<SceneView>,
+) {
+    if let Some(server) = server {
+        for handle in &loading.handles {
+            if let bevy::asset::LoadState::Failed(error) = server.load_state(handle.id()) {
+                view.failure = Some(format!("WHITEOUT model import failed: {error}"));
+            }
+        }
     }
 }
 
@@ -387,7 +432,6 @@ fn animate(
     runtime: Res<Runtime>,
     jobs: Query<(&CueEntity, &Motion)>,
     mut objects: Query<(&Object, &mut Transform)>,
-    mut snow: Query<(&Snow, &mut Transform), Without<Object>>,
 ) {
     // Later authored jobs override earlier jobs for the same target. Entity
     // iteration order is never the tie-breaker.
@@ -420,40 +464,84 @@ fn animate(
             .find(|(object, _)| **object == motion.target)
         {
             match motion.binding {
-                Binding::Camera { position, scale } => {
-                    transform.translation.x = motion.from.translation.x
-                        + (position.x - motion.from.translation.x) * fraction;
-                    transform.translation.y = motion.from.translation.y
-                        + (position.y - motion.from.translation.y) * fraction;
-                    transform.scale = motion.from.scale.lerp(Vec3::splat(scale), fraction);
+                Binding::Camera { position, target } => {
+                    transform.translation = motion.from.translation.lerp(position, fraction);
+                    let end = Transform::from_translation(position).looking_at(target, Vec3::Y);
+                    transform.rotation = motion.from.rotation.slerp(end.rotation, fraction);
                 }
                 Binding::Move { position, .. } => {
-                    transform.translation.x = motion.from.translation.x
-                        + (position.x - motion.from.translation.x) * fraction;
-                    transform.translation.y = motion.from.translation.y
-                        + (position.y - motion.from.translation.y) * fraction;
+                    transform.translation = motion.from.translation.lerp(position, fraction);
                 }
                 Binding::Rotate { radians, .. } => {
-                    transform.rotation = motion
-                        .from
-                        .rotation
-                        .slerp(Quat::from_rotation_z(radians), fraction)
+                    transform.rotation = motion.from.rotation.slerp(
+                        if motion.target == Object::Latch {
+                            Quat::from_rotation_y(radians)
+                        } else {
+                            Quat::from_rotation_z(radians)
+                        },
+                        fraction,
+                    )
                 }
                 Binding::Spin => transform.rotation = Quat::from_rotation_z(elapsed as f32 * 0.009),
                 _ => {}
             }
         }
     }
-    for (flake, mut transform) in &mut snow {
-        let t = runtime.elapsed_ms as f32 / 1000.;
-        transform.translation.x = ((flake.0 * 71) as f32 - t * 65.).rem_euclid(1100.) - 550.;
-        transform.translation.y = (flake.0 * 31 % 230) as f32 + 240. - (t * 10.).rem_euclid(100.);
+}
+fn update_frost(
+    objects: Query<(&Object, &Transform)>,
+    mut frost: Query<&mut Transform, (With<Frost>, Without<Object>)>,
+) {
+    let angle = objects
+        .iter()
+        .find(|(object, _)| **object == Object::Latch)
+        .map_or(0., |(_, transform)| {
+            transform.rotation.angle_between(Quat::IDENTITY)
+        });
+    for mut transform in &mut frost {
+        transform.scale = Vec3::splat((1. - angle / 1.25).clamp(0.02, 1.));
+    }
+}
+fn pose_limbs(
+    runtime: Res<Runtime>,
+    view: Res<SceneView>,
+    mut limbs: Query<(&Limb, &mut Transform), Without<Object>>,
+) {
+    let time = runtime.elapsed_ms as f32 / 1000.;
+    let working = view.active.iter().any(|cue| {
+        matches!(
+            cue.id.as_str(),
+            "move.latch" | "move.starter" | "move.deicer"
+        )
+    });
+    let retreat = view.active.iter().any(|cue| cue.id == "move.retreat");
+    for (limb, mut transform) in &mut limbs {
+        *transform = limb.rest;
+        if limb.kind == "bone.chest" {
+            transform.scale.y = 1. + 0.012 * (time * 1.7).sin();
+            if limb.actor == Object::Mara {
+                transform.rotation = Quat::from_rotation_z(if retreat { -0.15 } else { 0.06 });
+            }
+        }
+        if limb.kind == "bone.head" {
+            transform.rotation = Quat::from_rotation_y(0.1 * (time * 0.6).sin());
+        }
+        if limb.kind == "bone.arm.R" && limb.actor == Object::Alex && working {
+            transform.rotation = Quat::from_rotation_x(-1.1 + 0.12 * (time * 8.).sin());
+        }
+        if limb.kind == "bone.arm.L" && limb.actor == Object::Mara {
+            transform.rotation = Quat::from_rotation_x(-0.6);
+        }
+        if limb.kind == "bone.head" && limb.actor == Object::Jonas {
+            transform.rotation *= Quat::from_rotation_z(-0.08);
+        }
     }
 }
 fn paint(
     generator: Res<Generator>,
     runtime: Res<Runtime>,
-    mut lamps: Query<&mut Sprite, With<Lamp>>,
+    mut lamps: Query<&mut PointLight, With<Lamp>>,
+    mut warm: Query<&mut PointLight, (With<WarmLight>, Without<Lamp>)>,
 ) {
     let stable = matches!(
         generator.status,
@@ -462,10 +550,14 @@ fn paint(
     let pulse = 0.45 + 0.45 * (runtime.elapsed_ms as f32 * 0.008).sin().abs();
     for mut lamp in &mut lamps {
         lamp.color = if stable {
-            Color::srgb(0.2, 0.9, 0.35)
+            Color::srgb(0.3, 1., 0.45)
         } else {
-            Color::srgb(pulse, 0.12, 0.08)
+            Color::srgb(1., 0.1, 0.04)
         };
+        lamp.intensity = if stable { 1200. } else { 900. * pulse };
+    }
+    for mut lamp in &mut warm {
+        lamp.intensity = if stable { 18000. } else { 0. };
     }
 }
 

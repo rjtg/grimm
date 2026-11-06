@@ -11,8 +11,8 @@ def png():
     for y in range(64):
         raw.append(0)
         for x in range(64):
-            v=210+rng.randrange(30)
-            if (x*7+y*13)%101<3:v=150
+            v=238+rng.randrange(16)
+            if (x*7+y*13)%101<3:v=200
             raw.extend((v,v,v,255))
     def chunk(t,b):return struct.pack('>I',len(b))+t+b+struct.pack('>I',zlib.crc32(t+b)&0xffffffff)
     return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',64,64,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b'')
@@ -29,6 +29,7 @@ class Model:
         self.d['accessors'].append(a);return len(self.d['accessors'])-1
     def material(self,name,color,metal=0,rough=.85,emit=None):
         p={'baseColorFactor':[*color,1],'metallicFactor':metal,'roughnessFactor':rough,'baseColorTexture':{'index':0}}
+        if name in ['skin','hair','boots_gloves']:p.pop('baseColorTexture')
         m={'name':name,'pbrMetallicRoughness':p}
         if emit:m['emissiveFactor']=emit
         self.d['materials'].append(m);return len(self.d['materials'])-1
@@ -70,6 +71,7 @@ def annex():
     m=Model(); wall=m.material('worn_sage_panels',(.47,.55,.52),.3);steel=m.material('brushed_steel',(.24,.3,.32),.75,.55);dark=m.material('rubber_charcoal',(.055,.07,.08));frost=m.material('frost',(.72,.83,.85));red=m.material('oxide_red',(.62,.13,.07));amber=m.material('primer_amber',(.8,.53,.12));window=m.material('sealed_frosted_glass',(.24,.43,.5),.1,.45)
     def box(n,p,s,c,parent=None):return m.node(n,p,s,c,parent)
     box('loc.generator_annex.floor',(0,-.10,0),(4.5,.2,5),dark)
+    box('threshold_landing',(0,-.1,3.4),(4.5,.2,1.8),dark)
     box('north_wall',(0,1.5,-2.55),(4.5,3,.1),wall)
     for x in [-2.3,2.3]:box('side_wall',(x,1.5,0),(.1,3,5),wall)
     # South cutaway is the camera wall, with a physically bounded sole threshold.
@@ -130,7 +132,7 @@ def actor(name):
         for x in [-.15,.15]:m.node('sand_shoulder',(x,.36,.145),(.13,.1,.035),trim,chest)
     if name=='mara':m.node('hair_bun',(-.105,.16,-.12),(.14,.14,.13),hair,head,kind='cylinder')
     if name=='jonas':m.node('beard',(0,-.005,.085),(.18,.08,.07),hair,head)
-    for side,x in [('L',-.26),('R',.26)]:
+    for side,x in [('L',.26),('R',-.26)]:
         arm=m.node('bone.arm.'+side,(x,.38,0),parent=chest)
         m.node('sleeve_upper',(0,-.16,0),(.14,.32,.16),coat,arm)
         elbow=m.node('bone.elbow.'+side,(0,-.32,0),parent=arm)
@@ -156,8 +158,24 @@ def sounds():
             samples.append(int(max(-1,min(1,v*.3))*32767))
         with wave.open(str(ROOT.parent/'audio'/f'{name}.wav'),'wb')as w:w.setparams((1,2,rate,0,'NONE','not compressed'));w.writeframes(struct.pack('<'+'h'*len(samples),*samples))
 
+def manifest():
+    import hashlib
+    assets=[]
+    for file,identity,shots in [
+        ('generator-annex.glb','loc.generator_annex',['G01','G04','G06','G07','G08','G13','G16','G17','G18','G19','G20','G23','G24']),
+        ('alex.glb','actor.alex',['G01','G06','G18','G23']),
+        ('mara.glb','actor.mara',['G01','G02','G23']),
+        ('jonas.glb','actor.jonas',['G01','G02','G23'])]:
+        data=(ROOT/'models'/file).read_bytes();length=struct.unpack_from('<I',data,12)[0];doc=json.loads(data[20:20+length])
+        assets.append(dict(id=identity,path='models/'+file,version=1,format='glTF 2.0 GLB',source='sources/build_assets.py',sha256=hashlib.sha256(data).hexdigest(),nodes=[n['name']for n in doc['nodes']],materials=[m['name']for m in doc['materials']],shots=shots,status='imported production base; art review pending'))
+    for name in ['wind','motor','alarm','latch','mechanism','ignition','overload']:
+        data=(ROOT.parent/'audio'/f'{name}.wav').read_bytes()
+        assets.append(dict(id='sound.'+name,path='../audio/'+name+'.wav',version=1,format='PCM WAV 22050 Hz mono 16-bit',source='sources/build_assets.py' if name not in ['wind','motor','alarm']else 'unchanged PCM master from main 3dc9b8a / PR #76',sha256=hashlib.sha256(data).hexdigest(),status='loaded cue audio; listening/mix review pending'))
+    (ROOT/'manifest.json').write_text(json.dumps(dict(schema_version=1,baseline='3dc9b8a',coordinates='metres; +Y up, +Z south; no import rotation',provenance='Original authored geometry, procedural texture and synthesized PCM; no external dependencies',license='No repository distribution license declared; maintainer distribution decision open',assets=assets,remaining=['final skinned rigs and contact rehearsal','unprepared/untreated canonical gameplay beyond the existing prepared-route slice','full WHITEOUT locations','target-hardware sound mixing']),indent=2)+'\n')
+
 if __name__=='__main__':
     annex()
     for name in ['alex','mara','jonas']:actor(name)
     sounds()
-    print('Exported four self-contained GLB models and four new PCM WAV cues.')
+    manifest()
+    print('Exported four self-contained GLB models, four new PCM cues and concrete asset manifest.')

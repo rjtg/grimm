@@ -183,9 +183,9 @@ fn replace_despawns_old_audio_motion_and_rejects_stale_wakes_with_bounded_assets
         select(&mut app, "abandon");
         advance(&mut app, 9000);
     }
-    assert_eq!(entity_count::<Object>(&mut app), 7);
-    assert_eq!(app.world().resource::<Assets<AudioSource>>().len(), 3);
-    assert!(entity_count::<CueEntity>(&mut app) < 10);
+    assert_eq!(entity_count::<Object>(&mut app), 9);
+    assert_eq!(app.world().resource::<Assets<AudioSource>>().len(), 7);
+    assert!(entity_count::<CueEntity>(&mut app) <= 10);
 }
 #[test]
 fn conditions_are_rechecked_and_deadline_still_wins_at_equality() {
@@ -342,9 +342,9 @@ fn actual_motion_advances_with_scene_time_without_committing_a_gameplay_effect()
     advance(&mut app, 4000);
     advance(&mut app, 3000);
     let midpoint = jonas_x(&mut app);
-    assert!(midpoint > start && midpoint < -210.);
+    assert!(midpoint > start && midpoint < -1.35);
     advance(&mut app, 3000);
-    assert_eq!(jonas_x(&mut app), -210.);
+    assert_eq!(jonas_x(&mut app), -1.35);
     assert_eq!(app.world().resource::<Generator>().applications, 1);
     assert!(!app.world().resource::<Generator>().deicer_isolated);
 }
@@ -383,4 +383,168 @@ fn losing_a_live_stage_object_stops_progress_and_cleans_up_instances() {
     );
     advance(&mut app, 0);
     assert_eq!(entity_count::<CueEntity>(&mut app), 0);
+}
+
+#[test]
+fn imported_glbs_are_real_scenes_with_meshes_textures_and_named_animation_pivots() {
+    use bevy::{
+        asset::AssetPlugin, gltf::GltfPlugin, image::ImagePlugin, mesh::MeshPlugin,
+        world_serialization::WorldSerializationPlugin,
+    };
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        InputPlugin,
+        TransformPlugin,
+        AssetPlugin {
+            file_path: concat!(env!("CARGO_MANIFEST_DIR"), "/assets").into(),
+            ..default()
+        },
+        WorldSerializationPlugin,
+        MeshPlugin,
+        ImagePlugin::default(),
+        GltfPlugin::default(),
+        game::install,
+        crate::screen::install,
+        install,
+    ));
+    // With no PBR plugin the spawned scene has no material components to hold
+    // images alive. Retain the native glTF source/material handles explicitly.
+    let source_models: Vec<Handle<bevy::gltf::Gltf>> =
+        ["generator-annex.glb", "alex.glb", "mara.glb", "jonas.glb"]
+            .into_iter()
+            .map(|name| {
+                app.world()
+                    .resource::<AssetServer>()
+                    .load(format!("production/models/{name}"))
+            })
+            .collect();
+    app.finish();
+    app.cleanup();
+    app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
+        Duration::ZERO,
+    ));
+    app.update();
+    assert_eq!(app.world().resource::<Runtime>().elapsed_ms, 0);
+    assert_eq!(app.world().resource::<Generator>().applications, 0);
+    for _ in 0..10000 {
+        app.update();
+        if let Some(error) = &app.world().resource::<SceneView>().failure {
+            panic!("{error}");
+        }
+        if app.world().resource::<Loading>().pending == 0
+            && source_models.iter().all(|handle| {
+                app.world()
+                    .resource::<AssetServer>()
+                    .is_loaded_with_dependencies(handle)
+            })
+        {
+            break;
+        }
+        std::thread::yield_now();
+    }
+    assert_eq!(
+        app.world().resource::<Loading>().pending,
+        0,
+        "all four native glTF scenes must spawn"
+    );
+    app.update();
+    assert_eq!(entity_count::<Object>(&mut app), 9);
+    assert!(entity_count::<Mesh3d>(&mut app) > 100);
+    assert!(entity_count::<Limb>(&mut app) >= 30);
+    assert!(app.world().resource::<Assets<Image>>().len() >= 4);
+    let meshes = entity_count::<Mesh3d>(&mut app);
+    annex(&mut app);
+    advance(&mut app, 4000);
+    select(&mut app, "start_generator");
+    advance(&mut app, 4500);
+    assert_eq!(
+        app.world().resource::<Generator>().status,
+        GeneratorStatus::Powered
+    );
+    assert_eq!(
+        entity_count::<Mesh3d>(&mut app),
+        meshes,
+        "inserts/transitions reuse the same imported set"
+    );
+    assert!(app.world().resource::<SceneView>().failure.is_none());
+}
+
+#[test]
+fn loading_gate_does_not_charge_preload_time_or_accept_player_input() {
+    let mut app = app();
+    app.insert_resource(Runtime::new(
+        grimm_graph::GraphEngine::new(graph()).unwrap(),
+    ));
+    app.insert_resource(Generator::default());
+    app.world_mut().resource_mut::<Loading>().pending = 1;
+    app.world_mut()
+        .write_message(HostRequest::WakeCue(CueInstance {
+            epoch: 0,
+            cue_id: "setup".into(),
+        }));
+    advance(&mut app, 60000);
+    assert_eq!(app.world().resource::<Runtime>().elapsed_ms, 0);
+    assert_eq!(app.world().resource::<Generator>().applications, 0);
+    assert_eq!(
+        app.world().resource::<Runtime>().sheet.node_id,
+        "DISPATCH_APPROACH"
+    );
+    app.world_mut().resource_mut::<Loading>().pending = 0;
+    advance(&mut app, 0);
+    assert_eq!(app.world().resource::<Runtime>().elapsed_ms, 0);
+    assert_eq!(app.world().resource::<Generator>().applications, 1);
+    advance(&mut app, 18000);
+    assert_eq!(
+        app.world().resource::<Runtime>().sheet.node_id,
+        "GENERATOR_ANNEX"
+    );
+}
+
+#[test]
+fn physical_latch_and_shutter_animate_on_scene_time_without_owning_rules() {
+    let mut app = app();
+    annex(&mut app);
+    advance(&mut app, 2500);
+    advance(&mut app, 750);
+    let rotation = |app: &mut App, target| {
+        let w = app.world_mut();
+        w.query::<(&Object, &Transform)>()
+            .iter(w)
+            .find(|(o, _)| **o == target)
+            .unwrap()
+            .1
+            .rotation
+    };
+    let halfway = rotation(&mut app, Object::Latch);
+    assert!(halfway.angle_between(Quat::IDENTITY) > 0.2);
+    advance(&mut app, 750);
+    assert!(rotation(&mut app, Object::Latch).angle_between(halfway) > 0.2);
+    assert_eq!(
+        app.world().resource::<Generator>().status,
+        GeneratorStatus::Stopped
+    );
+    advance(&mut app, 26000);
+    advance(&mut app, 1200);
+    let position = |app: &mut App, target| {
+        let w = app.world_mut();
+        w.query::<(&Object, &Transform)>()
+            .iter(w)
+            .find(|(o, _)| **o == target)
+            .unwrap()
+            .1
+            .translation
+    };
+    assert!(position(&mut app, Object::Alex).z > 3.);
+    assert!(position(&mut app, Object::Jonas).z > 3.);
+    assert!(position(&mut app, Object::Mara).z > 3.);
+    assert_eq!(position(&mut app, Object::Shutter).y, 4.1);
+    advance(&mut app, 900);
+    assert!((position(&mut app, Object::Shutter).y - 2.725).abs() < 0.001);
+    advance(&mut app, 900);
+    assert!((position(&mut app, Object::Shutter).y - 1.35).abs() < 0.001);
+    assert_eq!(
+        app.world().resource::<Generator>().status,
+        GeneratorStatus::Stopped
+    );
 }

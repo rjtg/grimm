@@ -5,6 +5,8 @@ use std::collections::BTreeSet;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Object {
     Camera,
+    Alex,
+    Latch,
     Jonas,
     Mara,
     Starter,
@@ -17,14 +19,30 @@ pub(crate) enum Sound {
     Wind,
     Motor,
     Alarm,
+    Latch,
+    Mechanism,
+    Ignition,
+    Overload,
 }
 impl Sound {
-    pub const ALL: [Self; 3] = [Self::Wind, Self::Motor, Self::Alarm];
+    pub const ALL: [Self; 7] = [
+        Self::Wind,
+        Self::Motor,
+        Self::Alarm,
+        Self::Latch,
+        Self::Mechanism,
+        Self::Ignition,
+        Self::Overload,
+    ];
     pub fn name(self) -> &'static str {
         match self {
             Self::Wind => "wind.wav",
             Self::Motor => "motor.wav",
             Self::Alarm => "alarm.wav",
+            Self::Latch => "latch.wav",
+            Self::Mechanism => "mechanism.wav",
+            Self::Ignition => "ignition.wav",
+            Self::Overload => "overload.wav",
         }
     }
     pub fn bytes(self) -> &'static [u8] {
@@ -32,14 +50,18 @@ impl Sound {
             Self::Wind => include_bytes!("../assets/audio/wind.wav"),
             Self::Motor => include_bytes!("../assets/audio/motor.wav"),
             Self::Alarm => include_bytes!("../assets/audio/alarm.wav"),
+            Self::Latch => include_bytes!("../assets/audio/latch.wav"),
+            Self::Mechanism => include_bytes!("../assets/audio/mechanism.wav"),
+            Self::Ignition => include_bytes!("../assets/audio/ignition.wav"),
+            Self::Overload => include_bytes!("../assets/audio/overload.wav"),
         }
     }
 }
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Binding {
     Panel,
-    Camera { position: Vec2, scale: f32 },
-    Move { object: Object, position: Vec2 },
+    Camera { position: Vec3, target: Vec3 },
+    Move { object: Object, position: Vec3 },
     Rotate { object: Object, radians: f32 },
     Spin,
     Audio { sound: Sound, looping: bool },
@@ -55,6 +77,8 @@ impl Default for Catalog {
             sounds: Sound::ALL.into(),
             objects: [
                 Object::Camera,
+                Object::Alex,
+                Object::Latch,
                 Object::Jonas,
                 Object::Mara,
                 Object::Starter,
@@ -72,32 +96,32 @@ pub(crate) fn resolve(id: &str, catalog: &Catalog) -> Result<Binding, String> {
     } else {
         match id {
             "shot.wide" => Binding::Camera {
-                position: Vec2::new(0., 100.),
-                scale: 1.,
+                position: Vec3::new(0.1, 2.6, 3.9),
+                target: Vec3::new(0., -0.4, -0.6),
             },
             "shot.hall" => Binding::Camera {
-                position: Vec2::new(-120.0, 0.0),
-                scale: 1.0,
+                position: Vec3::new(0., 2.65, 6.8),
+                target: Vec3::new(0., -0.3, 2.0),
             },
             "shot.controls" => Binding::Camera {
-                position: Vec2::new(40., 90.),
-                scale: 0.72,
+                position: Vec3::new(2.0, 1.8, 1.1),
+                target: Vec3::new(1.6, 1.05, -0.94),
             },
             "shot.starter" => Binding::Camera {
-                position: Vec2::new(100., 80.),
-                scale: 0.62,
+                position: Vec3::new(1.0, 1.65, 1.4),
+                target: Vec3::new(0.35, 1.0, -0.9),
             },
             "move.jonas" => Binding::Move {
                 object: Object::Jonas,
-                position: Vec2::new(-210., 70.),
+                position: Vec3::new(-1.35, 0., 0.5),
             },
             "move.mara" => Binding::Move {
                 object: Object::Mara,
-                position: Vec2::new(-285., 65.),
+                position: Vec3::new(-1.8, 0., 0.55),
             },
             "move.shutter" => Binding::Move {
                 object: Object::Shutter,
-                position: Vec2::new(310., 65.),
+                position: Vec3::new(0., 1.35, 2.48),
             },
             "move.deicer" => Binding::Rotate {
                 object: Object::Deicer,
@@ -107,7 +131,51 @@ pub(crate) fn resolve(id: &str, catalog: &Catalog) -> Result<Binding, String> {
                 object: Object::Starter,
                 radians: 1.1,
             },
+            "move.latch" => Binding::Rotate {
+                object: Object::Latch,
+                radians: -1.25,
+            },
+            "move.alex" => Binding::Move {
+                object: Object::Alex,
+                position: Vec3::new(0.1, 0., -0.1),
+            },
+            "move.alex_fuse" => Binding::Move {
+                object: Object::Alex,
+                position: Vec3::new(1.25, 0., -0.15),
+            },
+            "move.mara_retreat" => Binding::Move {
+                object: Object::Mara,
+                position: Vec3::new(-0.7, 0., 3.25),
+            },
+            "move.jonas_retreat" => Binding::Move {
+                object: Object::Jonas,
+                position: Vec3::new(-1.2, 0., 3.3),
+            },
+            "move.retreat" => Binding::Move {
+                object: Object::Alex,
+                position: Vec3::new(0.3, 0., 3.15),
+            },
+            "shot.latch" => Binding::Camera {
+                position: Vec3::new(1.2, 1.55, 1.25),
+                target: Vec3::new(0.45, 0.85, -0.9),
+            },
             "motor.spin" => Binding::Spin,
+            "sound.latch" => Binding::Audio {
+                sound: Sound::Latch,
+                looping: false,
+            },
+            "sound.mechanism" => Binding::Audio {
+                sound: Sound::Mechanism,
+                looping: false,
+            },
+            "sound.ignition" => Binding::Audio {
+                sound: Sound::Ignition,
+                looping: false,
+            },
+            "sound.overload" => Binding::Audio {
+                sound: Sound::Overload,
+                looping: false,
+            },
             "sound.wind" => Binding::Audio {
                 sound: Sound::Wind,
                 looping: true,

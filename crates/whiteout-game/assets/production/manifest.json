@@ -1,6 +1,9 @@
 {
   "schema_version": 1,
   "baseline": "3dc9b8a",
+  "coordinates": "metres; +Y up, +Z south; no import rotation",
+  "provenance": "Original authored geometry, procedural texture and synthesized PCM; no external dependencies",
+  "license": "No repository distribution license declared; maintainer distribution decision open",
   "assets": [
     {
       "id": "loc.generator_annex",
@@ -8,9 +11,10 @@
       "version": 1,
       "format": "glTF 2.0 GLB",
       "source": "sources/build_assets.py",
-      "sha256": "6cca9b1c37cda1dcee64b5643541106d849f2de2d92c0fec572a9dffe2ec02e2",
+      "sha256": "7c5db005a27bedab0f54eb676b4c4be38605976c1b8b4041947013d7fad58d47",
       "nodes": [
         "loc.generator_annex.floor",
+        "threshold_landing",
         "north_wall",
         "side_wall",
         "side_wall",
@@ -128,7 +132,7 @@
         "G23",
         "G24"
       ],
-      "status": "produced; importer/playtest verification pending"
+      "status": "imported production base; art review pending"
     },
     {
       "id": "actor.alex",
@@ -136,7 +140,7 @@
       "version": 1,
       "format": "glTF 2.0 GLB",
       "source": "sources/build_assets.py",
-      "sha256": "e60ec1a792cd34db9c7807141f90c2866061f134159a48f9c2b796337e088d50",
+      "sha256": "537ebd50c37996437dfa4c9ed439d0cbdbc57d0c16756756c44d79421c833dda",
       "nodes": [
         "actor.alex",
         "bone.hips",
@@ -191,7 +195,7 @@
         "G18",
         "G23"
       ],
-      "status": "produced; importer/playtest verification pending"
+      "status": "imported production base; art review pending"
     },
     {
       "id": "actor.mara",
@@ -199,7 +203,7 @@
       "version": 1,
       "format": "glTF 2.0 GLB",
       "source": "sources/build_assets.py",
-      "sha256": "ea18f1d4ac57728796ddd837ad3755ae0240b8687d2f04b5fed8eb5b72ef7823",
+      "sha256": "6c2a6927a72cdc5c5663e0fb3c4d9b840fc5623602575e928223a9e024450869",
       "nodes": [
         "actor.mara",
         "bone.hips",
@@ -250,7 +254,7 @@
         "G02",
         "G23"
       ],
-      "status": "produced; importer/playtest verification pending"
+      "status": "imported production base; art review pending"
     },
     {
       "id": "actor.jonas",
@@ -258,7 +262,7 @@
       "version": 1,
       "format": "glTF 2.0 GLB",
       "source": "sources/build_assets.py",
-      "sha256": "c845f0a79233624ff400f09defa4ad068f0461504a6d1e64c633446e6c107f05",
+      "sha256": "ba24806b54cb29304bffeba7ea1f9095980d79eafb8265c63ce508fdbc10109d",
       "nodes": [
         "actor.jonas",
         "bone.hips",
@@ -310,13 +314,76 @@
         "G02",
         "G23"
       ],
-      "status": "produced; importer/playtest verification pending"
+      "status": "imported production base; art review pending"
+    },
+    {
+      "id": "sound.wind",
+      "path": "../audio/wind.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "unchanged PCM master from main 3dc9b8a / PR #76",
+      "sha256": "8ede899d7a96245df03c4ed16eb4223a140fbc3f2021e5e5808f58b1a8d7f42f",
+      "status": "loaded cue audio; listening/mix review pending"
+    },
+    {
+      "id": "sound.motor",
+      "path": "../audio/motor.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "unchanged PCM master from main 3dc9b8a / PR #76",
+      "sha256": "fe6852720535c4b1e1c3a92cc178e5e508686db44f7737de42206571a5791ece",
+      "status": "loaded cue audio; listening/mix review pending"
+    },
+    {
+      "id": "sound.alarm",
+      "path": "../audio/alarm.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "unchanged PCM master from main 3dc9b8a / PR #76",
+      "sha256": "20314adf1f189bd9ae5afc7233a7e5757b80c6e0a35cf202aebd0f37951ed7b9",
+      "status": "loaded cue audio; listening/mix review pending"
+    },
+    {
+      "id": "sound.latch",
+      "path": "../audio/latch.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "sources/build_assets.py",
+      "sha256": "a3101271d4ab461a1f1baaafc9e7191d31650689479f0b66d3a9f3ca9e9f749e",
+      "status": "loaded cue audio; listening/mix review pending"
+    },
+    {
+      "id": "sound.mechanism",
+      "path": "../audio/mechanism.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "sources/build_assets.py",
+      "sha256": "6ead4904f48fbdd72bde573b52b2c7faea06e713c3b5c083793981c53272637b",
+      "status": "loaded cue audio; listening/mix review pending"
+    },
+    {
+      "id": "sound.ignition",
+      "path": "../audio/ignition.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "sources/build_assets.py",
+      "sha256": "c549e9d64f7281afc9b6cabd39036f4e447ddf48f34d136422f218c9e6b87cc8",
+      "status": "loaded cue audio; listening/mix review pending"
+    },
+    {
+      "id": "sound.overload",
+      "path": "../audio/overload.wav",
+      "version": 1,
+      "format": "PCM WAV 22050 Hz mono 16-bit",
+      "source": "sources/build_assets.py",
+      "sha256": "06c2b223556ab0da5e3a5dba055d38e1f286c6d1a71303d4f93f652df75052eb",
+      "status": "loaded cue audio; listening/mix review pending"
     }
   ],
   "remaining": [
-    "final skinned rigs and collision/contact rehearsal",
-    "unprepared/untreated gameplay beyond existing slice",
-    "full WHITEOUT scene production",
-    "target-hardware sound mix and performance"
+    "final skinned rigs and contact rehearsal",
+    "unprepared/untreated canonical gameplay beyond the existing prepared-route slice",
+    "full WHITEOUT locations",
+    "target-hardware sound mixing"
   ]
 }

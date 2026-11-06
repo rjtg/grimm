@@ -26,7 +26,13 @@ pub(crate) fn install(app: &mut App) {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((Camera2d, crate::cueables::Object::Camera));
+    commands.spawn((
+        Camera3d::default(),
+        bevy::core_pipeline::tonemapping::Tonemapping::Reinhard,
+        Msaa::Off,
+        Transform::from_xyz(0.1, 2.6, 3.9).looking_at(Vec3::new(0., -0.4, -0.6), Vec3::Y),
+        crate::cueables::Object::Camera,
+    ));
 }
 
 fn replace_scene(
@@ -34,6 +40,7 @@ fn replace_scene(
     runtime: Res<Runtime>,
     view: Res<SceneView>,
     generator: Res<Generator>,
+    loading: Option<Res<crate::stage::Loading>>,
     roots: Query<Entity, With<SceneRoot>>,
 ) {
     for root in &roots {
@@ -48,6 +55,7 @@ fn replace_scene(
         flex_direction: FlexDirection::Column, row_gap: px(7), ..default()
     },BackgroundColor(Color::srgba(0.025,0.04,0.06,0.92)))).with_children(|parent| {
         parent.spawn((Text::new("WHITEOUT / FIELD STATION"), font(20.0)));
+        if let Some(loading) = &loading && loading.pending > 0 { parent.spawn((Text::new(format!("Loading generator assets ({} remaining)", loading.pending)), font(20.0))); }
         if !canonical {parent.spawn((Text::new(format!("{} / entry {}", runtime.sheet.node_id, runtime.sheet.epoch)), font(16.0)));}
         if let Some(panel) = view.panel() {
             parent.spawn((Node { width: percent(100), height: px(8), ..default() }, BackgroundColor(Color::srgb(panel.accent[0], panel.accent[1], panel.accent[2]))));
@@ -132,7 +140,7 @@ mod tests {
         ));
         app.update();
         let world = app.world_mut();
-        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
+        assert_eq!(world.query::<&Camera3d>().iter(world).count(), 1);
         let root = world
             .query_filtered::<Entity, With<SceneRoot>>()
             .single(world)
@@ -192,7 +200,7 @@ mod tests {
                 .count(),
             1
         );
-        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
+        assert_eq!(world.query::<&Camera3d>().iter(world).count(), 1);
     }
 }
 

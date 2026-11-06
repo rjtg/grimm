@@ -42,7 +42,7 @@ narrative truth. No skinned final rig or general animation engine is introduced.
 ## Ownership and rights
 
 All geometry, procedural wear pixels and new PCM are original authored source
-under this repository's license. No third-party meshes, textures, recordings,
+created for this repository. The repository currently declares no distribution license; that maintainer decision remains open. No third-party meshes, textures, recordings,
 fonts or generated bitmap concepts are embedded in these GLBs. Existing own
 reference art guides silhouette/material direction; it is not copied into meshes.
 No DCC executable, cloud account or asset-store download is needed to reproduce.
