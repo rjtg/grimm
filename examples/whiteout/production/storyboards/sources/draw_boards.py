@@ -84,7 +84,7 @@ def room(scene,view):
    p += [poly([(420,235),(490,200),(490,390),(420,420)],'#d7dcd7'),rect(530,250,15,110,'#ddd')]
   else:p.append(line(427,245,435,410,'#edf1ef',9))
   if view in ['decision_open','decision_power','heat','return']:p += [line(740,315,780,315,w=4),rect(775,290,20,55,'#555')]
-  if view in ['heat','return','ignition']:p += [ellipse(570,327,58,58,'#777'),line(515,327,625,327,'#ccc',8),arrow(625,300,650,340,'SPIN')]
+  if view in ['heat','return','ignition','decision_power']:p += [ellipse(570,327,58,58,'#777'),line(515,327,625,327,'#ccc',8),arrow(625,300,650,340,'SPIN')]
   if view in ['timeout','return','abandon']:
    p += [actor('J',240,500,210,'sit'),actor('M',400,510,220,'carry'),actor('A',570,530,230,'reach'),arrow(455,395,510,415,'GRIP')]
   else:p += [actor('J',280,440,190,'sit',treated=view!='rest'),actor('M',190,450,200,'support'),actor('A',510,510,230,'reach_back')]
@@ -109,14 +109,14 @@ def room(scene,view):
   p += [rect(420,115,330,55,'#9ba8aa'),line(585,115,585,170,w=4)]
   p += [rect(165,335,230,120,'#888'),rect(420,310,180,100,'#888'),rect(660,275,160,170,'#999')]
   for y in [180,250,320]:p.append(line(170,y,810,y,w=5))
-  if view!='decision_done':
+  if view not in ['decision_done','leave']:
    p += [rect(180,195,65,43,'#a78c7a'),text(213,225,'+',30,anchor='middle'),rect(270,200,90,30,'#ccc'),rect(475,280,25,30,'#eee'),ellipse(507,294,9,10,'none'),ellipse(445,300,18,9,'none','#8e7662'),line(535,304,580,280,w=8),ellipse(900,290,30,30,'none'),line(940,270,940,330,'#9c7760',12),rect(885,370,65,65,'#777')]
   p += [rect(700,285,70,50,'#555'),text(735,317,'LOG',15,anchor='middle')]
   p += [actor('J',230,445,185,'sit',treated=view in ['treat','decision_done','leave']),actor('M',330,465,195,'support'),actor('A',500,520,220,'reach'),actor('L',760,485,200)]
  elif scene=='dispatch':
   p += [poly([(0,75),(120,125),(120,180),(0,125)],'#9ba8aa'),poly([(1000,75),(880,125),(880,180),(1000,125)],'#9ba8aa')]
   p += [poly([(0,160),(120,200),(120,430),(0,510)],'#777'),poly([(1000,160),(880,200),(880,430),(1000,510)],'#777'),rect(430,155,145,280,'#888'),text(45,150,'RADIO',19),text(835,150,'ENGINEERING',18),text(500,143,'RIDGE',19,anchor='middle'),rect(165,350,155,65,'#888')]
-  p += [actor('J',240,440,190,'sit'),actor('M',390,460,210,'support'),actor('A',590,535,230)]
+  p += ([actor('J',240,440,190,'sit')] if view!='cold' else [])+[actor('M',390,460,210,'support'),actor('A',590,535,230)]
   if view=='cold':
    p += [actor('J',510,810,620,'sit'),text(200,120,'REACTION / EARLIER UNHEATED WAIT',23)]
  elif scene=='radio':
@@ -307,7 +307,7 @@ def render(s):
   body+=text(20,ui+60,'20s at T=10 unextended' if s['view']=='warning' else {'generator':'Readout dark before T=10; coil already runs','stores':'173s at T=7 / reserve continues','radio':'54s at T=6 / reserve continues','crisis':'37s at T=8 / crossing deadline','dispatch':'No decision deadline','blackout':'Begin when ready'}.get(s['scene'],''),24)
   if s['view'] in ['decision_power','decision_return','decision_returncold','decision_auto_return']:
    body+=rect(10,ui+36,980,36,'#f1eee6','none')+text(20,ui+60,'Deadline removed — only actual eligible offers',24)
-  elif s['view'] in ['decision_open','decision_send','decision_done']:
+  elif s['view'] in ['decision_open','decision_send','decision_sendcold','decision_done']:
    body+=rect(10,ui+36,980,36,'#f1eee6','none')+text(20,ui+60,'Current remaining budget — no restart',24)
   if s['view']=='warning':
    body+=text(25,ui+110,'WORKING: input locked until at least T=11.',24)+text(25,ui+155,'Latch media + Lea radio continue concurrently.',21)

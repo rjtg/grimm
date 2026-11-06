@@ -1,6 +1,6 @@
 # WHITEOUT — visual shot-by-shot storyboard (#80)
 
-**Working draft; final coverage/continuity review in progress.** Based on main
+**Complete visual blocking proposal: 105 drawn panels, 21 contact sheets.** Based on main
 `5aaeaf8`, screenplay PR #77, cast PR #78, environments PR #79 and Bevy PR #76.
 Both phases belong to this task: generator pilot **and the remaining story**.
 The issue is not completed by the pilot.
@@ -40,8 +40,13 @@ runtime dependencies are added. Generated pencil artist studies for G01/R01 use
 the existing own cast/environment references, exact prompts checked in. They are
 alternate development studies, not additional coverage or replacement worlds.
 
-Pending before readiness: finish explicit branching/coverage/continuity records,
-inspect every scene sheet and run full native checks. Canonical executable
+Review records: [interactive diagrams](BRANCHES.md), [cue/action coverage](COVERAGE.md),
+[continuity and open approvals](CONTINUITY.md), [stable production references](REFERENCES.md), [sources and provenance](PROVENANCE.md),
+[verification results](VERIFICATION.md). All nine contexts, 57 narrative bindings,
+35 actions and 95 authored cue instances are cross-referenced. No indexed panel
+is missing. This is complete storyboard coverage, not final art approval.
+
+Canonical executable
 story/text/scopes, Rust code and original reference sheets remain unchanged.
 No final animations/models, gameplay, generic authoring framework, save/restore,
 codegen, screenshot automation or full Bevy port is delivered here. No auto-merge.

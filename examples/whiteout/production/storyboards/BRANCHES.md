@@ -98,3 +98,67 @@ flowchart TD
 ## Movement keyframe pairs
 
 B05→S01 carry into stores; G01→G04 push to controls; G23→G24 withdrawal and sealed same threshold; R03→R04 adapter insertion; C04→C05 manual-line crossing; C12→C13 snow erasure; E10→E08 exterior pullback, then E09 spring match cut. Motion/gaze arrows and camera insets are drawn in the actual panels.
+
+## Generator detail (actual shot IDs)
+
+```mermaid
+flowchart TD
+ G17["G17 eligible choices"] -->|latch| G06["G06 → G07 → G08 progress"]
+ G17 -->|craft| G10["G10 → G27 lever offered"]
+ G10 --> G11["G11 cold failure / G12 opens"]
+ G06 -->|T=10 overlaps| G16["G16 warning; locked until ≥11"]
+ G06 -->|cold failure| G09["G09 → G28 numb offers"]
+ G08["G08 cover open"] --> G29["G29 unsafe start offered"]
+ G29 -->|start unisolated| G14["G14 overload"]
+ G29 -->|read then isolate| G13["G04 → G13 external fuse"]
+ G13 --> G25["G25 start offer if cover open"]
+ G25 -->|cold| G15["G15 failed start"]
+ G25 -->|success| G18["G18 → G19 → G20 → G26 return offer"]
+ G18 --> G21["G21 → D02 powered hall"]
+ G17 -->|heat pack| G05["G05 +60s; refresh G17 profile"]
+ G17 -->|abandon| G22["G22 → D05"]
+ G17 -->|deadline/cutoff| G23["G23 → G24 → D05"]
+```
+
+G14/G15 and successful latch work return to the current eligible profile;
+G17 denotes the shared camera, not permission to restore its original offers.
+Isolation before opening the latch is also allowed (G04→G13→current work offers).
+
+## Radio detail (actual shot IDs)
+
+```mermaid
+flowchart TD
+ R02["R02 / R18 / R21 eligible profile"] -->|adapter| R03["R03 → R04"]
+ R02 -->|manual alignment| R05["R05 success / R06 cold slip"]
+ R03 --> R14["R14 or R19 transmit offer"]
+ R05 --> R14
+ R14 -->|cold first| R08["R08 no call; refresh profile"]
+ R14 -->|adapter success| R09["R09 auto → R16 or R20"]
+ R14 -->|manual success| R10["R10 held → R15 or R20"]
+ R02 -->|T=15 and not auto| R07["R07 concurrent gust"]
+ R02 -->|powered warm| R11["R11; current profile"]
+ R02 -->|deadline/abandon| R13["R13 → D05"]
+ R09 --> R17["R17 both free → hall"]
+ R10 --> R12["R12 Lea stays → hall"]
+```
+
+## Ridge detail (actual shot IDs)
+
+```mermaid
+flowchart TD
+ C02["C02 current five/four offers"] -->|coordinate fails| C03["C03 → C02 same clock"]
+ C02 -->|coordinate succeeds line| C04["C04 → C05 → E01"]
+ C02 -->|coordinate succeeds auto| C15["C15 → E01"]
+ C02 -->|help Lea full| C06["C06 → E01"]
+ C02 -->|help Lea partial| C07["C07 → E03 → E04"]
+ C02 -->|help Jonas full| C08["C08 / C14 → E01"]
+ C02 -->|help Jonas partial| C09["C09 → E05 → E06"]
+ C02 -->|flare held| C10["C10 → E03 → E04"]
+ C02 -->|stay| C11["C11 → E10 → E08 → E09"]
+ C02 -->|deadline| C12["C12 → C13 → E10"]
+ C07 -->|neither call nor flare| E10["E10 lost"]
+ C09 -->|neither call nor flare| E10
+ E01["E01 four survivors"] -->|log read| E02["E02 truth"]
+ E04["E04 Jonas tag"] -->|log read| E07["E07 truth with loss"]
+ E06["E06 Lea handset"] -->|log read| E07
+```
