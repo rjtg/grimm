@@ -264,7 +264,15 @@ pub(crate) fn paint(
         .next()
         .map_or((Vec3::ZERO, 1.), |t| (t.translation, t.scale.x));
     let time = runtime.elapsed_ms;
-    let open = artwork(&view, "art.open").map_or(0., |at| fraction(time, at, 350.));
+    let open = artwork(&view, "art.open").map_or(0., |at| {
+        // A destination entry describes an already-open cover. Only its first
+        // authored opening in the approach needs the transition.
+        if at == 0 {
+            1.
+        } else {
+            fraction(time, at, 350.)
+        }
+    });
     let powered = matches!(
         generator.status,
         GeneratorStatus::Powered | GeneratorStatus::Repaired
@@ -431,6 +439,23 @@ mod tests {
             assert_eq!(plate.cell, cell);
         }
         crate::scheduler::tests::advance(&mut app, 6000);
+        {
+            let mut query = app.world_mut().query::<(&Illustration, &Sprite)>();
+            let (_, sprite) = query
+                .iter(app.world())
+                .find(|(a, _)| a.picture == Picture::States && !a.warm)
+                .unwrap();
+            assert_eq!(
+                sprite.color.alpha(),
+                1.,
+                "destination must retain the open cover without replaying its opening"
+            );
+            let (_, closed) = query
+                .iter(app.world())
+                .find(|(a, _)| a.picture == Picture::Machine)
+                .unwrap();
+            assert_eq!(closed.color.alpha(), 0.);
+        }
         crate::scheduler::tests::advance(&mut app, 2500);
         assert!(app.world().resource::<Generator>().deicer_isolated);
         let mut query = app.world_mut().query::<(&Illustration, &Sprite)>();
