@@ -183,7 +183,7 @@ fn replace_despawns_old_audio_motion_and_rejects_stale_wakes_with_bounded_assets
         select(&mut app, "abandon");
         advance(&mut app, 9000);
     }
-    assert_eq!(entity_count::<Object>(&mut app), 7);
+    assert_eq!(entity_count::<Object>(&mut app), 8);
     assert_eq!(app.world().resource::<Assets<AudioSource>>().len(), 3);
     assert!(entity_count::<CueEntity>(&mut app) < 10);
 }

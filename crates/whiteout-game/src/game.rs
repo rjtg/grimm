@@ -20,10 +20,15 @@ pub(crate) fn install(app: &mut App) {
     app.insert_resource(Runtime::new(graph))
         .init_resource::<SceneView>()
         .init_resource::<Generator>()
+        .init_resource::<crate::art::GraphicMode>()
         .add_message::<HostRequest>()
         .configure_sets(
             Update,
             (FrameSet::Collect, FrameSet::Execute, FrameSet::Present).chain(),
+        )
+        .configure_sets(
+            Update,
+            (FrameSet::Collect, FrameSet::Execute).run_if(crate::art::ready),
         )
         .add_systems(
             Update,
@@ -85,7 +90,15 @@ fn keyboard_input(
     time: Res<Time<Real>>,
     runtime: Res<Runtime>,
     mut requests: MessageWriter<HostRequest>,
+    mut mode: ResMut<crate::art::GraphicMode>,
 ) {
+    if keys.just_pressed(KeyCode::F2) {
+        *mode = if *mode == crate::art::GraphicMode::Staged {
+            crate::art::GraphicMode::Layered
+        } else {
+            crate::art::GraphicMode::Staged
+        };
+    }
     for (index, key) in [KeyCode::Digit1, KeyCode::Digit2, KeyCode::Digit3]
         .iter()
         .enumerate()
