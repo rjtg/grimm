@@ -64,3 +64,12 @@ especially around shutdown. The process still closed successfully. The cause
 has not been isolated; **audible quality is not verified**. A listening/performance
 pass on the target hardware is still needed. No desktop audio recording was
 made and no production audio-quality or frame-rate claim is made.
+
+## Illustrated pilot follow-up (#83, 2026-11-06)
+
+The counts and sprite captures above describe the earlier #70 baseline. The
+[current graphic-novel verification and A/B captures](GRAPHIC-NOVEL-PLAYTEST.md)
+record 263 passing workspace tests, 42 WHITEOUT tests, the illustrated renderer
+and actual success, abandonment and timeout playthroughs. They supersede the
+placeholder-art observations for the current application, while retaining the
+original baseline evidence and its audio limitation.

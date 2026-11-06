@@ -1,8 +1,9 @@
 # WHITEOUT illustrated pilot (#83)
 
-Work in progress: native Bevy illustration integration compiles; graphical
-composition/playtest, asset registration and regression verification are pending.
-Do not treat these assets as an approved whole-game production direction.
+Playable pilot, verified headlessly and in a real Bevy window. See the
+[playtest and production comparison](../../GRAPHIC-NOVEL-PLAYTEST.md).
+The art direction remains a proposal for review, not an approved whole-game
+production commitment.
 
 ## Run and compare
 
@@ -62,3 +63,10 @@ world-state ownership changes are introduced. Mechanical close-ups interpret
 existing presentation beats; authoritative effects and graph edges are retained.
 
 See [AUDIT.md](AUDIT.md) for the baseline and useful lessons from closed PR #82.
+
+`manifest.json` records exact source PNG dimensions, alpha mode, SHA-256 and
+reference dependencies. The generated state strip is not pixel-registered to
+the full room canvas: its native frame is fitted to a 1000×500 sprite at (50,240).
+This explicit per-asset import calibration is shared by all three states.
+There is no offline raster rewrite. The checked-in runtime art and prompts were
+produced with the built-in image-generation tool, not the CLI/API fallback.

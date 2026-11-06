@@ -8,7 +8,8 @@ effects and cue execution. The existing scene engine and WHITEOUT remain availab
 this foundation does not require the superseded provider PR #65.
 
 WHITEOUT also has a playable [Bevy generator-annex slice](crates/whiteout-game/README.md)
-for #67–#70: `CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked`.
+with the [graphic-novel pilot](crates/whiteout-game/assets/graphic-novel/README.md)
+for #83 (F2 compares staging modes): `CARGO_PROFILE_DEV_DEBUG=0 cargo run -p whiteout-game --locked`.
 Take the spare relay with **2**, inspect with **1**, then repair with **2** once
 controls open. Alternatively isolate the drive or wait for the blackout. It embeds `grimm-graph`;
 the canonical CLI adventure remains unchanged.

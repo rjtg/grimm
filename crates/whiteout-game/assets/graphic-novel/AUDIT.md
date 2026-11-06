@@ -1,12 +1,11 @@
 # Graphic-novel pilot audit (#83)
 
 Baseline: main `3dc9b8a` after #81. Work is isolated on
-`feat/whiteout-graphic-novel`; the uncommitted #40 work remains in its original
-worktree. PR #82 was closed by the maintainer and will remain closed.
+`feat/whiteout-graphic-novel`. PR #82 was closed by the maintainer and remains
+closed; no further 3D implementation is part of this pilot.
 
 Reuse: GRIMM graph/epoch traversal; WHITEOUT scheduler, input/deadline arbitration,
-condition/effect handlers, content and decision UI; existing PCM masters and
-small useful original SFX from the #82 experiment where appropriate. Keep the
+condition/effect handlers, content and decision UI; the existing three PCM masters. Keep the
 prepared-route simplifications documented in SCREENPLAY, not full canon claims.
 No GRIMM protocol or authoritative gameplay change is needed.
 
@@ -23,3 +22,7 @@ Compare A/B on the same authored sequence and same master illustrations:
 A stages cutouts with cuts/pushes; B adds only bounded depth offsets to those same
 layers. Implement both in the existing WHITEOUT stage, not two presentation engines.
 The eventual production recommendation remains subject to this pilot's review.
+
+The inherited three WAV bindings remain unchanged in this pilot; no additional
+#82 SFX or model files have been copied. Its GLB geometry/rigging sources remain
+an archived experiment, potentially useful for future spatial blocking only.

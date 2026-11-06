@@ -1,0 +1,138 @@
+[
+  {
+    "asset_id": "alex-poses-v1",
+    "file": "images/alex-poses-v1.png",
+    "prompt": "sources/alex-poses-v1.txt",
+    "width": 2172,
+    "height": 724,
+    "mode": "RGBA",
+    "sha256": "abc314b0c81e26c03f4cea396f49ee4385a2e82017b55c72a0dbcf6ce86daa45",
+    "references": [
+      "examples/whiteout/production/characters/references/alex-v1.png",
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "annex-master-v1",
+    "file": "images/annex-master-v1.png",
+    "prompt": "sources/annex-master-v1.txt",
+    "width": 1774,
+    "height": 887,
+    "mode": "RGB",
+    "sha256": "6e068fe7fc0eb2d4bc4188200921ed00b4caf6918256cbe2e9bdc0f78e7e4744",
+    "references": [
+      "examples/whiteout/production/environments/references/generator-v2.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "annex-room-layer-v1",
+    "file": "images/annex-room-layer-v1.png",
+    "prompt": "sources/annex-room-layer-v1.txt",
+    "width": 1774,
+    "height": 887,
+    "mode": "RGB",
+    "sha256": "8a67aa259a2e600aaa6c51014e2c1764a9d7fe64436014a5e2a1ff0ea174373d",
+    "references": [
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "generator-layer-v1",
+    "file": "images/generator-layer-v1.png",
+    "prompt": "sources/generator-layer-v1.txt",
+    "width": 1774,
+    "height": 887,
+    "mode": "RGBA",
+    "sha256": "f368b68d20dd7b1e90e2a02508b75ae1790bc4d20b72f7530f38f4d5282680aa",
+    "references": [
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "generator-states-v1",
+    "file": "images/generator-states-v1.png",
+    "prompt": "sources/generator-states-v1.txt",
+    "width": 1024,
+    "height": 1536,
+    "mode": "RGBA",
+    "sha256": "e3e9b72e84fef5f1b2baad780d4abab5ebc78bce515df4e8696e43b178c88f57",
+    "references": [
+      "generator-layer-v1.png",
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "jonas-poses-v1",
+    "file": "images/jonas-poses-v1.png",
+    "prompt": "sources/jonas-poses-v1.txt",
+    "width": 2172,
+    "height": 724,
+    "mode": "RGBA",
+    "sha256": "25e3b97094d2ebe27522f3244fc5e5fbc5a83788ccc442d8dcfbc5b643175a04",
+    "references": [
+      "examples/whiteout/production/characters/references/jonas-v1.png",
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "mara-poses-v1",
+    "file": "images/mara-poses-v1.png",
+    "prompt": "sources/mara-poses-v1.txt",
+    "width": 2172,
+    "height": 724,
+    "mode": "RGBA",
+    "sha256": "a27254bc43ec003dd6001c2c8074d42abde40ecbbfd4143a5ffb59f60d067efe",
+    "references": [
+      "examples/whiteout/production/characters/references/mara-v1.png",
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "mechanism-inserts-v1",
+    "file": "images/mechanism-inserts-v1.png",
+    "prompt": "sources/mechanism-inserts-v1.txt",
+    "width": 2172,
+    "height": 724,
+    "mode": "RGB",
+    "sha256": "ad466a97531f23d52ac83cc648761835bd841c6ce2741b930d9bc38da12a57cf",
+    "references": [
+      "annex-master-v1.png",
+      "examples/whiteout/production/characters/references/alex-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "shutter-v1",
+    "file": "images/shutter-v1.png",
+    "prompt": "sources/shutter-v1.txt",
+    "width": 1774,
+    "height": 887,
+    "mode": "RGBA",
+    "sha256": "d7296bdaa66f657c9e72ff303ee8053c54a716b03857d5ee3eceb9409ba776df",
+    "references": [
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  },
+  {
+    "asset_id": "support-bench-v1",
+    "file": "images/support-bench-v1.png",
+    "prompt": "sources/support-bench-v1.txt",
+    "width": 1774,
+    "height": 887,
+    "mode": "RGBA",
+    "sha256": "12417b649d1f681cfefe98dd43a3426edd6eade01443a67397f94f24859a3dcf",
+    "references": [
+      "annex-room-layer-v1.png",
+      "annex-master-v1.png"
+    ],
+    "generator": "built-in image_gen; model and seed not exposed"
+  }
+]

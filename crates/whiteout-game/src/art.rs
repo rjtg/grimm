@@ -100,7 +100,6 @@ fn layer(
     home: Transform,
     depth: f32,
     actor: Option<Object>,
-    warm: bool,
 ) -> Entity {
     commands
         .spawn((
@@ -116,18 +115,18 @@ fn layer(
                 home,
                 depth,
                 actor,
-                warm,
+                warm: picture == Picture::States && cell == 2,
             },
         ))
         .id()
 }
 pub(crate) fn spawn_set(commands: &mut Commands) {
-    for (picture, z, depth, warm, cell) in [
-        (Picture::Room, -20., 0.96, false, 0),
-        (Picture::Machine, -10., 1., false, 0),
-        (Picture::States, -9., 1., false, 0),
-        (Picture::States, -8., 1., true, 2),
-        (Picture::Bench, 4., 1., false, 0),
+    for (picture, z, depth, cell) in [
+        (Picture::Room, -20., 0.96, 0),
+        (Picture::Machine, -10., 1., 0),
+        (Picture::States, -9., 1., 0),
+        (Picture::States, -8., 1., 2),
+        (Picture::Bench, 4., 1., 0),
     ] {
         layer(
             commands,
@@ -149,7 +148,6 @@ pub(crate) fn spawn_set(commands: &mut Commands) {
             ),
             depth,
             None,
-            warm,
         );
     }
     layer(
@@ -160,7 +158,6 @@ pub(crate) fn spawn_set(commands: &mut Commands) {
         Transform::from_xyz(0., 220., 18.),
         1.,
         None,
-        false,
     );
 }
 pub(crate) fn spawn_actor(commands: &mut Commands, parent: Entity, object: Object) {
@@ -174,10 +171,9 @@ pub(crate) fn spawn_actor(commands: &mut Commands, parent: Entity, object: Objec
         picture,
         0,
         Vec2::splat(height),
-        Transform::from_xyz(0., -70., 0.),
+        Transform::from_xyz(0., -120., 0.),
         1.,
         Some(object),
-        false,
     );
     commands.entity(child).insert(Anchor::BOTTOM_CENTER);
     commands.entity(parent).add_child(child);
@@ -191,7 +187,6 @@ pub(crate) fn spawn_shutter(commands: &mut Commands, parent: Entity) {
         Transform::IDENTITY,
         1.04,
         None,
-        false,
     );
     commands.entity(parent).add_child(child);
 }
@@ -250,6 +245,10 @@ fn parallax(mode: GraphicMode, depth: f32, camera: Vec3) -> Vec2 {
     }
     .clamp(Vec2::splat(-6.), Vec2::splat(6.))
 }
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Bevy injects independent resources and disjoint camera/layer queries"
+)]
 pub(crate) fn paint(
     paintings: Res<Paintings>,
     images: Res<Assets<Image>>,
@@ -360,5 +359,108 @@ pub(crate) fn paint(
             .filter(|at| time.saturating_sub(*at) < 800)
             .map_or(0., |at| ((time - at) as f32 * 0.025).sin().abs() * 0.12);
         sprite.color = Color::srgba(1., 1. - pulse, 1. - pulse, alpha);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::{
+        asset::RenderAssetUsages,
+        image::{CompressedImageFormats, ImageSampler, ImageType},
+    };
+    #[test]
+    fn committed_pngs_decode_and_have_complete_pose_cells() {
+        for picture in Picture::ALL {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("assets/graphic-novel/images")
+                .join(picture.file());
+            let bytes = std::fs::read(&path).unwrap();
+            let image = Image::from_buffer(
+                &bytes,
+                ImageType::Extension("png"),
+                CompressedImageFormats::NONE,
+                true,
+                ImageSampler::default(),
+                RenderAssetUsages::default(),
+            )
+            .unwrap();
+            let grid = picture.grid();
+            assert_eq!(image.width() % grid.x, 0, "{}", picture.file());
+            assert_eq!(image.height() % grid.y, 0, "{}", picture.file());
+            assert!(image.width() / grid.x >= 512);
+            assert!(image.height() / grid.y >= 300);
+            if !matches!(picture, Picture::Room | Picture::Inserts) {
+                let pixels = image.data.as_ref().unwrap();
+                assert!(
+                    pixels.as_chunks::<4>().0.iter().any(|p| p[3] == 0),
+                    "{} must have genuine alpha",
+                    picture.file()
+                );
+                assert!(
+                    pixels.as_chunks::<4>().0.iter().any(|p| p[3] > 240),
+                    "{} must contain visible artwork",
+                    picture.file()
+                );
+            }
+        }
+    }
+    #[test]
+    fn authored_beats_select_inserts_poses_and_isolated_state_without_new_entities() {
+        let mut app = App::new();
+        app.add_plugins((
+            MinimalPlugins,
+            bevy::input::InputPlugin,
+            crate::game::install,
+            crate::screen::install,
+            crate::stage::install,
+        ));
+        crate::scheduler::tests::advance(&mut app, 0);
+        let count = app
+            .world_mut()
+            .query::<&Illustration>()
+            .iter(app.world())
+            .count();
+        for (at, cell) in [(6000, 2), (2000, 3), (2000, 4), (2000, 0)] {
+            crate::scheduler::tests::advance(&mut app, at);
+            let mut query = app.world_mut().query::<&Illustration>();
+            let plate = query
+                .iter(app.world())
+                .find(|a| a.picture == Picture::Inserts)
+                .unwrap();
+            assert_eq!(plate.cell, cell);
+        }
+        crate::scheduler::tests::advance(&mut app, 6000);
+        crate::scheduler::tests::advance(&mut app, 2500);
+        assert!(app.world().resource::<Generator>().deicer_isolated);
+        let mut query = app.world_mut().query::<(&Illustration, &Sprite)>();
+        let (state, sprite) = query
+            .iter(app.world())
+            .find(|(a, _)| a.picture == Picture::States && !a.warm)
+            .unwrap();
+        assert_eq!(state.cell, 1);
+        assert_eq!(sprite.color.alpha(), 1.);
+        assert_eq!(
+            app.world_mut()
+                .query::<&Illustration>()
+                .iter(app.world())
+                .count(),
+            count
+        );
+        assert!(app.world().resource::<SceneView>().failure.is_none());
+    }
+
+    #[test]
+    fn staged_has_no_parallax_and_layered_offsets_are_bounded() {
+        for depth in [0.96, 1., 1.04] {
+            for camera in [Vec3::ZERO, Vec3::new(100., 80., 0.), Vec3::splat(1e6)] {
+                assert_eq!(parallax(GraphicMode::Staged, depth, camera), Vec2::ZERO);
+                let offset = parallax(GraphicMode::Layered, depth, camera);
+                assert!(offset.abs().max_element() <= 6.);
+                if depth == 1. {
+                    assert_eq!(offset, Vec2::ZERO);
+                }
+            }
+        }
     }
 }

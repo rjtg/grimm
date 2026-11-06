@@ -101,3 +101,32 @@ it from animation completion. The hall is a camera reframe of the connected
 placeholder set, not another finished location. Audio is synthesized placeholder
 sound, with no voice acting. Save/Restore (#63) is explicitly deferred by this
 assignment; code generation (#75) and full migration remain separate.
+
+## Graphic-novel pilot overlay (#83)
+
+The pilot retains the same prepared route, authored effects, decision readiness,
+30-second deadline and outcome edges. Only WHITEOUT presentation bindings and
+cues change. `art.*` / `pose.*` are ordinary concrete presentation IDs, not new
+GRIMM instructions. The existing host scheduler remains their only time source.
+
+| Storyboard beat | Illustrated treatment |
+|---|---|
+| G01 | Empty annex master + registered machine, bench and three cast cutouts |
+| G04 | Wiring/isolator detail; connected and isolated variants |
+| G06–G08 | Three latch inserts at approach seconds 6, 8, 10; open machine crossfade |
+| G16–G17 | Same running deadline/radio caption; restrained red warning pulse and reframing |
+| G18 | Primer insert, work pose, existing lever/motor cues |
+| G19–G20 | Wide reframe, powered-state amber crossfade only after the power effect |
+| G23–G24 | Withdrawal poses, descending shutter behind crew after 1.2 seconds |
+
+The room, cast and props use the same art in staged and layered modes (F2).
+Layered mode adds bounded background/foreground parallax; contacting props and
+cast share depth. Breathing and mechanical vibration are subpixel transforms,
+not independent animation clocks. `move.starter`, `move.deicer` and `motor.spin`
+retain logical presentation anchors; inserts/state variants/vibration replace
+literal spinning geometry. The latch sequence illustrates the previously
+prepared latch, not a newly introduced gameplay test.
+
+Alex's masked face treatment and Jonas's protected left splint remain provisional
+production choices from the bibles. These drawings do not resolve those open
+canon questions. See [asset sources and import](assets/graphic-novel/README.md).
